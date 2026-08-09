@@ -4,7 +4,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/szrayane/ticket_challenge">
-    <img src="./public/cineray-logo.svg" alt="CineRay" width="280" height="74">
+    <img src="./public/cineray-logo.png" alt="CineRay" width="320">
   </a>
 
   <h3 align="center">Desafio Elite Dev 2026</h3>
@@ -321,7 +321,6 @@ Prints em `docs/screenshots/` — salve com estes nomes (a seção já aponta pa
 |---------|------|
 | `01-home.png` | Tela inicial / catálogo |
 | `02-login.png` | Login |
-| `03-portaria.png` | Portaria |
 | `04-validar-ingresso.png` | Validar ingresso |
 
 #### Tela inicial
@@ -334,12 +333,6 @@ Prints em `docs/screenshots/` — salve com estes nomes (a seção já aponta pa
 
 <p align="center">
   <img src="./docs/screenshots/02-login.png" alt="Tela de login" width="820">
-</p>
-
-#### Portaria
-
-<p align="center">
-  <img src="./docs/screenshots/03-portaria.png" alt="Painel da portaria" width="820">
 </p>
 
 #### Validar ingresso
@@ -395,7 +388,7 @@ ticket_challenge/
 - [x] MySQL + concorrência (`FOR UPDATE`)
 - [x] Deploy documentado (Vercel + Render)
 - [ ] Vídeo de demonstração no README
-- [x] Screenshots (home, login, portaria, validar)
+- [x] Screenshots (home, login, validar)
 - [ ] Preencher URLs de produção na seção Hospedagem
 
 **Fora de escopo / limitações**
