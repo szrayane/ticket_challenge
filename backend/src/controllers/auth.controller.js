@@ -2,6 +2,7 @@ import {
   changeUserPassword,
   loginUser,
   logoutUser,
+  registerStaffUser,
   registerUser,
   updateUserProfile,
 } from '../services/auth.service.js'
@@ -9,6 +10,15 @@ import {
 export function register(req, res, next) {
   try {
     const result = registerUser(req.body || {})
+    res.status(201).json(result)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export function registerStaff(req, res, next) {
+  try {
+    const result = registerStaffUser(req.body || {})
     res.status(201).json(result)
   } catch (error) {
     next(error)

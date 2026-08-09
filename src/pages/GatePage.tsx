@@ -350,9 +350,7 @@ function GateDashboard() {
       </section>
 
       <p className="mt-8 text-center text-caption text-on-surface-variant">
-        Conta demo: <code>portaria@cineray.com</code> / <code>porta1234</code>
-        {' · '}
-        <Link to="/staff/login" className="text-primary underline">
+        <Link to="/login" className="text-primary underline">
           Trocar usuário
         </Link>
       </p>

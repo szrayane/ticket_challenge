@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { randomBytes, scryptSync } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -165,31 +164,3 @@ db.exec(`
   ON tickets(session_id, seat_id)
   WHERE status = 'active';
 `)
-function seedStaffUser({ id, email, name, role, password }) {
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email)
-  if (existing) {
-    db.prepare('UPDATE users SET role = ? WHERE email = ?').run(role, email)
-    return
-  }
-  const salt = randomBytes(16).toString('hex')
-  const hash = scryptSync(password, salt, 64).toString('hex')
-  db.prepare(
-    `INSERT INTO users (id, email, name, cpf, password_hash, password_salt, created_at, role)
-     VALUES (?, ?, ?, NULL, ?, ?, ?, ?)`,
-  ).run(id, email, name, hash, salt, new Date().toISOString(), role)
-}
-
-seedStaffUser({
-  id: 'usr_organizador_demo',
-  email: 'organizador@cineray.com',
-  name: 'Organizador CineRay',
-  role: 'organizador',
-  password: 'org1234',
-})
-seedStaffUser({
-  id: 'usr_portaria_demo',
-  email: 'portaria@cineray.com',
-  name: 'Portaria CineRay',
-  role: 'portaria',
-  password: 'porta1234',
-})

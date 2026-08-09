@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Navigate, Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { LoginForm, type AuthMode } from '../components/LoginForm'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { LoginForm, type AuthMode, type StaffRole } from '../components/LoginForm'
 import { roleHomePath } from '../components/RequireRole'
 import { useAuth } from '../context/AuthContext'
 
@@ -11,7 +11,8 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const redirectParam = searchParams.get('redirect')
-  const { isAuthenticated, user, login, register, bootstrapping } = useAuth()
+  const { isAuthenticated, user, login, register, registerStaff, bootstrapping } =
+    useAuth()
   const [mode, setMode] = useState<AuthMode>('login')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -61,6 +62,39 @@ export function LoginPage() {
     }
   }
 
+  async function handleRegisterStaff({
+    name,
+    email,
+    password,
+    role,
+    inviteCode,
+  }: {
+    name: string
+    email: string
+    password: string
+    role: StaffRole
+    inviteCode: string
+  }) {
+    try {
+      setSubmitting(true)
+      setError(null)
+      const nextUser = await registerStaff({
+        name,
+        email,
+        password,
+        role,
+        inviteCode,
+      })
+      navigate(resolveRedirect(nextUser.role), { replace: true })
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Não foi possível criar a conta staff.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   if (bootstrapping) {
     return (
       <main className="flex flex-grow items-center justify-center px-4 py-section-gap">
@@ -89,8 +123,8 @@ export function LoginPage() {
           </h1>
           <p className="text-body-md text-on-surface-variant">
             {mode === 'register'
-              ? 'Cadastro de cliente para comprar e guardar QR Codes.'
-              : 'Entre com sua conta de cliente.'}
+              ? 'Cliente ou equipe — o perfil define para onde você vai.'
+              : 'Um login para cliente, organizador e portaria.'}
           </p>
         </div>
 
@@ -102,19 +136,10 @@ export function LoginPage() {
           }}
           onLogin={handleLogin}
           onRegister={handleRegister}
+          onRegisterStaff={handleRegisterStaff}
           error={error}
           submitting={submitting}
         />
-
-        <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left text-caption text-on-surface-variant">
-          <p className="mb-1 font-semibold text-on-surface">Equipe</p>
-          <p>
-            Organizador e portaria:{' '}
-            <Link to="/staff/login" className="text-primary hover:brightness-125">
-              /staff/login
-            </Link>
-          </p>
-        </div>
       </div>
     </main>
   )

@@ -33,13 +33,9 @@ export function RequireRole({
   }
 
   if (!isAuthenticated || !user) {
-    const staffRoute = roles.some(
-      (role) => role === 'organizador' || role === 'portaria',
-    )
-    const loginPath = staffRoute ? '/staff/login' : '/login'
     return (
       <Navigate
-        to={`${loginPath}?redirect=${encodeURIComponent(location.pathname)}`}
+        to={`/login?redirect=${encodeURIComponent(location.pathname)}`}
         replace
       />
     )

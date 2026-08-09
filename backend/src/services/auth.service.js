@@ -39,6 +39,45 @@ function publicUser(row) {
 }
 
 export function registerUser({ email, password, name }) {
+  return createUserAccount({
+    email,
+    password,
+    name,
+    role: 'cliente',
+  })
+}
+
+export function registerStaffUser({ email, password, name, role, inviteCode }) {
+  const expected = String(process.env.STAFF_INVITE_CODE || 'cineray-staff').trim()
+  const provided = String(inviteCode || '').trim()
+
+  if (!expected) {
+    const err = new Error('Cadastro de equipe indisponível no momento.')
+    err.status = 503
+    throw err
+  }
+  if (!provided || provided !== expected) {
+    const err = new Error('Código de convite inválido.')
+    err.status = 403
+    throw err
+  }
+
+  const staffRole = normalizeRole(role)
+  if (staffRole !== 'organizador' && staffRole !== 'portaria') {
+    const err = new Error('Escolha o perfil organizador ou portaria.')
+    err.status = 400
+    throw err
+  }
+
+  return createUserAccount({
+    email,
+    password,
+    name,
+    role: staffRole,
+  })
+}
+
+function createUserAccount({ email, password, name, role }) {
   const normalized = String(email || '')
     .trim()
     .toLowerCase()
@@ -79,7 +118,7 @@ export function registerUser({ email, password, name }) {
     password_hash: hash,
     password_salt: salt,
     created_at: nowIso(),
-    role: 'cliente',
+    role: normalizeRole(role),
   }
 
   db.prepare(

@@ -50,6 +50,7 @@ VITE_APP_API_URL=http://localhost:3333/api
 ### Backend local — conta, holds e ingressos
 
 - `POST /api/auth/register` — cadastro (sempre **cliente**)
+- `POST /api/auth/staff/register` — cadastro de equipe (organizador/portaria + código de convite)
 - `POST /api/auth/login` — login
 - `GET /api/auth/me` — usuário logado
 - `PATCH /api/auth/profile` — nome/CPF
@@ -84,25 +85,21 @@ Banco SQLite em `backend/data/cineray.sqlite`.
 
 ## Fluxo
 
-1. **Cliente** (`/login`) — cadastro/login de comprador
-2. **Staff** (`/staff/login`) — organizador e portaria
-3. **Home** (`/`) — hero + filmes (Cineflex + filmes locais ativos)
-4. **Filme** (`/filme/:id`) — sinopse, trailer e sessões
-5. **Assentos** (`/seats/:movieId`) — hold no clique + timer de 10 min
-6. **Checkout** (`/checkout`) — pagamento demo + pedido (`orderId`)
-7. **Sucesso** (`/success`) — recibo + QR Codes
-8. **Conta** (`/conta`) — ingressos do cliente
-9. **Organizador** (`/organizador`) — abas Filmes | Sessões | Relatórios
-10. **Portaria** (`/portaria`) — câmera/colar QR, sessões próximas por horário, histórico de check-ins
+1. **Login único** (`/login`) — cliente, organizador e portaria; cadastro de equipe com convite
+2. **Home** (`/`) — hero + filmes (Cineflex + filmes locais ativos)
+3. **Filme** (`/filme/:id`) — sinopse, trailer e sessões
+4. **Assentos** (`/seats/:movieId`) — hold no clique + timer de 10 min
+5. **Checkout** (`/checkout`) — pagamento demo + pedido (`orderId`)
+6. **Sucesso** (`/success`) — recibo + QR Codes
+7. **Conta** (`/conta`) — ingressos do cliente
+8. **Organizador** (`/organizador`) — abas Filmes | Sessões | Relatórios
+9. **Portaria** (`/portaria`) — câmera/colar QR, sessões próximas por horário, histórico de check-ins
 
-## Contas demo (staff)
+## Contas e perfis
 
-| Perfil | E-mail | Senha | Entrada |
-|--------|--------|-------|---------|
-| Organizador | `organizador@cineray.com` | `org1234` | `/staff/login` |
-| Portaria | `portaria@cineray.com` | `porta1234` | `/staff/login` |
+Cadastro em `/login` cria perfil **cliente** por padrão. Marque **Sou da equipe** para criar organizador/portaria com o código `STAFF_INVITE_CODE` do backend.
 
-Cadastro público cria apenas perfil **cliente**.
+`/staff/login` redireciona para `/login`.
 
 ## Painel do organizador
 

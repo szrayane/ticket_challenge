@@ -20,6 +20,22 @@ export async function registerAccount(input: {
   return data.user
 }
 
+export async function registerStaffAccount(input: {
+  name: string
+  email: string
+  password: string
+  role: 'organizador' | 'portaria'
+  inviteCode: string
+}) {
+  const data = await appRequest<AuthResponse>('/auth/staff/register', {
+    method: 'POST',
+    auth: false,
+    body: JSON.stringify(input),
+  })
+  setAuthToken(data.token)
+  return data.user
+}
+
 export async function loginAccount(input: { email: string; password: string }) {
   const data = await appRequest<AuthResponse>('/auth/login', {
     method: 'POST',

@@ -16,10 +16,11 @@ import {
   logoutAccount,
   patchProfile,
   registerAccount,
+  registerStaffAccount,
   saveMyTickets,
 } from '../api/auth'
 import { getAuthToken, setAuthToken } from '../api/appClient'
-import type { CustomerTicket, CustomerUser } from '../types'
+import type { CustomerTicket, CustomerUser, UserRole } from '../types'
 
 interface AuthContextValue {
   user: CustomerUser | null
@@ -35,6 +36,13 @@ interface AuthContextValue {
     email: string
     password: string
   }) => Promise<void>
+  registerStaff: (input: {
+    name: string
+    email: string
+    password: string
+    role: Extract<UserRole, 'organizador' | 'portaria'>
+    inviteCode: string
+  }) => Promise<CustomerUser>
   logout: () => Promise<void>
   updateProfile: (
     patch: Partial<Pick<CustomerUser, 'name' | 'cpf'>>,
@@ -111,6 +119,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const registerStaff = useCallback(
+    async (input: {
+      name: string
+      email: string
+      password: string
+      role: Extract<UserRole, 'organizador' | 'portaria'>
+      inviteCode: string
+    }) => {
+      const next = await registerStaffAccount(input)
+      setUser(next)
+      setTickets([])
+      return next
+    },
+    [],
+  )
+
   const logout = useCallback(async () => {
     await logoutAccount()
     setUser(null)
@@ -163,6 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       bootstrapping,
       login,
       register,
+      registerStaff,
       logout,
       updateProfile,
       changePassword: changePasswordFn,
@@ -176,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       bootstrapping,
       login,
       register,
+      registerStaff,
       logout,
       updateProfile,
       changePasswordFn,
