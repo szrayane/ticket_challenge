@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Movie } from '../types'
+import { formatMoney } from '../lib/money'
 import { Icon } from './Icon'
 
 interface MovieCardProps {
@@ -7,6 +8,8 @@ interface MovieCardProps {
 }
 
 export function MovieCard({ movie }: MovieCardProps) {
+  const next = movie.nextSession
+
   return (
     <Link
       to={`/filme/${movie.id}`}
@@ -25,6 +28,11 @@ export function MovieCard({ movie }: MovieCardProps) {
             {movie.format}
           </div>
         )}
+        {next?.price != null && (
+          <div className="absolute right-4 bottom-4 rounded bg-black/70 px-2 py-1 text-[12px] font-semibold text-white">
+            a partir de {formatMoney(next.price)}
+          </div>
+        )}
       </div>
       <div className="p-card-padding">
         <h3 className="mb-1 truncate text-headline-md text-on-surface">{movie.title}</h3>
@@ -36,6 +44,11 @@ export function MovieCard({ movie }: MovieCardProps) {
             {movie.rating.toFixed(1)}
           </span>
         </div>
+        {next && (
+          <p className="mt-2 text-caption text-on-surface-variant">
+            {next.date} • {next.time} • {next.cinema} • {next.room}
+          </p>
+        )}
       </div>
     </Link>
   )

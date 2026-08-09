@@ -22,6 +22,8 @@ export type LocalShowtimeInput = {
   cinema?: string
   room?: string
   dateLabel?: string
+  capacity?: number
+  price?: number
 }
 
 export type ShowtimeOccupancy = {
@@ -147,6 +149,7 @@ export async function fetchLocalShowtimeSeats(showtimeId: string) {
       row: string
       number: number
       ticketType: 'basic' | 'premium' | 'vip'
+      price?: number
     }>
   }>(`/showtimes/${encodeURIComponent(showtimeId)}/seats`, { auth: false })
   return data
@@ -259,6 +262,58 @@ export async function validateTicketQr(
       force: options.force || undefined,
     }),
   })
+}
+
+export async function searchTmdbCatalog(query = '', page = 1) {
+  const q = encodeURIComponent(query)
+  return appRequest<{
+    results: Array<{
+      tmdbId: number
+      title: string
+      synopsis: string
+      rating: number
+      releaseDate: string
+      poster: string
+      backdrop: string
+      genre: string
+    }>
+    page: number
+    totalPages: number
+  }>(`/catalog/tmdb/search?q=${q}&page=${page}`)
+}
+
+export async function createEventFromTmdb(input: {
+  tmdbId: number
+  sessionDate: string
+  sessionTime: string
+  cinema?: string
+  room?: string
+  capacity?: number
+  price?: number
+}) {
+  return appRequest<{ movie: Movie; session: Session }>('/catalog/events', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function fetchSharedTicket(shareToken: string) {
+  return appRequest<{
+    ticket: Pick<
+      import('../types').CustomerTicket,
+      | 'id'
+      | 'movieTitle'
+      | 'moviePoster'
+      | 'sessionDate'
+      | 'sessionTime'
+      | 'cinema'
+      | 'room'
+      | 'seatLabel'
+      | 'qrPayload'
+      | 'status'
+      | 'checkedInAt'
+    >
+  }>(`/tickets/share/${encodeURIComponent(shareToken)}`, { auth: false })
 }
 
 export type GateSession = {

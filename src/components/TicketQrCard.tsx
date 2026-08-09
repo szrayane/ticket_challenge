@@ -80,7 +80,45 @@ export function TicketQrCard({
     }
   }
 
+  async function handleCopyLink() {
+    const path = ticket.sharePath || (ticket.shareToken ? `/i/${ticket.shareToken}` : '')
+    if (!path) {
+      setError('Link de compartilhamento indisponível para este ingresso.')
+      return
+    }
+    const url = `${window.location.origin}${path}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setError(null)
+      setShareHint('Link do ingresso copiado.')
+      window.setTimeout(() => setShareHint(null), 3000)
+    } catch {
+      setError('Não foi possível copiar o link.')
+    }
+  }
+
   async function handleShare() {
+    const path = ticket.sharePath || (ticket.shareToken ? `/i/${ticket.shareToken}` : '')
+    const url = path ? `${window.location.origin}${path}` : ''
+
+    if (url && navigator.share) {
+      try {
+        await navigator.share({
+          title: `Ingresso ${ticket.movieTitle}`,
+          text: `${ticket.movieTitle} • ${ticket.sessionDate} ${ticket.sessionTime} • Assento ${ticket.seatLabel}`,
+          url,
+        })
+        return
+      } catch {
+        /* fall through */
+      }
+    }
+
+    if (url) {
+      await handleCopyLink()
+      return
+    }
+
     const dataUrl = getQrDataUrl()
     if (!dataUrl) {
       setError('QR Code indisponível para compartilhar.')
@@ -261,6 +299,16 @@ export function TicketQrCard({
               >
                 <Icon name="share" className="text-[16px]" />
                 Compartilhar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleCopyLink()
+                }}
+                className="inline-flex items-center gap-1 rounded-full border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                <Icon name="link" className="text-[16px]" />
+                Copiar link
               </button>
             </div>
             <p className="break-all rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-[11px] leading-relaxed text-on-surface-variant">

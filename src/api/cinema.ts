@@ -140,7 +140,7 @@ export async function getShowtimeSeats(
     const data = await fetchLocalShowtimeSeats(showtimeId)
     const seats: Seat[] = data.seats.map((seat) => {
       const ticketType = seat.ticketType
-      const price = TICKET_PRICES[ticketType]
+      const price = Number(seat.price) || TICKET_PRICES[ticketType]
       const label = TICKET_LABELS[ticketType]
       if (!seat.isAvailable) {
         return {

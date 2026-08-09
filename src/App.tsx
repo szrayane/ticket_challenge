@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage'
 import { MoviePage } from './pages/MoviePage'
 import { OrganizerPage } from './pages/OrganizerPage'
 import { SeatsPage } from './pages/SeatsPage'
+import { SharedTicketPage } from './pages/SharedTicketPage'
 import { StaffLoginPage } from './pages/StaffLoginPage'
 import { StaticPage } from './pages/StaticPage'
 import { SuccessPage } from './pages/SuccessPage'
@@ -24,6 +25,7 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="login" element={<LoginPage />} />
               <Route path="staff/login" element={<StaffLoginPage />} />
+              <Route path="i/:shareToken" element={<SharedTicketPage />} />
               <Route path="conta" element={<AccountPage />} />
               <Route path="organizador" element={<OrganizerPage />} />
               <Route path="portaria" element={<GatePage />} />

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   POSTER_GALLERY,
+  createEventFromTmdb,
   createLocalMovie,
   createLocalShowtime,
   deleteLocalMovie,
@@ -11,6 +12,7 @@ import {
   fetchLocalMovieShowtimes,
   fetchOrganizerReport,
   fetchShowtimeOccupancy,
+  searchTmdbCatalog,
   setLocalMovieActive,
   toBrDate,
   toIsoDate,
@@ -25,7 +27,7 @@ import { RequireRole } from '../components/RequireRole'
 import { useAuth } from '../context/AuthContext'
 import type { Movie, Session } from '../types'
 
-type TabId = 'filmes' | 'sessoes' | 'relatorios'
+type TabId = 'publicar' | 'filmes' | 'sessoes' | 'relatorios'
 
 const emptyMovie: LocalMovieInput = {
   title: '',
@@ -57,7 +59,7 @@ function money(value: number) {
 
 function OrganizerDashboard() {
   const { user, logout } = useAuth()
-  const [tab, setTab] = useState<TabId>('filmes')
+  const [tab, setTab] = useState<TabId>('publicar')
   const [movies, setMovies] = useState<Movie[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
@@ -68,11 +70,33 @@ function OrganizerDashboard() {
   const [sessionDateIso, setSessionDateIso] = useState('')
   const [sessionTime, setSessionTime] = useState('20:00')
   const [room, setRoom] = useState('Sala 1')
+  const [capacity, setCapacity] = useState('40')
+  const [price, setPrice] = useState('32')
+  const [cinema, setCinema] = useState('CineRay Centro')
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [formHint, setFormHint] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [tmdbQuery, setTmdbQuery] = useState('')
+  const [tmdbResults, setTmdbResults] = useState<
+    Array<{
+      tmdbId: number
+      title: string
+      synopsis: string
+      poster: string
+      rating: number
+      releaseDate: string
+    }>
+  >([])
+  const [selectedTmdbId, setSelectedTmdbId] = useState<number | null>(null)
+  const [tmdbLoading, setTmdbLoading] = useState(false)
+  const [eventDateIso, setEventDateIso] = useState('')
+  const [eventTime, setEventTime] = useState('20:00')
+  const [eventRoom, setEventRoom] = useState('Sala 1')
+  const [eventCapacity, setEventCapacity] = useState('40')
+  const [eventPrice, setEventPrice] = useState('32')
+  const [eventCinema, setEventCinema] = useState('CineRay Centro')
 
   const selectedMovie = useMemo(
     () => movies.find((m) => m.id === selectedId) || null,
@@ -205,7 +229,9 @@ function OrganizerDashboard() {
       sessionDate: toBrDate(sessionDateIso),
       sessionTime,
       room: room.trim() || 'Sala 1',
-      cinema: 'CineRay',
+      cinema: cinema.trim() || 'CineRay',
+      capacity: Number(capacity) || 40,
+      price: Number(price) || 28,
     }
 
     try {
@@ -276,13 +302,68 @@ function OrganizerDashboard() {
     setSessionDateIso(toIsoDate(session.date))
     setSessionTime(session.time)
     setRoom(session.room || 'Sala 1')
+    setCinema(session.cinema || 'CineRay')
+    setCapacity(String(session.capacity || 40))
+    setPrice(String(session.price || 28))
   }
 
   const tabs: Array<{ id: TabId; label: string }> = [
+    { id: 'publicar', label: 'Publicar (TMDb)' },
     { id: 'filmes', label: 'Filmes' },
     { id: 'sessoes', label: 'Sessões' },
     { id: 'relatorios', label: 'Relatórios' },
   ]
+
+  async function handleSearchTmdb(e?: FormEvent) {
+    e?.preventDefault()
+    setTmdbLoading(true)
+    setError(null)
+    try {
+      const data = await searchTmdbCatalog(tmdbQuery)
+      setTmdbResults(data.results)
+      if (data.results.length === 0) {
+        setSuccess(null)
+        setError('Nenhum filme encontrado na TMDb.')
+      }
+    } catch (err) {
+      setError(err instanceof AppApiError ? err.message : 'Falha ao buscar na TMDb.')
+    } finally {
+      setTmdbLoading(false)
+    }
+  }
+
+  async function handlePublishEvent(e: FormEvent) {
+    e.preventDefault()
+    if (!selectedTmdbId) {
+      setError('Selecione um filme da TMDb.')
+      return
+    }
+    if (!eventDateIso) {
+      setError('Informe a data do evento.')
+      return
+    }
+    setError(null)
+    setSuccess(null)
+    try {
+      const result = await createEventFromTmdb({
+        tmdbId: selectedTmdbId,
+        sessionDate: toBrDate(eventDateIso),
+        sessionTime: eventTime,
+        cinema: eventCinema,
+        room: eventRoom,
+        capacity: Number(eventCapacity) || 40,
+        price: Number(eventPrice) || 32,
+      })
+      setSuccess(`Evento publicado: ${result.movie.title}.`)
+      setSelectedTmdbId(null)
+      await reloadMovies()
+      setSelectedId(result.movie.id)
+      setTab('sessoes')
+    } catch (err) {
+      setError(err instanceof AppApiError ? err.message : 'Falha ao publicar evento.')
+    }
+  }
+
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-5 py-section-gap md:px-container-margin">
@@ -339,6 +420,135 @@ function OrganizerDashboard() {
         <p className="mb-4 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-body-md text-emerald-300">
           {success}
         </p>
+      )}
+
+      {tab === 'publicar' && (
+        <div className="grid gap-8 lg:grid-cols-2">
+          <section className="glass-card space-y-4 rounded-xl p-card-padding">
+            <h2 className="text-headline-md text-on-surface">Catálogo TMDb</h2>
+            <p className="text-body-md text-on-surface-variant">
+              Busque um filme na API externa e publique com data, local, capacidade e preço.
+            </p>
+            <form onSubmit={(e) => void handleSearchTmdb(e)} className="flex gap-2">
+              <input
+                className="glass-input flex-1 rounded-lg px-4 py-3 text-body-md"
+                placeholder="Ex.: Duna, Batman…"
+                value={tmdbQuery}
+                onChange={(e) => setTmdbQuery(e.target.value)}
+              />
+              <button
+                type="submit"
+                disabled={tmdbLoading}
+                className="rounded-full bg-primary-container px-5 py-3 text-label-md text-white disabled:opacity-50"
+              >
+                {tmdbLoading ? 'Buscando…' : 'Buscar'}
+              </button>
+            </form>
+            <ul className="max-h-[420px] space-y-2 overflow-y-auto">
+              {tmdbResults.map((item) => (
+                <li key={item.tmdbId}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTmdbId(item.tmdbId)}
+                    className={`flex w-full gap-3 rounded-xl border p-3 text-left ${
+                      selectedTmdbId === item.tmdbId
+                        ? 'border-primary/50 bg-primary/10'
+                        : 'border-white/10'
+                    }`}
+                  >
+                    {item.poster ? (
+                      <img src={item.poster} alt="" className="h-16 w-11 rounded object-cover" />
+                    ) : (
+                      <div className="h-16 w-11 rounded bg-white/10" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-body-md text-on-surface">{item.title}</p>
+                      <p className="text-caption text-on-surface-variant">
+                        {item.releaseDate || 's/d'} • ★ {item.rating.toFixed(1)}
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <form
+            onSubmit={(e) => void handlePublishEvent(e)}
+            className="glass-card space-y-4 rounded-xl p-card-padding"
+          >
+            <h2 className="text-headline-md text-on-surface">Dados do evento</h2>
+            <p className="text-caption text-on-surface-variant">
+              Selecionado: {selectedTmdbId ? `TMDb #${selectedTmdbId}` : 'nenhum'}
+            </p>
+            <label className="block space-y-1">
+              <span className="text-label-md text-on-surface-variant">Data *</span>
+              <input
+                type="date"
+                required
+                value={eventDateIso}
+                onChange={(e) => setEventDateIso(e.target.value)}
+                className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+              />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-label-md text-on-surface-variant">Horário *</span>
+              <input
+                type="time"
+                required
+                value={eventTime}
+                onChange={(e) => setEventTime(e.target.value)}
+                className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+              />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-label-md text-on-surface-variant">Local / cinema</span>
+              <input
+                value={eventCinema}
+                onChange={(e) => setEventCinema(e.target.value)}
+                className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+              />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-label-md text-on-surface-variant">Sala</span>
+              <input
+                value={eventRoom}
+                onChange={(e) => setEventRoom(e.target.value)}
+                className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block space-y-1">
+                <span className="text-label-md text-on-surface-variant">Capacidade</span>
+                <input
+                  type="number"
+                  min={10}
+                  max={200}
+                  value={eventCapacity}
+                  onChange={(e) => setEventCapacity(e.target.value)}
+                  className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-label-md text-on-surface-variant">Preço (R$)</span>
+                <input
+                  type="number"
+                  min={1}
+                  step="0.01"
+                  value={eventPrice}
+                  onChange={(e) => setEventPrice(e.target.value)}
+                  className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+                />
+              </label>
+            </div>
+            <button
+              type="submit"
+              className="w-full rounded-full bg-neon px-6 py-3 text-label-md text-white"
+            >
+              Publicar evento
+            </button>
+          </form>
+        </div>
       )}
 
       {tab === 'filmes' && (
@@ -592,9 +802,9 @@ function OrganizerDashboard() {
               <>
                 <form
                   onSubmit={(e) => void handleSaveSession(e)}
-                  className="grid gap-3 sm:grid-cols-4"
+                  className="grid gap-3 sm:grid-cols-3"
                 >
-                  <label className="space-y-1 sm:col-span-1">
+                  <label className="space-y-1">
                     <span className="text-label-md text-on-surface-variant">Data *</span>
                     <input
                       type="date"
@@ -624,7 +834,38 @@ function OrganizerDashboard() {
                       placeholder="Sala 1"
                     />
                   </label>
-                  <div className="flex items-end gap-2 sm:col-span-1">
+                  <label className="space-y-1">
+                    <span className="text-label-md text-on-surface-variant">Cinema</span>
+                    <input
+                      type="text"
+                      value={cinema}
+                      onChange={(e) => setCinema(e.target.value)}
+                      className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-label-md text-on-surface-variant">Capacidade</span>
+                    <input
+                      type="number"
+                      min={10}
+                      max={200}
+                      value={capacity}
+                      onChange={(e) => setCapacity(e.target.value)}
+                      className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+                    />
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-label-md text-on-surface-variant">Preço (R$)</span>
+                    <input
+                      type="number"
+                      min={1}
+                      step="0.01"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+                    />
+                  </label>
+                  <div className="flex items-end gap-2 sm:col-span-3">
                     <button
                       type="submit"
                       className="w-full rounded-full bg-neon px-4 py-2.5 text-label-md text-white"

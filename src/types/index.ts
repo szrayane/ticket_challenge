@@ -28,8 +28,17 @@ export interface Movie {
   hero?: string
   backdrop?: string
   trailerUrl?: string
-  source?: 'cineflex' | 'local'
+  source?: 'cineflex' | 'local' | 'tmdb'
+  tmdbId?: number
   isActive?: boolean
+  nextSession?: {
+    date: string
+    time: string
+    cinema: string
+    room: string
+    price: number
+    capacity: number
+  }
 }
 
 export interface Session {
@@ -40,6 +49,8 @@ export interface Session {
   time: string
   cinema: string
   room: string
+  capacity?: number
+  price?: number
 }
 
 export type PaymentMethod = 'credit_card' | 'wallet' | 'pix'
@@ -85,6 +96,8 @@ export interface CustomerTicket {
   orderId?: string
   checkedInAt?: string
   checkedInBy?: string
+  shareToken?: string
+  sharePath?: string
 }
 
 export interface TicketOrderGroup {
