@@ -515,7 +515,7 @@ export function CheckoutPage() {
             <button
               type="button"
               onClick={fillDemoData}
-              className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-caption text-primary transition-colors hover:bg-primary/20"
+              className="shrink-0 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-caption text-primary transition-colors hover:bg-primary/20"
             >
               Preencher dados de teste
             </button>
@@ -550,7 +550,7 @@ export function CheckoutPage() {
                   <div
                     className={`flex flex-col items-center gap-2 rounded-lg border p-4 transition-colors ${
                       checked
-                        ? 'border-primary bg-primary/10 shadow-[inset_0px_0px_15px_rgba(255,45,125,0.2)]'
+                        ? 'border-primary bg-primary/10'
                         : 'border-white/10 hover:bg-white/5'
                     }`}
                   >
@@ -731,7 +731,7 @@ export function CheckoutPage() {
                       <div
                         className={`flex items-center gap-3 rounded-lg border p-4 transition-colors ${
                           checked
-                            ? 'border-primary bg-primary/10 shadow-[inset_0px_0px_15px_rgba(255,45,125,0.2)]'
+                            ? 'border-primary bg-primary/10'
                             : 'border-white/10 hover:bg-white/5'
                         }`}
                       >
@@ -768,14 +768,14 @@ export function CheckoutPage() {
                     type="button"
                     onClick={unlockPixPayment}
                     disabled={!identityReady}
-                    className="rounded-full bg-neon px-6 py-3 text-label-md text-white transition-all disabled:opacity-40"
+                    className="rounded-lg bg-neon px-6 py-3 text-label-md text-white transition-all disabled:opacity-40"
                   >
                     Liberar QR Code Pix
                   </button>
                 </>
               ) : (
                 <>
-                  <div className="rounded-xl bg-white p-4 shadow-[0_0_24px_rgba(255,45,125,0.25)]">
+                  <div className="rounded-xl bg-white p-4">
                     <QRCodeSVG
                       value={pixPayload}
                       size={192}
@@ -825,7 +825,7 @@ export function CheckoutPage() {
                 payStatus === 'approved' ||
                 (paymentMethod === 'pix' && !pixUnlocked)
               }
-              className="primary-glow primary-glow-hover flex items-center gap-2 rounded-full bg-neon px-8 py-4 text-label-md text-white transition-all duration-300 disabled:opacity-50"
+              className="primary-flex items-center gap-2 rounded-lg bg-neon px-8 py-4 text-label-md text-white transition-all duration-300 disabled:opacity-50"
             >
               {submitted
                 ? 'Validando…'

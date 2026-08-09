@@ -1,119 +1,442 @@
 # CineRay
 
-Plataforma de eventos/ingressos de cinema (React + Vite + Express + SQLite), alinhada ao Desafio Elite Dev.
+Plataforma de eventos e ingressos desenvolvida como parte do **desafio Elite Dev 2026**.
 
-## Stack
+O projeto foi desenvolvido a partir dos requisitos do desafio, com foco em um fluxo completo de cinema: criação de eventos, consulta de sessões, seleção de assentos, pagamento simulado, emissão de ingresso com QR Code e validação na portaria.
 
-- Front-end: React 19 + TypeScript + Vite + Tailwind
-- Back-end: Node.js + Express
-- Banco: SQLite (`backend/data/cineray.sqlite`)
-- Catálogo externo: [TMDb](https://developer.themoviedb.org/docs)
-- Catálogo complementar: Cineflex (Driven)
+## Tecnologias
 
-## Decisões de produto (o que avaliamos como “mão no projeto”)
+### Front-end
 
-| Escolha | Por quê |
-|--------|---------|
-| **Mapa de assentos** (não pista) | Cinema casa melhor com o desafio visual e com concorrência real por lugar. |
-| **TMDb como catálogo do organizador** | Atende o requisito de API externa; o organizador monta evento com data, local, capacidade e preço. |
-| **Login único + roles** | Menos fricção; o perfil decide `/conta`, `/organizador` ou `/portaria`. |
-| **Hold de 10 min + índice único** | Duas pessoas não compram o mesmo assento; o hold trava na seleção, não só no pagamento. |
-| **QR com HMAC** | O código não pode ser forjado só inventando um `ID:`; a portaria valida assinatura + payload emitido. |
-| **Link `/i/:shareToken`** | Cumpre “compartilhar por link gerado pela aplicação”, além do share nativo. |
-| **Sessões próximas na portaria** | Evita check-in na sala errada sem transformar o demo em operação de cinema completa. |
-| **Convite staff (`STAFF_INVITE_CODE`)** | Impede qualquer pessoa de se auto-promover a organizador/portaria no cadastro público. |
+* React 19
+* TypeScript
+* Vite
+* Tailwind CSS
 
-O que **não** fizemos de propósito: nota fiscal, e-mail de ingresso, app nativo, recuperação de senha (fora do escopo do PDF).
+### Back-end
 
-## Como rodar (local)
+* Node.js
+* Express
+* JavaScript
 
-### 1) Backend
+### Banco de dados
+
+* SQLite
+
+### Outras tecnologias
+
+* TMDb API
+* Docker
+* Docker Compose
+* QR Code
+* HMAC
+* Testes automatizados
+
+---
+
+## Sobre o projeto
+
+A proposta do desafio é criar uma plataforma onde um organizador publica eventos e clientes podem comprar ingressos. O catálogo de filmes é obtido através de uma API externa, e o cliente pode escolher seu lugar, realizar um pagamento simulado e receber um ingresso com QR Code para validação na entrada.
+
+Para o CineRay, escolhi trabalhar com **filmes e mapa de assentos**, criando um fluxo semelhante ao de uma compra de ingresso de cinema.
+
+### Fluxo principal
+
+```text
+Catálogo de filmes
+       ↓
+Criação do evento
+       ↓
+Sessão
+       ↓
+Seleção de assentos
+       ↓
+Reserva temporária
+       ↓
+Pagamento simulado
+       ↓
+Ingresso + QR Code
+       ↓
+Validação na portaria
+```
+
+---
+
+## Perfis de usuário
+
+O sistema possui três papéis:
+
+### Cliente
+
+* Busca e consulta eventos
+* Visualiza sessões
+* Escolhe assentos
+* Reserva lugares
+* Realiza pagamento simulado
+* Consulta seus ingressos
+* Visualiza o QR Code
+* Compartilha o ingresso por link
+
+### Organizador
+
+* Pesquisa filmes através do TMDb
+* Cria eventos
+* Define data, local, capacidade e preço
+* Gerencia os eventos publicados
+
+### Portaria
+
+* Consulta sessões próximas
+* Valida ingressos
+* Utiliza a câmera para leitura do QR Code
+* Permite digitação manual do código
+* Identifica ingressos inválidos
+* Impede a utilização de um ingresso mais de uma vez
+* Verifica se o ingresso pertence ao evento correto
+
+---
+
+## Principais decisões
+
+### Mapa de assentos
+
+O desafio permitia escolher entre um mapa de assentos ou uma quantidade de ingressos por pista. Optei pelo **mapa de assentos**, por fazer mais sentido para o contexto de cinema e permitir trabalhar diretamente com o controle de disponibilidade de cada lugar.
+
+### TMDb
+
+Utilizei o **TMDb** como catálogo externo de filmes.
+
+O organizador utiliza a busca de filmes para selecionar um título e, a partir dele, cria o próprio evento informando os dados da sessão.
+
+### Reserva temporária
+
+Foi implementado um **hold de 10 minutos** para os assentos selecionados.
+
+Durante esse período, o lugar fica temporariamente reservado enquanto o cliente conclui o fluxo de compra.
+
+Além disso, o banco possui uma restrição de unicidade para evitar que o mesmo assento seja vendido duas vezes.
+
+### Atualização dos assentos
+
+A disponibilidade dos assentos é atualizada periodicamente no front-end. Isso permite refletir alterações feitas por outros clientes durante a seleção.
+
+### QR Code
+
+Os ingressos utilizam QR Code com assinatura **HMAC**.
+
+A assinatura permite que o backend valide se os dados recebidos realmente foram emitidos pela aplicação, evitando que um ingresso seja criado ou alterado simplesmente modificando seu identificador.
+
+### Compartilhamento
+
+Além do compartilhamento nativo, o sistema gera um link próprio para o ingresso:
+
+```text
+/i/:shareToken
+```
+
+Assim, o ingresso pode ser compartilhado através de um link gerado pela aplicação.
+
+### Portaria
+
+A validação pode ser realizada pela câmera ou através da digitação manual do código.
+
+O backend verifica o ingresso antes de confirmar sua utilização, incluindo situações de ingresso inválido, adulterado, já utilizado ou pertencente a outro evento.
+
+### Usuários da equipe
+
+O cadastro público não permite que qualquer pessoa escolha livremente os perfis de organizador ou portaria.
+
+Para esses perfis, é necessário utilizar o código configurado em `STAFF_INVITE_CODE`.
+
+---
+
+## Funcionalidades
+
+* Autenticação com diferentes papéis
+* Busca de filmes através do TMDb
+* Criação e gerenciamento de eventos
+* Busca e filtros de eventos
+* Sessões de cinema
+* Mapa de assentos
+* Atualização da disponibilidade dos lugares
+* Hold de assentos por 10 minutos
+* Proteção contra venda duplicada do mesmo lugar
+* Pagamento simulado
+* Tratamento de pagamento aprovado e recusado
+* Área "Meus ingressos"
+* Geração de QR Code
+* Compartilhamento de ingresso por link
+* Validação de ingresso pela câmera
+* Validação manual do código
+* Bloqueio de reutilização de ingressos
+* Validação do evento/sessão
+* Docker Compose
+* Testes automatizados
+
+---
+
+# Como executar
+
+## Pré-requisitos
+
+* Node.js
+* npm
+* Docker (opcional)
+* Uma chave da API do TMDb para pesquisar e publicar novos filmes
+
+---
+
+## 1. Backend
+
+Entre na pasta do backend:
 
 ```bash
 cd backend
-npm install
-cp .env.example .env
-# TMDB_API_KEY=sua_chave_gratis  (themoviedb.org)
-npm run dev
 ```
 
-API: `http://localhost:3333`
-
-### 2) Frontend
+Instale as dependências:
 
 ```bash
 npm install
+```
+
+Crie o arquivo `.env`:
+
+```bash
 cp .env.example .env
+```
+
+Configure a chave do TMDb:
+
+```env
+TMDB_API_KEY=sua_chave
+```
+
+Depois execute:
+
+```bash
 npm run dev
 ```
 
-App: `http://localhost:5173`
+A API estará disponível em:
 
-### Docker Compose
+```text
+http://localhost:3333
+```
+
+O banco SQLite utilizado pela aplicação fica em:
+
+```text
+backend/data/cineray.sqlite
+```
+
+---
+
+## 2. Front-end
+
+Na raiz do projeto:
+
+```bash
+npm install
+```
+
+Crie o arquivo `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Execute:
+
+```bash
+npm run dev
+```
+
+A aplicação estará disponível em:
+
+```text
+http://localhost:5173
+```
+
+---
+
+# Docker Compose
+
+Também é possível executar o projeto utilizando Docker:
 
 ```bash
 export TMDB_API_KEY=sua_chave
 docker compose up --build
 ```
 
-- Web: `http://localhost:8080`
-- API: `http://localhost:3333`
+Após a inicialização:
 
-### Testes
-
-```bash
-cd backend && npm test
+```text
+Front-end → http://localhost:8080
+API       → http://localhost:3333
 ```
 
-Cobre assinatura do QR, capacidade de sessão, check-in único e rejeição de QR adulterado.
+---
 
-## Contas de teste (seed)
+# Testes
 
-| Perfil | E-mail | Senha |
-|--------|--------|-------|
-| Organizador | `organizador@cineray.com` | `org1234` |
-| Cliente 1 | `cliente1@cineray.com` | `cli1234` |
-| Cliente 2 | `cliente2@cineray.com` | `cli1234` |
-| Portaria | `portaria@cineray.com` | `porta1234` |
+Para executar os testes do backend:
 
-Evento seed: **Duna: Parte Dois** (TMDb) com sessão, capacidade e preço.
+```bash
+cd backend
+npm test
+```
 
-Cadastro de equipe: `/login` → **Sou da equipe** + `STAFF_INVITE_CODE` (default `cineray-staff`).
+Os testes cobrem regras importantes do sistema, incluindo:
 
-## Fluxo para avaliar
+* assinatura do QR Code;
+* rejeição de QR Code adulterado;
+* capacidade da sessão;
+* validação de check-in;
+* tentativa de utilização de um ingresso mais de uma vez.
 
-1. Login único (`/login`)
-2. Organizador publica pela TMDb (ou use o seed)
-3. Cliente busca/filtra, escolhe assento (mapa **ao vivo** a cada 2,5s), paga (ok/recusa)
-4. Meus ingressos → QR + **Copiar link**
-5. Portaria valida câmera/código
+---
 
-## Deploy (+1 ponto)
+# Contas para teste
 
-Guia passo a passo em [`DEPLOY.md`](./DEPLOY.md).
+O projeto possui dados de teste previamente cadastrados para facilitar a avaliação.
 
-Recomendado:
+| Perfil      | E-mail                    | Senha       |
+| ----------- | ------------------------- | ----------- |
+| Organizador | `organizador@cineray.com` | `org1234`   |
+| Cliente 1   | `cliente1@cineray.com`    | `cli1234`   |
+| Cliente 2   | `cliente2@cineray.com`    | `cli1234`   |
+| Portaria    | `portaria@cineray.com`    | `porta1234` |
 
-1. **API no Render** (disco em `backend/data`)
-2. **Front na Vercel** com `VITE_APP_API_URL=https://sua-api.onrender.com/api`
+Também existe um evento inicial:
 
-## Variáveis
+**Duna: Parte Dois**
 
-### Backend
+Dessa forma, é possível testar o fluxo sem precisar criar um evento do zero.
 
-- `PORT`, `STAFF_INVITE_CODE`, `TICKET_QR_SECRET`
-- `TMDB_API_KEY` — [criar chave](https://www.themoviedb.org/settings/api)
+### Cadastro de usuário da equipe
 
-### Frontend
+Na tela de login:
 
-- `VITE_APP_API_URL`, `VITE_CINEMA_API_URL`
+```text
+/login → Sou da equipe
+```
 
-## Uso de IA
+Código padrão:
+
+```text
+cineray-staff
+```
+
+O código pode ser alterado através da variável:
+
+```env
+STAFF_INVITE_CODE=cineray-staff
+```
+
+---
+
+# Fluxo recomendado para avaliação
+
+1. Acesse `/login`.
+2. Entre utilizando o usuário de organizador.
+3. Crie um evento utilizando um filme do TMDb ou utilize o evento seed.
+4. Entre utilizando um usuário cliente.
+5. Busque o evento.
+6. Escolha uma sessão.
+7. Selecione os assentos disponíveis.
+8. Realize o pagamento simulado.
+9. Acesse **Meus ingressos**.
+10. Visualize o QR Code ou copie o link do ingresso.
+11. Entre com o usuário de portaria.
+12. Valide o ingresso através da câmera ou do código manual.
+
+---
+
+# Variáveis de ambiente
+
+## Backend
+
+```env
+PORT=3333
+STAFF_INVITE_CODE=cineray-staff
+TICKET_QR_SECRET=sua_chave_secreta
+TMDB_API_KEY=sua_chave_tmdb
+```
+
+## Front-end
+
+```env
+VITE_APP_API_URL=http://localhost:3333/api
+VITE_CINEMA_API_URL=https://mock-api.driven.com.br/api/v8/cineflex
+```
+
+> Não versionar arquivos `.env` contendo chaves ou secrets reais.
+
+---
+
+# Deploy
+
+O projeto pode ser publicado separando o front-end da API.
+
+Uma configuração possível é:
+
+* **API:** Render
+* **Front-end:** Vercel
+
+No front-end:
+
+```env
+VITE_APP_API_URL=https://sua-api.onrender.com/api
+```
+
+### SQLite em produção
+
+Como o projeto utiliza SQLite, o ambiente de hospedagem precisa disponibilizar armazenamento persistente para o diretório do banco.
+
+Sem um disco persistente, o banco pode ser perdido após determinados redeploys ou reinicializações do serviço.
+
+Mais detalhes sobre o deploy estão disponíveis em [`DEPLOY.md`](./DEPLOY.md).
+
+---
+
+# Uso de IA
 
 Ver [`AI.md`](./AI.md).
 
-## Observações / limitações
+---
 
-- Pagamento é fictício.
-- Sem `TMDB_API_KEY`, o seed ainda permite o fluxo; publicar novos títulos pela busca TMDb exige a chave.
-- SQLite em PaaS free precisa de **disco persistente**; senão o banco pode resetar no redeploy.
+# Limitações
+
+* O pagamento é simulado e não realiza transações financeiras reais.
+* A chave do TMDb é necessária para pesquisar e publicar novos títulos através da API.
+* O evento seed pode ser utilizado mesmo sem uma chave do TMDb configurada.
+* O SQLite necessita de armazenamento persistente em ambientes PaaS.
+* Recuperação de senha, nota fiscal, envio de ingresso por e-mail e aplicativo nativo não fazem parte do escopo do projeto.
+
+---
+
+# Estrutura do projeto
+
+```text
+cineray/
+├── backend/
+│   ├── data/
+│   │   └── cineray.sqlite
+│   ├── src/
+│   ├── tests/
+│   └── package.json
+│
+├── src/
+├── public/
+├── docker-compose.yml
+├── DEPLOY.md
+├── AI.md
+└── README.md
+```
+
+---
+
+## Contexto
+
+Este projeto foi desenvolvido como parte do **Desafio Elite Dev 2026**, um desafio técnico de processo seletivo voltado à avaliação de desenvolvimento Front-end, Back-end, lógica de programação e capacidade de transformar requisitos em uma solução funcional.

@@ -4,9 +4,6 @@ import { LoginForm, type AuthMode, type StaffRole } from '../components/LoginFor
 import { roleHomePath } from '../components/RequireRole'
 import { useAuth } from '../context/AuthContext'
 
-const LOGIN_BG =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuAPcvdQ1upDOmnBQJR0udILaLzEeU6k1wfvAYaLpxa3KnDe7hTk1OFSvBLI8FA47-LhACzIB-6bond9_ZZ0vPbPkjpbzdP1ZTTjcdePFdc1J72S3tZsnm4Mh8He2KO3wcenm8hL7eUHJzu1gN6RDJcipaCIU5vqWDcNa1jBj2jeUO78nfeV5nrF0PsKkDf9OHp_PbZ5DlitZuz4zxQbTMk2CAjqaVbRq-hjnRsUPy_emMaVU-kG0uQ1VQ'
-
 export function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -110,14 +107,23 @@ export function LoginPage() {
   return (
     <main className="relative flex flex-grow items-center justify-center px-4 py-section-gap">
       <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-40 mix-blend-screen bg-cover bg-center"
-        style={{ backgroundImage: `url('${LOGIN_BG}')` }}
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_rgba(143,61,82,0.22),_transparent_55%),linear-gradient(180deg,#121214_0%,#0c0c0d_100%)]"
         aria-hidden
       />
-      <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-background/80 via-background to-background" />
+      <div
+        className="pointer-events-none absolute inset-0 z-0 opacity-[0.07]"
+        style={{
+          backgroundImage:
+            'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 3px)',
+        }}
+        aria-hidden
+      />
 
-      <div className="relative z-10 flex w-full max-w-md animate-fade-up flex-col gap-6 rounded-xl border-t border-l border-white/10 bg-[#1A0F14]/60 p-card-padding shadow-[0px_20px_40px_rgba(45,0,20,0.5)] backdrop-blur-[20px]">
+      <div className="relative z-10 flex w-full max-w-md animate-fade-up flex-col gap-6 rounded-xl border border-white/10 bg-surface-container p-card-padding">
         <div className="space-y-2 text-center">
+          <p className="brand-mark text-headline-md">
+            Cine<span>Ray</span>
+          </p>
           <h1 className="text-headline-lg-mobile text-on-surface md:text-headline-lg">
             {mode === 'register' ? 'Criar conta' : 'Acesso'}
           </h1>

@@ -78,7 +78,7 @@ export function AccountPage() {
         <div className="flex flex-wrap gap-3">
           <Link
             to="/"
-            className="rounded-full bg-neon px-6 py-3 text-label-md text-white transition-all hover:brightness-110"
+            className="rounded-lg bg-neon px-6 py-3 text-label-md text-white transition-all hover:brightness-110"
           >
             Comprar ingressos
           </Link>
@@ -89,7 +89,7 @@ export function AccountPage() {
               setLoggingOut(true)
               void logout().then(() => navigate('/login', { replace: true }))
             }}
-            className="rounded-full border border-white/15 px-6 py-3 text-label-md text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+            className="rounded-lg border border-white/15 px-6 py-3 text-label-md text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
           >
             Sair
           </button>
@@ -138,7 +138,7 @@ export function AccountPage() {
                 </p>
                 <Link
                   to="/"
-                  className="inline-flex rounded-full bg-primary-container px-6 py-3 text-label-md text-white"
+                  className="inline-flex rounded-lg bg-primary-container px-6 py-3 text-label-md text-white"
                 >
                   Ver filmes
                 </Link>

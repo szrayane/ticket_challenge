@@ -124,7 +124,7 @@ export function MoviePage() {
             <div className="flex flex-wrap gap-3 pt-2">
               <Link
                 to={`/seats/${movie.id}`}
-                className="rounded-full bg-neon px-8 py-4 text-label-md text-white uppercase transition-all hover:brightness-110"
+                className="rounded-lg bg-neon px-8 py-4 text-label-md text-white uppercase transition-all hover:brightness-110"
               >
                 Escolher assentos
               </Link>
@@ -132,7 +132,7 @@ export function MoviePage() {
                 <button
                   type="button"
                   onClick={() => setTrailerOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/20 px-8 py-4 text-label-md text-on-surface uppercase transition-colors hover:border-primary/40 hover:text-primary"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-8 py-4 text-label-md text-on-surface uppercase transition-colors hover:border-primary/40 hover:text-primary"
                 >
                   <Icon name="play_circle" />
                   Trailer
@@ -161,7 +161,7 @@ export function MoviePage() {
                     <Link
                       key={session.id}
                       to={`/seats/${movie.id}?session=${encodeURIComponent(session.id)}`}
-                      className="rounded-full border border-white/15 bg-surface-container px-5 py-3 text-label-md text-on-surface transition-colors hover:border-primary/50 hover:text-primary"
+                      className="rounded-lg border border-white/15 bg-surface-container px-5 py-3 text-label-md text-on-surface transition-colors hover:border-primary/50 hover:text-primary"
                     >
                       {session.time}
                       <span className="ml-2 text-caption text-on-surface-variant">

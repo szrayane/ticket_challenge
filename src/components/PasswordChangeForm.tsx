@@ -144,7 +144,7 @@ export function PasswordChangeForm({ onChangePassword }: PasswordChangeFormProps
       <button
         type="submit"
         disabled={submitting}
-        className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary-container px-6 py-3 text-label-md text-white transition-all hover:brightness-110 disabled:opacity-50 sm:w-auto sm:self-start"
+        className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary-container px-6 py-3 text-label-md text-white transition-all hover:brightness-110 disabled:opacity-50 sm:w-auto sm:self-start"
       >
         {submitting ? 'Salvando…' : 'Atualizar senha'}
         <Icon name="key" className="text-[18px]" />

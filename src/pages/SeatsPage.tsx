@@ -454,11 +454,9 @@ export function SeatsPage() {
 
       <div className="relative z-10 grid grid-cols-1 gap-gutter lg:grid-cols-12">
         <div className="flex flex-col gap-8 lg:col-span-8">
-          <div className="relative flex flex-col items-center overflow-hidden rounded-2xl border border-white/5 bg-surface-container-low/80 p-4 backdrop-blur-md md:p-8">
-            <div className="pointer-events-none absolute top-0 left-1/2 h-32 w-3/4 -translate-x-1/2 rounded-full bg-primary-container/10 blur-[100px]" />
-
+          <div className="relative flex flex-col items-center overflow-hidden rounded-2xl border border-white/8 bg-surface-container-low p-4 md:p-8">
             <div className="relative mb-12 flex w-3/4 max-w-lg flex-col items-center md:mb-16">
-              <div className="h-8 w-full rounded-[100%] border-t-4 border-primary-container/60 shadow-[0px_-10px_20px_rgba(255,76,135,0.2)]" />
+              <div className="h-8 w-full rounded-[100%] border-t-4 border-primary/35" />
               <span className="mt-4 text-label-md tracking-[0.2em] text-on-surface-variant uppercase">
                 Tela
               </span>
@@ -516,7 +514,7 @@ export function SeatsPage() {
 
           <div className="flex flex-wrap justify-center gap-6 rounded-xl border border-white/5 bg-surface-container/30 p-4">
             <div className="flex items-center gap-2">
-              <div className="h-5 w-5 rounded-t-md rounded-b-sm bg-primary-container shadow-[0px_0px_8px_rgba(255,76,135,0.4)]" />
+              <div className="h-5 w-5 rounded-t-md rounded-b-sm bg-primary-container" />
               <span className="text-caption text-on-surface-variant">Selecionado</span>
             </div>
             <div className="flex items-center gap-2">
@@ -613,7 +611,7 @@ export function SeatsPage() {
                 type="button"
                 disabled={selectedSeats.length === 0}
                 onClick={handleProceed}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-primary-container py-4 text-label-md tracking-wider text-white uppercase shadow-[0px_0px_20px_rgba(255,76,135,0.3)] transition-all duration-300 hover:brightness-110 hover:shadow-[0px_0px_30px_rgba(255,76,135,0.6)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none disabled:hover:brightness-100"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary-container py-4 text-label-md tracking-wider text-white uppercase transition-all duration-300 hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100"
               >
                 Ir para o pagamento
                 {!isAuthenticated && selectedSeats.length > 0 ? ' (login)' : ''}

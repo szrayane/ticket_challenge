@@ -33,8 +33,8 @@ export function SuccessPage() {
   return (
     <main className="mx-auto flex min-h-[70vh] w-full max-w-[840px] flex-col items-center justify-center gap-8 px-5 py-section-gap text-center md:px-container-margin">
       <div className="glass-card animate-fade-up flex w-full flex-col items-center gap-6 rounded-xl p-10">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-container/20 shadow-[0_0_30px_rgba(255,45,125,0.35)]">
-          <Icon name="check_circle" className="text-[48px] text-primary" filled />
+        <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-white/10 bg-surface-container-high">
+          <Icon name="check_circle" className="text-[40px] text-primary" filled />
         </div>
         <h1 className="text-headline-lg-mobile text-on-surface md:text-headline-lg">
           Pagamento confirmado
@@ -80,14 +80,14 @@ export function SuccessPage() {
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link
             to={isAuthenticated ? '/conta' : '/'}
-            className="glow-hover rounded-full bg-neon px-8 py-4 text-label-md text-white uppercase transition-all duration-300"
+            className="rounded-lg bg-neon px-8 py-4 text-label-md text-white uppercase transition-all duration-300"
           >
             {isAuthenticated ? 'Ver na minha conta' : 'Voltar aos filmes'}
           </Link>
           {isAuthenticated && (
             <Link
               to="/"
-              className="rounded-full border border-white/15 px-8 py-4 text-label-md text-on-surface-variant uppercase transition-colors hover:border-primary/40 hover:text-primary"
+              className="rounded-lg border border-white/15 px-8 py-4 text-label-md text-on-surface-variant uppercase transition-colors hover:border-primary/40 hover:text-primary"
             >
               Mais filmes
             </Link>

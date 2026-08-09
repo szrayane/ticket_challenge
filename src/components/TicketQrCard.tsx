@@ -157,7 +157,7 @@ export function TicketQrCard({
     >
       <div className="mx-auto shrink-0">
         {showQr ? (
-          <div className="rounded-xl bg-white p-3 shadow-[0_0_24px_rgba(255,45,125,0.2)]">
+          <div className="rounded-xl bg-white p-3">
             <QRCodeSVG
               value={ticket.qrPayload}
               size={compact ? 140 : 160}
@@ -206,12 +206,12 @@ export function TicketQrCard({
                 {ticket.movieTitle}
               </h3>
               {!active && (
-                <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-caption text-on-surface-variant">
+                <span className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-0.5 text-caption text-on-surface-variant">
                   Cancelado
                 </span>
               )}
               {active && !upcoming && (
-                <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-caption text-on-surface-variant">
+                <span className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-0.5 text-caption text-on-surface-variant">
                   Encerrado
                 </span>
               )}
@@ -277,7 +277,7 @@ export function TicketQrCard({
                 onClick={() => {
                   void handleCopyCode()
                 }}
-                className="inline-flex items-center gap-1 rounded-full bg-primary-container/90 px-4 py-2 text-caption text-white transition-all hover:brightness-110"
+                className="inline-flex items-center gap-1 rounded-lg bg-primary-container/90 px-4 py-2 text-caption text-white transition-all hover:brightness-110"
               >
                 <Icon name="content_copy" className="text-[16px]" />
                 Copiar código
@@ -285,7 +285,7 @@ export function TicketQrCard({
               <button
                 type="button"
                 onClick={handleDownload}
-                className="inline-flex items-center gap-1 rounded-full border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+                className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
               >
                 <Icon name="download" className="text-[16px]" />
                 Baixar QR
@@ -295,7 +295,7 @@ export function TicketQrCard({
                 onClick={() => {
                   void handleShare()
                 }}
-                className="inline-flex items-center gap-1 rounded-full border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+                className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
               >
                 <Icon name="share" className="text-[16px]" />
                 Compartilhar
@@ -305,7 +305,7 @@ export function TicketQrCard({
                 onClick={() => {
                   void handleCopyLink()
                 }}
-                className="inline-flex items-center gap-1 rounded-full border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+                className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
               >
                 <Icon name="link" className="text-[16px]" />
                 Copiar link
@@ -324,7 +324,7 @@ export function TicketQrCard({
               setError(null)
               setConfirming(true)
             }}
-            className="mt-1 rounded-full border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+            className="mt-1 rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
           >
             Cancelar ingresso
           </button>
@@ -344,7 +344,7 @@ export function TicketQrCard({
                 onClick={() => {
                   void handleConfirmCancel()
                 }}
-                className="rounded-full bg-primary-container px-4 py-2 text-caption text-white transition-all hover:brightness-110 disabled:opacity-50"
+                className="rounded-lg bg-primary-container px-4 py-2 text-caption text-white transition-all hover:brightness-110 disabled:opacity-50"
               >
                 {cancelling ? 'Cancelando…' : 'Confirmar cancelamento'}
               </button>
@@ -352,7 +352,7 @@ export function TicketQrCard({
                 type="button"
                 disabled={cancelling}
                 onClick={() => setConfirming(false)}
-                className="rounded-full border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+                className="rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
               >
                 Voltar
               </button>

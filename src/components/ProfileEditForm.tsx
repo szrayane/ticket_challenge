@@ -163,7 +163,7 @@ export function ProfileEditForm({ user, onSave }: ProfileEditFormProps) {
       <button
         type="submit"
         disabled={submitting}
-        className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-primary-container px-6 py-3 text-label-md text-white shadow-[0px_0px_15px_rgba(255,76,135,0.4)] transition-all duration-300 hover:brightness-110 hover:shadow-[0px_0px_25px_rgba(255,76,135,0.6)] active:scale-[0.98] disabled:opacity-50 sm:w-auto sm:self-start"
+        className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary-container px-6 py-3 text-label-md text-white transition-all duration-300 hover:brightness-110 active:scale-[0.98] disabled:opacity-50 sm:w-auto sm:self-start"
       >
         {submitting ? 'Salvando…' : 'Salvar dados'}
         <Icon name="save" className="text-[18px]" />

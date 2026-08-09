@@ -19,10 +19,9 @@ export function Navbar({ compact = false }: NavbarProps) {
   const { isAuthenticated, user } = useAuth()
   const [searchParams] = useSearchParams()
   const queryFromUrl = searchParams.get('search') || ''
-  
+
   const [searchTerm, setSearchTerm] = useState(queryFromUrl)
 
-  // Sincroniza o input com a URL (caso o usuário navegue/limpe)
   useEffect(() => {
     setSearchTerm(queryFromUrl)
   }, [queryFromUrl])
@@ -38,18 +37,15 @@ export function Navbar({ compact = false }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/60 shadow-[0px_0px_15px_rgba(255,45,125,0.2)] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 md:px-container-margin">
         <div className="flex items-center gap-8 lg:gap-12">
-          <Link
-            to="/"
-            className="text-headline-md font-extrabold tracking-tighter text-primary"
-          >
-            CineRay
+          <Link to="/" className="brand-mark text-headline-md">
+            Cine<span>Ray</span>
           </Link>
 
           {!compact && (
-            <div className="glass-card hidden w-64 items-center gap-2 rounded-full px-4 py-2 transition-all focus-within:border-primary focus-within:shadow-[inset_0_0_8px_rgba(255,45,125,0.2)] lg:flex">
+            <div className="hidden w-64 items-center gap-2 rounded-lg border border-white/10 bg-surface-container px-4 py-2 transition-colors focus-within:border-primary lg:flex">
               <Icon name="search" className="text-body-lg text-on-surface-variant" />
               <input
                 type="search"
@@ -69,21 +65,21 @@ export function Navbar({ compact = false }: NavbarProps) {
                 return link.roles.includes(user.role || 'cliente')
               })
               .map((link) => (
-              <NavLink
-                key={link.label}
-                to={link.to}
-                className={({ isActive }) =>
-                  `text-body-md transition-colors duration-300 active:scale-95 ${
-                    isActive
-                      ? 'border-b-2 border-primary pb-1 text-primary'
-                      : 'text-on-surface-variant hover:text-primary'
-                  }`
-                }
-                end={link.end}
-              >
-                {link.label}
-              </NavLink>
-            ))}
+                <NavLink
+                  key={link.label}
+                  to={link.to}
+                  className={({ isActive }) =>
+                    `text-body-md transition-colors duration-200 ${
+                      isActive
+                        ? 'border-b-2 border-primary pb-1 text-on-surface'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`
+                  }
+                  end={link.end}
+                >
+                  {link.label}
+                </NavLink>
+              ))}
           </nav>
         </div>
 
@@ -91,7 +87,7 @@ export function Navbar({ compact = false }: NavbarProps) {
           {compact && (
             <button
               type="button"
-              className="rounded-full p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+              className="rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
               aria-label="Buscar"
             >
               <Icon name="search" />
@@ -108,7 +104,7 @@ export function Navbar({ compact = false }: NavbarProps) {
                     ? '/portaria'
                     : '/conta'
             }
-            className="flex items-center gap-2 text-on-surface-variant transition-colors hover:text-primary active:scale-95"
+            className="flex items-center gap-2 text-on-surface-variant transition-colors hover:text-on-surface"
             aria-label={isAuthenticated ? 'Minha área' : 'Entrar'}
             title={isAuthenticated ? user?.name : 'Entrar'}
           >

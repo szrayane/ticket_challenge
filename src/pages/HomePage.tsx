@@ -197,14 +197,14 @@ export function HomePage() {
                   onClick={() => {
                     if (activeFeatured.trailerUrl) setTrailerOpen(true)
                   }}
-                  className="glow-hover flex items-center gap-2 rounded-full bg-neon px-8 py-4 text-label-md text-white uppercase transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg bg-neon px-8 py-4 text-label-md text-white uppercase transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Icon name="play_arrow" className="text-headline-md" filled />
                   Ver trailer
                 </button>
                 <Link
                   to={`/filme/${activeFeatured.id}`}
-                  className="glass-card rounded-full border border-white/20 px-8 py-4 text-label-md text-on-surface uppercase transition-all duration-300 hover:bg-tertiary-container hover:text-on-tertiary-container"
+                  className="glass-card rounded-lg border border-white/20 px-8 py-4 text-label-md text-on-surface uppercase transition-all duration-300 hover:bg-tertiary-container hover:text-on-tertiary-container"
                 >
                   Ver filme
                 </Link>
@@ -222,7 +222,7 @@ export function HomePage() {
                     onClick={() => setFeaturedIndex(index)}
                     className={`h-1.5 rounded-full transition-all duration-300 ${
                       index === featuredIndex
-                        ? 'w-8 bg-primary-container shadow-[0_0_10px_rgba(255,76,135,0.5)]'
+                        ? 'w-8 bg-primary-container'
                         : 'w-1.5 bg-white/30 hover:bg-white/50'
                     }`}
                   />
@@ -339,7 +339,7 @@ export function HomePage() {
               onClick={() =>
                 patchFilters({ genre: null, maxPrice: null, events: null })
               }
-              className="rounded-full border border-white/15 px-4 py-2 text-caption text-on-surface-variant"
+              className="rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant"
             >
               Limpar filtros
             </button>

@@ -380,14 +380,14 @@ function OrganizerDashboard() {
         <div className="flex flex-wrap gap-3">
           <Link
             to="/"
-            className="rounded-full border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
+            className="rounded-lg border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
           >
             Ver catálogo
           </Link>
           <button
             type="button"
             onClick={() => void logout()}
-            className="rounded-full border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
+            className="rounded-lg border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
           >
             Sair
           </button>
@@ -439,7 +439,7 @@ function OrganizerDashboard() {
               <button
                 type="submit"
                 disabled={tmdbLoading}
-                className="rounded-full bg-primary-container px-5 py-3 text-label-md text-white disabled:opacity-50"
+                className="rounded-lg bg-primary-container px-5 py-3 text-label-md text-white disabled:opacity-50"
               >
                 {tmdbLoading ? 'Buscando…' : 'Buscar'}
               </button>
@@ -543,7 +543,7 @@ function OrganizerDashboard() {
             </div>
             <button
               type="submit"
-              className="w-full rounded-full bg-neon px-6 py-3 text-label-md text-white"
+              className="w-full rounded-lg bg-neon px-6 py-3 text-label-md text-white"
             >
               Publicar evento
             </button>
@@ -658,7 +658,7 @@ function OrganizerDashboard() {
             <div className="flex flex-wrap gap-3">
               <button
                 type="submit"
-                className="rounded-full bg-primary-container px-6 py-3 text-label-md text-white"
+                className="rounded-lg bg-primary-container px-6 py-3 text-label-md text-white"
               >
                 {editingId ? 'Salvar alterações' : 'Criar filme'}
               </button>
@@ -670,7 +670,7 @@ function OrganizerDashboard() {
                     setForm(emptyMovie)
                     setFormHint(null)
                   }}
-                  className="rounded-full border border-white/15 px-6 py-3 text-label-md text-on-surface-variant"
+                  className="rounded-lg border border-white/15 px-6 py-3 text-label-md text-on-surface-variant"
                 >
                   Cancelar edição
                 </button>
@@ -728,34 +728,34 @@ function OrganizerDashboard() {
                                 setSelectedId(movie.id)
                                 setTab('sessoes')
                               }}
-                              className="rounded-full border border-white/15 px-3 py-1 text-caption"
+                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
                             >
                               Sessões
                             </button>
                             <button
                               type="button"
                               onClick={() => startEdit(movie)}
-                              className="rounded-full border border-white/15 px-3 py-1 text-caption"
+                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
                             >
                               Editar
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleToggleActive(movie)}
-                              className="rounded-full border border-white/15 px-3 py-1 text-caption"
+                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
                             >
                               {active ? 'Desativar' : 'Ativar'}
                             </button>
                             <Link
                               to={`/filme/${movie.id}`}
-                              className="rounded-full border border-white/15 px-3 py-1 text-caption"
+                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
                             >
                               Ver
                             </Link>
                             <button
                               type="button"
                               onClick={() => void handleDeleteMovie(movie.id)}
-                              className="rounded-full border border-primary/30 px-3 py-1 text-caption text-primary"
+                              className="rounded-lg border border-primary/30 px-3 py-1 text-caption text-primary"
                             >
                               Excluir
                             </button>
@@ -868,7 +868,7 @@ function OrganizerDashboard() {
                   <div className="flex items-end gap-2 sm:col-span-3">
                     <button
                       type="submit"
-                      className="w-full rounded-full bg-neon px-4 py-2.5 text-label-md text-white"
+                      className="w-full rounded-lg bg-neon px-4 py-2.5 text-label-md text-white"
                     >
                       {editingSessionId ? 'Salvar sessão' : 'Adicionar'}
                     </button>
@@ -882,7 +882,7 @@ function OrganizerDashboard() {
                         setSessionTime('20:00')
                         setRoom('Sala 1')
                       }}
-                      className="rounded-full border border-white/15 px-4 py-2 text-label-md text-on-surface-variant sm:col-span-4"
+                      className="rounded-lg border border-white/15 px-4 py-2 text-label-md text-on-surface-variant sm:col-span-4"
                     >
                       Cancelar edição da sessão
                     </button>
@@ -919,21 +919,21 @@ function OrganizerDashboard() {
                             <button
                               type="button"
                               onClick={() => startEditSession(session)}
-                              className="rounded-full border border-white/15 px-3 py-1 text-caption"
+                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
                             >
                               Editar
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleDuplicateSession(session)}
-                              className="rounded-full border border-white/15 px-3 py-1 text-caption"
+                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
                             >
                               Duplicar
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleDeleteSession(session.id)}
-                              className="rounded-full border border-primary/30 px-3 py-1 text-caption text-primary"
+                              className="rounded-lg border border-primary/30 px-3 py-1 text-caption text-primary"
                             >
                               Remover
                             </button>

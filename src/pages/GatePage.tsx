@@ -147,7 +147,7 @@ function GateDashboard() {
         <button
           type="button"
           onClick={() => void logout()}
-          className="rounded-full border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
+          className="rounded-lg border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
         >
           Sair
         </button>
@@ -220,7 +220,7 @@ function GateDashboard() {
           <button
             type="button"
             onClick={() => setCameraOn((prev) => !prev)}
-            className="rounded-full border border-white/15 px-4 py-2 text-label-md text-on-surface-variant"
+            className="rounded-lg border border-white/15 px-4 py-2 text-label-md text-on-surface-variant"
           >
             {cameraOn ? 'Fechar câmera' : 'Abrir câmera'}
           </button>
@@ -238,7 +238,7 @@ function GateDashboard() {
         <button
           type="submit"
           disabled={submitting || !payload.trim()}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-neon px-6 py-4 text-label-md text-white disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-neon px-6 py-4 text-label-md text-white disabled:opacity-50"
         >
           <Icon name="qr_code_scanner" />
           {submitting ? 'Validando…' : 'Validar ingresso'}
@@ -313,7 +313,7 @@ function GateDashboard() {
           <button
             type="button"
             onClick={() => void reloadMeta()}
-            className="rounded-full border border-white/15 px-3 py-1.5 text-caption text-on-surface-variant"
+            className="rounded-lg border border-white/15 px-3 py-1.5 text-caption text-on-surface-variant"
           >
             Atualizar
           </button>

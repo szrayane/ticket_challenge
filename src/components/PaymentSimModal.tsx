@@ -114,7 +114,7 @@ export function PaymentSimModal({
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="rounded-full border border-white/15 px-5 py-2 text-label-md text-on-surface-variant transition-colors hover:bg-white/5"
+                  className="rounded-lg border border-white/15 px-5 py-2 text-label-md text-on-surface-variant transition-colors hover:bg-white/5"
                 >
                   Fechar
                 </button>
@@ -122,7 +122,7 @@ export function PaymentSimModal({
                   <button
                     type="button"
                     onClick={onRetry}
-                    className="rounded-full bg-neon px-5 py-2 text-label-md text-white"
+                    className="rounded-lg bg-neon px-5 py-2 text-label-md text-white"
                   >
                     Tentar de novo
                   </button>
