@@ -161,15 +161,92 @@
   }
 
   .glass-input {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--color-surface-container-high);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    color: var(--color-on-surface);
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .glass-input:focus {
     outline: none;
-    border-color: var(--color-primary);
-    background-color: rgba(255, 255, 255, 0.05);
+    border-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+    background-color: var(--color-surface-container-highest);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 18%, transparent);
+  }
+
+  .glass-input::placeholder {
+    color: color-mix(in srgb, var(--color-on-surface-variant) 70%, transparent);
+  }
+
+  /* Mata o select nativo “3D” do Safari/Chrome e alinha ao tema. */
+  select.glass-input,
+  .field-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    color-scheme: dark;
+    background-color: var(--color-surface-container-high);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b9a8ab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-size: 1rem;
+    padding-right: 2.5rem;
+    cursor: pointer;
+  }
+
+  select.glass-input:hover,
+  .field-select:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    background-color: var(--color-surface-container-highest);
+  }
+
+  select.glass-input option,
+  .field-select option {
+    background-color: #1e1e20;
+    color: #ece8e6;
+  }
+
+  .filter-chip {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: transparent;
+    color: var(--color-on-surface-variant);
+    transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .filter-chip:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--color-on-surface);
+  }
+
+  .filter-chip.is-active {
+    border-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+    background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
+    color: var(--color-primary-fixed);
+  }
+
+  .toggle-track {
+    width: 2.5rem;
+    height: 1.4rem;
+    border-radius: 9999px;
+    background-color: rgba(255, 255, 255, 0.12);
+    transition: background-color 0.2s ease;
+  }
+
+  .toggle-track.is-on {
+    background-color: color-mix(in srgb, var(--color-primary) 55%, transparent);
+  }
+
+  .toggle-thumb {
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 9999px;
+    background: #fff;
+    transform: translateX(0.18rem);
+    transition: transform 0.2s ease;
+  }
+
+  .toggle-track.is-on .toggle-thumb {
+    transform: translateX(1.25rem);
   }
 
   .material-symbols-outlined {
@@ -189,7 +266,11 @@
   }
 
   .seat {
-    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.2s ease;
+  }
+
+  .seat.flash-taken {
+    animation: seat-taken-pulse 0.7s ease;
   }
 
   .seat.available:hover {
@@ -214,6 +295,22 @@
   .seat.vip {
     border-color: var(--color-secondary);
     background-color: color-mix(in srgb, var(--color-secondary) 18%, transparent);
+  }
+}
+
+@keyframes seat-taken-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent);
+    transform: scale(1);
+  }
+  40% {
+    box-shadow: 0 0 0 8px transparent;
+    transform: scale(1.12);
+    background-color: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    transform: scale(1);
   }
 }
 

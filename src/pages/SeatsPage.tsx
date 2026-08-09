@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext'
 import { useBooking } from '../context/BookingContext'
 import { formatHoldCountdown } from '../lib/holdTimer'
 import { formatMoney, TICKET_LABELS, TICKET_PRICES } from '../lib/money'
+import { connectRealtime } from '../lib/realtime'
 import { getHoldClientId } from '../lib/seatHold'
 import type { Movie, Seat, Session } from '../types'
 
@@ -59,7 +60,10 @@ export function SeatsPage() {
   const [holdExpiresAt, setHoldExpiresAt] = useState<string | null>(null)
   const [holdMsLeft, setHoldMsLeft] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [liveConnected, setLiveConnected] = useState(false)
+  const [flashSeatIds, setFlashSeatIds] = useState<string[]>([])
   const holderKeyRef = useRef(getHoldClientId())
+  const occupiedRef = useRef<string[]>([])
 
   const seatMap = useMemo(
     () => markOccupiedSeats(baseSeatMap, occupiedSeatIds),
@@ -163,35 +167,63 @@ export function SeatsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only reload on session/movie change
   }, [selectedSessionId, scheduleStart, startBooking, movieId, resolvedMovie])
 
-  // Atualiza ocupação (vendidos + holds de outras pessoas) enquanto o mapa está aberto.
+  // Atualiza ocupação via WebSocket (instantâneo) + polling de fallback.
   useEffect(() => {
     if (!selectedSessionId) return
 
     let active = true
+    occupiedRef.current = occupiedSeatIds
 
-    async function refreshOccupied() {
+    async function refreshOccupied(animate = false) {
       try {
         const occupiedIds = await fetchOccupiedSeatIds(
           selectedSessionId,
           holderKeyRef.current,
         )
         if (!active) return
+        if (animate) {
+          const prev = new Set(occupiedRef.current.map(String))
+          const newlyTaken = occupiedIds.filter((id) => !prev.has(String(id)))
+          if (newlyTaken.length > 0) {
+            setFlashSeatIds(newlyTaken.map(String))
+            window.setTimeout(() => setFlashSeatIds([]), 700)
+          }
+        }
+        occupiedRef.current = occupiedIds
         setOccupiedSeatIds(occupiedIds)
       } catch {
         // ignore
       }
     }
 
-    const intervalId = window.setInterval(refreshOccupied, 2500)
+    const client = connectRealtime()
+    client.subscribe(`session:${selectedSessionId}`)
+    const off = client.on((payload) => {
+      if (payload.type === 'connected') setLiveConnected(true)
+      if (payload.type === 'disconnected') setLiveConnected(false)
+      if (
+        payload.type === 'seats.changed' &&
+        String(payload.sessionId) === String(selectedSessionId)
+      ) {
+        void refreshOccupied(true)
+      }
+    })
+
+    const intervalId = window.setInterval(() => {
+      void refreshOccupied(false)
+    }, 8000)
     const onFocus = () => {
-      void refreshOccupied()
+      void refreshOccupied(false)
     }
     window.addEventListener('focus', onFocus)
 
     return () => {
       active = false
+      off()
+      client.close()
       window.clearInterval(intervalId)
       window.removeEventListener('focus', onFocus)
+      setLiveConnected(false)
     }
   }, [selectedSessionId])
 
@@ -390,12 +422,26 @@ export function SeatsPage() {
             {displayMovie.title}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-4 text-body-md text-on-surface-variant">
-            <div className="flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-emerald-200">
+            <div
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
+                liveConnected
+                  ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+                  : 'border-white/10 bg-surface-container text-on-surface-variant'
+              }`}
+            >
               <span className="relative flex size-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+                {liveConnected && (
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                )}
+                <span
+                  className={`relative inline-flex size-2 rounded-full ${
+                    liveConnected ? 'bg-emerald-400' : 'bg-on-surface-variant'
+                  }`}
+                />
               </span>
-              <span className="text-caption">Mapa ao vivo</span>
+              <span className="text-caption">
+                {liveConnected ? 'Ao vivo (WebSocket)' : 'Atualizando…'}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 rounded-full border border-white/5 bg-surface-container px-3 py-1">
               <Icon name="calendar_month" className="text-[18px]" />
@@ -484,7 +530,11 @@ export function SeatsPage() {
                               holdingSeatId === seat.id
                             }
                             onClick={() => void handleSeatClick(seat)}
-                            className={`flex h-7 w-7 items-center justify-center rounded-t-lg rounded-b-sm md:h-8 md:w-8 ${seatClass(seat)}`}
+                            className={`seat flex h-7 w-7 items-center justify-center rounded-t-lg rounded-b-sm md:h-8 md:w-8 ${seatClass(seat)}${
+                              flashSeatIds.includes(String(seat.id))
+                                ? ' flash-taken'
+                                : ''
+                            }`}
                             aria-label={`Assento ${seat.number}`}
                             aria-pressed={selectedIds.has(seat.id)}
                           >

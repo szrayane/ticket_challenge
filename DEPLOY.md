@@ -16,6 +16,12 @@ Objetivo: front na **Vercel** (+1 do desafio) e API no **Render** (Express + MyS
    - `TICKET_QR_SECRET` (valor longo aleatório)
    - `STAFF_INVITE_CODE`
    - `NODE_ENV=production`
+   - `APP_PUBLIC_URL=https://seu-app.vercel.app` (URL do front)
+   - Google Wallet (opcional):
+     - `GOOGLE_WALLET_ISSUER_ID`
+     - `GOOGLE_WALLET_SA_EMAIL`
+     - `GOOGLE_WALLET_SA_PRIVATE_KEY`
+     - `GOOGLE_WALLET_ORIGINS=https://seu-app.vercel.app`
 5. Copie a URL pública, ex.: `https://cineray-api.onrender.com`
 
 Teste: `https://SUA-API/health` → `{"status":"ok"}`
@@ -28,9 +34,13 @@ Teste: `https://SUA-API/health` → `{"status":"ok"}`
 2. Framework: Vite
 3. Root: `.` (raiz do monorepo)
 4. Env:
-   - `VITE_APP_API_URL=https://SUA-API.onrender.com/api`
+   - `VITE_APP_API_URL=https://SUA-API.onrender.com/api` (URL absoluta em produção)
    - `VITE_CINEMA_API_URL=https://mock-api.driven.com.br/api/v8/cineflex`
 5. Deploy
+
+Depois do primeiro deploy, **atualize no Render**:
+- `APP_PUBLIC_URL` = URL real da Vercel
+- `GOOGLE_WALLET_ORIGINS` = mesma URL (e no Wallet Console, origins permitidas)
 
 No README do formulário Elite Dev, cole:
 
@@ -38,14 +48,26 @@ No README do formulário Elite Dev, cole:
 - API: `https://sua-api.onrender.com`
 - Como rodar local: ver README
 
-## 3) Checklist pós-deploy
+## 3) Local vs produção
+
+| Variável | Local (`backend/.env` / raiz `.env`) | Produção |
+|----------|--------------------------------------|----------|
+| `APP_PUBLIC_URL` | `http://localhost:5173` | `https://seu-app.vercel.app` |
+| `GOOGLE_WALLET_ORIGINS` | `http://localhost:5173` | `https://seu-app.vercel.app` |
+| `VITE_APP_API_URL` | `/api` (proxy Vite) | `https://sua-api.onrender.com/api` |
+
+Links de transferir/compartilhar usam `window.location.origin` — no ar já saem com o domínio do front.
+
+## 4) Checklist pós-deploy
 
 - [ ] Login com `cliente1@cineray.com` / `cli1234`
 - [ ] Ver evento seed na home
 - [ ] Comprar assento e abrir QR (`CR2.…` cifrado)
 - [ ] Abrir link `/i/...`
+- [ ] Transferir ingresso e reivindicar em outra conta
 - [ ] Login portaria e validar QR
 - [ ] Organizador com `TMDB_API_KEY` busca/publica filme
+- [ ] Google Wallet (Android + conta de teste no console)
 
 ## Alternativa tudo-em-um
 

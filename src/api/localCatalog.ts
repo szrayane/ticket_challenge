@@ -42,7 +42,9 @@ export type OrganizerReport = {
   activeMovies: number
   showtimes: number
   ticketsSold: number
+  checkIns: number
   revenue: number
+  liveAt?: string
   sessions: Array<
     Session & {
       movieTitle: string
@@ -53,6 +55,8 @@ export type OrganizerReport = {
       available: number
       totalSeats: number
       revenue: number
+      checkedIn: number
+      occupancyPct: number
     }
   >
 }
@@ -282,6 +286,30 @@ export async function searchTmdbCatalog(query = '', page = 1) {
   }>(`/catalog/tmdb/search?q=${q}&page=${page}`)
 }
 
+export type MovieCastMember = {
+  id: number
+  name: string
+  character: string
+  photo: string
+  order: number
+}
+
+/** Busca elenco na TMDb pelo título ou tmdbId (público). */
+export async function fetchMovieCast(options: {
+  title?: string
+  tmdbId?: number
+  limit?: number
+}) {
+  const params = new URLSearchParams()
+  if (options.title) params.set('title', options.title)
+  if (options.tmdbId) params.set('tmdbId', String(options.tmdbId))
+  if (options.limit) params.set('limit', String(options.limit))
+  return appRequest<{ tmdbId: number | null; cast: MovieCastMember[] }>(
+    `/catalog/cast?${params.toString()}`,
+    { auth: false },
+  )
+}
+
 export async function createEventFromTmdb(input: {
   tmdbId: number
   sessionDate: string
@@ -342,4 +370,38 @@ export async function fetchGateCheckIns(limit = 30) {
     `/tickets/gate/checkins?limit=${limit}`,
   )
   return data.tickets
+}
+
+export async function createTicketTransfer(ticketId: string) {
+  return appRequest<{
+    ticketId: string
+    transferToken: string
+    transferPath: string
+    expiresAt: string
+  }>(`/tickets/${encodeURIComponent(ticketId)}/transfer`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  })
+}
+
+export async function fetchTransferPreview(token: string) {
+  return appRequest<{
+    transfer: {
+      movieTitle: string
+      moviePoster: string
+      sessionDate: string
+      sessionTime: string
+      cinema: string
+      room: string
+      seatLabel: string
+      expiresAt?: string
+    }
+  }>(`/tickets/transfer/${encodeURIComponent(token)}`, { auth: false })
+}
+
+export async function claimTicketTransfer(token: string) {
+  return appRequest<{ ticket: import('../types').CustomerTicket }>(
+    `/tickets/transfer/${encodeURIComponent(token)}/claim`,
+    { method: 'POST', body: JSON.stringify({}) },
+  )
 }

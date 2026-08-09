@@ -172,7 +172,7 @@ export function LoginForm({
                 </label>
                 <select
                   id="staff-role"
-                  className="glass-input w-full rounded-lg px-4 py-3 text-body-md"
+                  className="glass-input field-select w-full rounded-lg px-4 py-3 text-body-md"
                   value={staffRole}
                   onChange={(e) => setStaffRole(e.target.value as StaffRole)}
                 >

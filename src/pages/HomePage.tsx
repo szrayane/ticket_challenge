@@ -23,6 +23,7 @@ export function HomePage() {
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [trailerOpen, setTrailerOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -286,63 +287,136 @@ export function HomePage() {
           )}
         </div>
 
-        <div className="mb-10 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-          <label className="space-y-1">
-            <span className="text-caption text-on-surface-variant">Gênero</span>
-            <select
-              className="glass-input min-w-[160px] rounded-lg px-3 py-2 text-body-md"
-              value={genreFilter}
-              onChange={(e) => patchFilters({ genre: e.target.value || null })}
-            >
-              <option value="">Todos</option>
-              {genres.map((genre) => (
-                <option key={genre} value={genre}>
-                  {genre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1">
-            <span className="text-caption text-on-surface-variant">
-              Preço máx.
-            </span>
-            <select
-              className="glass-input min-w-[140px] rounded-lg px-3 py-2 text-body-md"
-              value={maxPriceFilter}
-              onChange={(e) =>
-                patchFilters({ maxPrice: e.target.value || null })
-              }
-            >
-              <option value="">Qualquer</option>
-              <option value="25">{formatMoney(25)}</option>
-              <option value="32">{formatMoney(32)}</option>
-              <option value="40">{formatMoney(40)}</option>
-              <option value="50">{formatMoney(50)}</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2">
-            <input
-              type="checkbox"
-              checked={onlyEvents}
-              onChange={(e) =>
-                patchFilters({ events: e.target.checked ? '1' : null })
-              }
-              className="size-4 accent-primary"
-            />
-            <span className="text-caption text-on-surface-variant">
-              Só com sessão publicada
-            </span>
-          </label>
-          {(genreFilter || maxPriceFilter || onlyEvents) && (
+        <div className="mb-10 rounded-xl border border-white/8 bg-surface-container/60 backdrop-blur-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <button
               type="button"
-              onClick={() =>
-                patchFilters({ genre: null, maxPrice: null, events: null })
-              }
-              className="rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant"
+              onClick={() => setFiltersOpen((open) => !open)}
+              className="inline-flex items-center gap-2 text-label-md text-on-surface transition-colors hover:text-primary"
+              aria-expanded={filtersOpen}
             >
-              Limpar filtros
+              <Icon name="tune" className="text-[18px]" />
+              Filtros
+              {hasExtraFilters && (
+                <span className="rounded-md bg-primary/20 px-2 py-0.5 text-caption text-primary-fixed">
+                  ativos
+                </span>
+              )}
+              <Icon
+                name={filtersOpen ? 'expand_less' : 'expand_more'}
+                className="text-[20px] text-on-surface-variant"
+              />
             </button>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {!filtersOpen && hasExtraFilters && (
+                <p className="max-w-[220px] truncate text-caption text-on-surface-variant sm:max-w-none">
+                  {[
+                    genreFilter || null,
+                    maxPriceFilter ? `até ${formatMoney(Number(maxPriceFilter))}` : null,
+                    onlyEvents ? 'com sessão' : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
+              {hasExtraFilters && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    patchFilters({ genre: null, maxPrice: null, events: null })
+                  }
+                  className="text-caption text-primary underline-offset-2 hover:underline"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+          </div>
+
+          {filtersOpen && (
+            <div className="space-y-4 border-t border-white/8 px-4 py-4">
+              <div className="space-y-2">
+                <p className="text-caption uppercase tracking-wider text-on-surface-variant">
+                  Gênero
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => patchFilters({ genre: null })}
+                    className={`filter-chip rounded-lg px-3 py-1.5 text-caption ${
+                      !genreFilter ? 'is-active' : ''
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  {genres.map((genre) => (
+                    <button
+                      key={genre}
+                      type="button"
+                      onClick={() =>
+                        patchFilters({
+                          genre: genreFilter === genre ? null : genre,
+                        })
+                      }
+                      className={`filter-chip rounded-lg px-3 py-1.5 text-caption ${
+                        genreFilter === genre ? 'is-active' : ''
+                      }`}
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-caption uppercase tracking-wider text-on-surface-variant">
+                  Preço máx.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    ['', 'Qualquer'],
+                    ['25', formatMoney(25)],
+                    ['32', formatMoney(32)],
+                    ['40', formatMoney(40)],
+                    ['50', formatMoney(50)],
+                  ].map(([value, label]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() =>
+                        patchFilters({ maxPrice: value || null })
+                      }
+                      className={`filter-chip rounded-lg px-3 py-1.5 text-caption ${
+                        maxPriceFilter === value ? 'is-active' : ''
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  patchFilters({ events: onlyEvents ? null : '1' })
+                }
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/8 bg-surface-container-high/50 px-4 py-3 text-left transition-colors hover:border-white/15 sm:w-auto"
+              >
+                <span className="text-body-md text-on-surface">
+                  Só com sessão publicada
+                </span>
+                <span
+                  className={`toggle-track inline-flex items-center ${
+                    onlyEvents ? 'is-on' : ''
+                  }`}
+                  aria-hidden
+                >
+                  <span className="toggle-thumb" />
+                </span>
+              </button>
+            </div>
           )}
         </div>
 

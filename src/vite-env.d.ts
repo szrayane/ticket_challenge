@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_CINEMA_API_URL?: string
+  readonly VITE_APP_API_URL?: string
 }
 
 interface ImportMeta {

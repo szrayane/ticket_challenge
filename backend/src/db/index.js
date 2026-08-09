@@ -94,6 +94,8 @@ CREATE TABLE IF NOT EXISTS tickets (
   checked_in_at VARCHAR(40) NULL,
   checked_in_by VARCHAR(64) NULL,
   share_token VARCHAR(64) NULL,
+  transfer_token VARCHAR(64) NULL,
+  transfer_expires_at VARCHAR(40) NULL,
   active_slot VARCHAR(256)
     GENERATED ALWAYS AS (
       CASE
@@ -105,6 +107,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE KEY uk_tickets_active_slot (active_slot),
   UNIQUE KEY uk_tickets_share_token (share_token),
+  UNIQUE KEY uk_tickets_transfer_token (transfer_token),
   INDEX idx_tickets_user (user_id),
   INDEX idx_tickets_order (order_id),
   INDEX idx_tickets_session (session_id)
@@ -156,13 +159,31 @@ async function seedUser({ id, email, name, role, password }) {
 }
 
 async function seedPublishedEvent(organizerId) {
-  const existing = await queryOne(
-    `SELECT id FROM movies WHERE id = ? OR tmdb_id = ?`,
-    ['mov_seed_dune', 693134],
-  )
-  if (existing) return
-
   const movieId = 'mov_seed_dune'
+  const trailerUrl = 'https://www.youtube.com/watch?v=ncwsW3qxQlo'
+  const existing = await queryOne(
+    `SELECT id, trailer_url FROM movies WHERE id = ? OR tmdb_id = ?`,
+    [movieId, 693134],
+  )
+  if (existing) {
+    // Seed antigo gravava trailer_url como NULL ou poster errado — corrige sem recriar.
+    const dunePoster =
+      'https://image.tmdb.org/t/p/w500/rrjoeR5m98ptkGUJ2Z7G4t2lXMg.jpg'
+    const duneBackdrop =
+      'https://image.tmdb.org/t/p/w1280/eZ239CUp1d6OryZEBPnO2n87gMG.jpg'
+    await execute(
+      `UPDATE movies
+       SET trailer_url = COALESCE(NULLIF(trailer_url, ''), ?),
+           poster = ?,
+           hero = ?,
+           backdrop = ?,
+           updated_at = ?
+       WHERE id = ?`,
+      [trailerUrl, dunePoster, duneBackdrop, duneBackdrop, new Date().toISOString(), existing.id],
+    )
+    return
+  }
+
   const showtimeId = 'st_seed_dune'
   const now = new Date().toISOString()
   const start = new Date(Date.now() + 2 * 60 * 60 * 1000)
@@ -171,16 +192,16 @@ async function seedPublishedEvent(organizerId) {
   const sessionTime = `${pad(start.getHours())}:${pad(start.getMinutes())}`
   const weekday = start.toLocaleDateString('pt-BR', { weekday: 'long' })
   const poster =
-    'https://image.tmdb.org/t/p/w500/vNMPddfv47amK83lCFoBd9wXVuc.jpg'
+    'https://image.tmdb.org/t/p/w500/rrjoeR5m98ptkGUJ2Z7G4t2lXMg.jpg'
   const backdrop =
-    'https://image.tmdb.org/t/p/w1280/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg'
+    'https://image.tmdb.org/t/p/w1280/eZ239CUp1d6OryZEBPnO2n87gMG.jpg'
 
   await execute(
     `INSERT INTO movies (
       id, title, synopsis, genre, rating, runtime, format, badge,
       poster, hero, backdrop, trailer_url, created_by, created_at, updated_at,
       is_active, tmdb_id, source
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 1, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     [
       movieId,
       'Duna: Parte Dois',
@@ -193,6 +214,7 @@ async function seedPublishedEvent(organizerId) {
       poster,
       backdrop,
       backdrop,
+      trailerUrl,
       organizerId,
       now,
       now,
@@ -222,6 +244,29 @@ async function seedPublishedEvent(organizerId) {
   )
 }
 
+async function ensureTicketTransferColumns(pool) {
+  const [cols] = await pool.query(
+    `SELECT COLUMN_NAME AS name
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tickets'`,
+  )
+  const names = new Set((cols || []).map((c) => c.name))
+  if (!names.has('transfer_token')) {
+    await pool.query(
+      `ALTER TABLE tickets
+       ADD COLUMN transfer_token VARCHAR(64) NULL AFTER share_token,
+       ADD COLUMN transfer_expires_at VARCHAR(40) NULL AFTER transfer_token`,
+    )
+  }
+  try {
+    await pool.query(
+      `ALTER TABLE tickets ADD UNIQUE KEY uk_tickets_transfer_token (transfer_token)`,
+    )
+  } catch {
+    /* index already exists */
+  }
+}
+
 export async function initDb() {
   const pool = createPoolFromEnv()
   setPool(pool)
@@ -232,6 +277,8 @@ export async function initDb() {
     .filter(Boolean)) {
     await pool.query(statement)
   }
+
+  await ensureTicketTransferColumns(pool)
 
   const organizerId = await seedUser({
     id: 'usr_organizador_demo',

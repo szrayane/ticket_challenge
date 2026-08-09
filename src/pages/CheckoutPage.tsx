@@ -201,7 +201,11 @@ export function CheckoutPage() {
     const orderId = createOrderId()
 
     return selectedSeats.map((seat, index) => {
-      const ticketId = `tkt_${user.id}_${seat.id}_${Date.now().toString(36)}_${index}`
+      // ID curto: VARCHAR(64) no MySQL — concatenar user+seat estoura o limite.
+      const ticketId =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? `tkt_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`
+          : `tkt_${Date.now().toString(36)}${index}${Math.random().toString(36).slice(2, 10)}`
       const seatLabel = `${seat.row}${seat.number}`
       return {
         id: ticketId,
@@ -352,10 +356,12 @@ export function CheckoutPage() {
         error instanceof AppApiError
           ? error.message
           : 'Não foi possível reservar os assentos. Tente novamente.'
+      // Pagamento demo já passou — o erro é na emissão do ingresso.
       setPayStatus('declined')
       setPayDetail(message)
       setSubmitted(false)
       setError(message)
+      completingRef.current = false
     }
   }
 

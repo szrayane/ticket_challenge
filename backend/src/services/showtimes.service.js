@@ -38,19 +38,19 @@ function parseDateTime(sessionDate, sessionTime) {
   )
 }
 
-function normalizeCapacity(value, fallback = DEFAULT_CAPACITY) {
+export function normalizeCapacity(value, fallback = DEFAULT_CAPACITY) {
   const n = Number(value)
   if (!Number.isFinite(n)) return fallback
   return Math.min(200, Math.max(10, Math.round(n)))
 }
 
-function normalizePrice(value, fallback = DEFAULT_PRICE) {
+export function normalizePrice(value, fallback = DEFAULT_PRICE) {
   const n = Number(value)
   if (!Number.isFinite(n) || n <= 0) return fallback
   return Math.round(n * 100) / 100
 }
 
-function normalizeSessionFields(input = {}, fallback = {}) {
+export function normalizeSessionFields(input = {}, fallback = {}) {
   const sessionDate = String(
     input.sessionDate || input.date || fallback.session_date || fallback.date || '',
   ).trim()
@@ -345,11 +345,24 @@ export async function getOrganizerReport() {
      FROM tickets
      WHERE status = 'active' AND session_id LIKE 'st_%'`,
   )
+  const checkIns = await queryOne(
+    `SELECT COUNT(*) AS total
+     FROM tickets
+     WHERE status = 'active'
+       AND checked_in_at IS NOT NULL
+       AND session_id LIKE 'st_%'`,
+  )
 
   const allSessions = await listAllShowtimes()
   const bySession = []
   for (const session of allSessions) {
     const occupancy = await getShowtimeOccupancy(session.id)
+    const checkedRow = await queryOne(
+      `SELECT COUNT(*) AS total
+       FROM tickets
+       WHERE session_id = ? AND status = 'active' AND checked_in_at IS NOT NULL`,
+      [session.id],
+    )
     bySession.push({
       ...session,
       sold: occupancy.sold,
@@ -357,15 +370,24 @@ export async function getOrganizerReport() {
       available: occupancy.available,
       totalSeats: occupancy.totalSeats,
       revenue: occupancy.revenue,
+      checkedIn: Number(checkedRow?.total) || 0,
+      occupancyPct:
+        occupancy.totalSeats > 0
+          ? Math.round((occupancy.sold / occupancy.totalSeats) * 100)
+          : 0,
     })
   }
+
+  bySession.sort((a, b) => b.sold - a.sold || b.revenue - a.revenue)
 
   return {
     movies: Number(movies?.total) || 0,
     activeMovies: Number(activeMovies?.total) || 0,
     showtimes: Number(showtimes?.total) || 0,
     ticketsSold: Number(tickets?.total) || 0,
+    checkIns: Number(checkIns?.total) || 0,
     revenue: Number(tickets?.revenue) || 0,
+    liveAt: new Date().toISOString(),
     sessions: bySession,
   }
 }

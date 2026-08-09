@@ -1,12 +1,16 @@
 import { Router } from 'express'
 import {
   createEvent,
+  getCatalogCast,
   getCatalogMovie,
   searchCatalog,
 } from '../controllers/catalog.controller.js'
 import { requireAuth, requireRole } from '../middlewares/auth.js'
 
 const router = Router()
+
+/** Público: elenco ao abrir a página do filme. */
+router.get('/cast', getCatalogCast)
 
 router.get(
   '/tmdb/search',

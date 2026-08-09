@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext'
 import { BookingProvider } from './context/BookingContext'
 import { AccountPage } from './pages/AccountPage'
 import { CheckoutPage } from './pages/CheckoutPage'
+import { ClaimTransferPage } from './pages/ClaimTransferPage'
 import { GatePage } from './pages/GatePage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="login" element={<LoginPage />} />
               <Route path="staff/login" element={<StaffLoginPage />} />
               <Route path="i/:shareToken" element={<SharedTicketPage />} />
+              <Route path="transferir/:token" element={<ClaimTransferPage />} />
               <Route path="conta" element={<AccountPage />} />
               <Route path="organizador" element={<OrganizerPage />} />
               <Route path="portaria" element={<GatePage />} />

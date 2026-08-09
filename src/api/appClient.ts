@@ -1,5 +1,7 @@
-const APP_API_URL =
-  import.meta.env.VITE_APP_API_URL ?? 'http://localhost:3333/api'
+const APP_API_URL = (import.meta.env.VITE_APP_API_URL || '/api').replace(
+  /\/$/,
+  '',
+)
 
 const TOKEN_KEY = 'cineray.auth.token'
 
@@ -57,7 +59,7 @@ export async function appRequest<T>(
     })
   } catch {
     throw new AppApiError(
-      'Não foi possível conectar à API. Confira se o backend está rodando em http://localhost:3333.',
+      'Não foi possível conectar à API. Confira se o backend está rodando (porta 3333).',
       0,
     )
   }

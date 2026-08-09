@@ -180,7 +180,7 @@ export const CURRENT_MOVIES: Record<number, CurrentMovie> = {
     runtime: '2h 05m',
     format: 'IMAX',
     poster:
-      'https://image.tmdb.org/t/p/w600_and_h900_bestv2/vNMPddfv47amK83lCFoBd9wXVuc.jpg',
+      'https://image.tmdb.org/t/p/w600_and_h900_bestv2/n4Tu3IWW01eJBEax5b5elvZAd37.jpg',
   },
   15: {
     title: 'Jogos Vorazes: Sunrise on the Reaping',
@@ -243,7 +243,7 @@ export const CURRENT_MOVIES: Record<number, CurrentMovie> = {
     trailerUrl: 'https://www.youtube.com/watch?v=fxNh27fRdYA',
   },
   20: {
-    title: 'Duna: Parte Três',
+    title: 'Duna: Parte Dois',
     synopsis:
       'A saga de Arrakis chega ao ato decisivo: poder, profecia e sobrevivência no deserto mais perigoso do universo.',
     genre: 'Épico / Ficção científica',
@@ -252,7 +252,8 @@ export const CURRENT_MOVIES: Record<number, CurrentMovie> = {
     runtime: '2h 40m',
     format: 'IMAX',
     poster:
-      'https://image.tmdb.org/t/p/w600_and_h900_bestv2/iT6yYCAuMQwm1PV4nByrsrsIOhG.jpg',
+      'https://image.tmdb.org/t/p/w600_and_h900_bestv2/rrjoeR5m98ptkGUJ2Z7G4t2lXMg.jpg',
+    trailerUrl: 'https://www.youtube.com/watch?v=ncwsW3qxQlo',
   },
   21: {
     title: 'Practical Magic 2',

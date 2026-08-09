@@ -77,3 +77,43 @@ export async function getTmdbMovie(tmdbId) {
     runtime,
   }
 }
+
+function mapCastMember(person) {
+  const profilePath = person.profile_path
+  return {
+    id: person.id,
+    name: person.name || 'Desconhecido',
+    character: person.character || '',
+    photo: profilePath ? `${IMAGE_BASE}/w185${profilePath}` : '',
+    order: Number(person.order) || 0,
+  }
+}
+
+async function resolveTmdbId({ tmdbId, title } = {}) {
+  const id = Number(tmdbId)
+  if (Number.isFinite(id) && id > 0) return id
+
+  const q = String(title || '').trim()
+  if (!q) return null
+
+  const data = await tmdbFetch('/search/movie', { query: q, page: 1 })
+  const first = Array.isArray(data.results) ? data.results[0] : null
+  return first?.id ? Number(first.id) : null
+}
+
+/** Elenco principal via TMDb (por id ou busca pelo título). */
+export async function getTmdbCast({ tmdbId, title, limit = 12 } = {}) {
+  const resolvedId = await resolveTmdbId({ tmdbId, title })
+  if (!resolvedId) {
+    return { tmdbId: null, cast: [] }
+  }
+
+  const data = await tmdbFetch(`/movie/${encodeURIComponent(resolvedId)}/credits`)
+  const cast = (Array.isArray(data.cast) ? data.cast : [])
+    .slice()
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+    .slice(0, Math.max(1, Math.min(Number(limit) || 12, 24)))
+    .map(mapCastMember)
+
+  return { tmdbId: resolvedId, cast }
+}

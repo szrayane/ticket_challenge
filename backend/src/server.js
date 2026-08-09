@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { initDb } from './db/index.js'
 import app from './app.js'
+import { attachRealtime } from './realtime/hub.js'
 
 const PORT = process.env.PORT || 3333
 
@@ -8,6 +9,7 @@ const pool = await initDb()
 const server = app.listen(PORT, () => {
   console.log(`CineRay API running on http://localhost:${PORT}`)
 })
+attachRealtime(server)
 
 async function shutdown() {
   server.close()

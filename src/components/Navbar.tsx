@@ -94,6 +94,22 @@ export function Navbar({ compact = false }: NavbarProps) {
             </button>
           )}
           {compact && <div className="mx-1 hidden h-6 w-px bg-white/10 md:block" />}
+          <a
+            href="https://github.com/szrayane/ticket_challenge"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
+            aria-label="Repositório no GitHub"
+            title="Ver no GitHub"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden
+              className="h-[28px] w-[28px] fill-current"
+            >
+              <path d="M12 2C6.477 2 2 6.584 2 12.253c0 4.537 2.865 8.383 6.839 9.743.5.094.682-.222.682-.493 0-.243-.009-.888-.014-1.743-2.782.62-3.369-1.376-3.369-1.376-.454-1.187-1.11-1.504-1.11-1.504-.908-.638.069-.625.069-.625 1.004.072 1.532 1.06 1.532 1.06.892 1.57 2.341 1.116 2.91.854.091-.662.35-1.116.636-1.372-2.22-.26-4.555-1.14-4.555-5.077 0-1.122.39-2.04 1.029-2.76-.103-.26-.447-1.302.098-2.714 0 0 .84-.276 2.75 1.055A9.32 9.32 0 0 1 12 6.912a9.32 9.32 0 0 1 2.504.346c1.909-1.331 2.748-1.055 2.748-1.055.546 1.412.202 2.454.1 2.714.64.72 1.028 1.638 1.028 2.76 0 3.948-2.338 4.814-4.566 5.067.359.318.679.945.679 1.904 0 1.374-.012 2.481-.012 2.818 0 .273.18.593.688.492C19.138 20.633 22 16.788 22 12.253 22 6.584 17.523 2 12 2Z" />
+            </svg>
+          </a>
           <Link
             to={
               !isAuthenticated

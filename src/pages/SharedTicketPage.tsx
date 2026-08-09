@@ -79,6 +79,10 @@ export function SharedTicketPage() {
           className="h-40 w-28 rounded object-cover"
         />
         <QRCodeSVG value={ticket.qrPayload} size={200} bgColor="#FFFFFF" fgColor="#1A0F14" />
+        <p className="text-center text-caption text-on-surface-variant">
+          No iPhone, mostre este QR na portaria. No Android, salve na Google
+          Wallet pela conta que comprou o ingresso.
+        </p>
         <p className="break-all text-center font-mono text-caption text-on-surface-variant">
           {ticket.qrPayload}
         </p>

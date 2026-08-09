@@ -5,6 +5,7 @@ import {
   refreshHolds,
   releaseSeat,
 } from '../services/seats.service.js'
+import { publishSessionSeats } from '../realtime/hub.js'
 
 function holderFromRequest(req) {
   return String(
@@ -46,6 +47,10 @@ export async function holdSeatController(req, res, next) {
       seatId: req.body?.seatId,
       holderKey: holderFromRequest(req),
     })
+    publishSessionSeats(req.body?.sessionId, {
+      action: 'hold',
+      seatId: req.body?.seatId,
+    })
     res.status(201).json(result)
   } catch (error) {
     next(error)
@@ -58,6 +63,10 @@ export async function releaseSeatController(req, res, next) {
       sessionId: req.body?.sessionId,
       seatId: req.body?.seatId,
       holderKey: holderFromRequest(req),
+    })
+    publishSessionSeats(req.body?.sessionId, {
+      action: 'release',
+      seatId: req.body?.seatId,
     })
     res.json(result)
   } catch (error) {

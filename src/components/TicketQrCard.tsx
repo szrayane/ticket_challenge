@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react'
+import { AppApiError } from '../api/appClient'
+import { createTicketTransfer } from '../api/localCatalog'
 import type { CustomerTicket } from '../types'
 import { formatMoney } from '../lib/money'
 import {
@@ -8,6 +10,7 @@ import {
   isTicketSessionUpcoming,
 } from '../lib/tickets'
 import { Icon } from './Icon'
+import { TicketWalletActions } from './TicketWalletActions'
 
 interface TicketQrCardProps {
   ticket: CustomerTicket
@@ -22,6 +25,7 @@ export function TicketQrCard({
 }: TicketQrCardProps) {
   const [confirming, setConfirming] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [transferring, setTransferring] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [shareHint, setShareHint] = useState<string | null>(null)
   const qrWrapRef = useRef<HTMLDivElement | null>(null)
@@ -94,6 +98,32 @@ export function TicketQrCard({
       window.setTimeout(() => setShareHint(null), 3000)
     } catch {
       setError('Não foi possível copiar o link.')
+    }
+  }
+
+  async function handleTransfer() {
+    try {
+      setTransferring(true)
+      setError(null)
+      const result = await createTicketTransfer(ticket.id)
+      const url = `${window.location.origin}${result.transferPath}`
+      try {
+        await navigator.clipboard.writeText(url)
+        setShareHint(
+          'Link de transferência copiado. Quem abrir reivindica o ingresso e invalida seu QR.',
+        )
+      } catch {
+        setShareHint(`Link: ${url}`)
+      }
+      window.setTimeout(() => setShareHint(null), 8000)
+    } catch (err) {
+      setError(
+        err instanceof AppApiError
+          ? err.message
+          : 'Não foi possível gerar o link de transferência.',
+      )
+    } finally {
+      setTransferring(false)
     }
   }
 
@@ -310,7 +340,36 @@ export function TicketQrCard({
                 <Icon name="link" className="text-[16px]" />
                 Copiar link
               </button>
+              {!ticket.checkedInAt && (
+                <button
+                  type="button"
+                  disabled={transferring}
+                  onClick={() => {
+                    void handleTransfer()
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-caption text-amber-100 transition-colors hover:border-amber-300/50 disabled:opacity-50"
+                >
+                  <Icon name="swap_horiz" className="text-[16px]" />
+                  {transferring ? 'Gerando…' : 'Transferir'}
+                </button>
+              )}
             </div>
+            <TicketWalletActions
+              ticket={ticket}
+              onHint={(message) => {
+                setError(null)
+                setShareHint(message)
+                window.setTimeout(() => setShareHint(null), 4000)
+              }}
+              onError={(message) => {
+                if (!message) {
+                  setError(null)
+                  return
+                }
+                setShareHint(null)
+                setError(message)
+              }}
+            />
             <p className="break-all rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-[11px] leading-relaxed text-on-surface-variant">
               Token cifrado (AES-GCM): {ticket.qrPayload}
             </p>

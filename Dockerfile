@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-ARG VITE_APP_API_URL=http://localhost:3333/api
+ARG VITE_APP_API_URL=/api
 ARG VITE_CINEMA_API_URL=https://mock-api.driven.com.br/api/v8/cineflex
 ENV VITE_APP_API_URL=$VITE_APP_API_URL
 ENV VITE_CINEMA_API_URL=$VITE_CINEMA_API_URL

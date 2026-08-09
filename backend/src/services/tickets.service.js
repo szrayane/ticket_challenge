@@ -274,6 +274,161 @@ export async function getTicketByShareToken(shareToken) {
   return row ? mapTicket(row) : null
 }
 
+export async function getTicketForUser(userId, ticketId) {
+  const row = await queryOne(
+    'SELECT * FROM tickets WHERE id = ? AND user_id = ?',
+    [String(ticketId || ''), String(userId || '')],
+  )
+  return row ? mapTicket(row) : null
+}
+
+const TRANSFER_TTL_MS = 48 * 60 * 60 * 1000
+
+export async function createTicketTransfer(userId, ticketId) {
+  const row = await queryOne(
+    'SELECT * FROM tickets WHERE id = ? AND user_id = ?',
+    [String(ticketId || ''), String(userId || '')],
+  )
+  if (!row) {
+    const err = new Error('Ingresso não encontrado.')
+    err.status = 404
+    throw err
+  }
+  if ((row.status || 'active') === 'cancelled') {
+    const err = new Error('Ingresso cancelado não pode ser transferido.')
+    err.status = 409
+    throw err
+  }
+  if (row.checked_in_at) {
+    const err = new Error('Ingresso já utilizado — transferência bloqueada.')
+    err.status = 409
+    throw err
+  }
+  if (!isTicketSessionUpcoming(row.session_date, row.session_time)) {
+    const err = new Error('Não é possível transferir após o início da sessão.')
+    err.status = 409
+    throw err
+  }
+
+  const transferToken = createShareToken()
+  const expiresAt = new Date(Date.now() + TRANSFER_TTL_MS).toISOString()
+  await execute(
+    `UPDATE tickets
+     SET transfer_token = ?, transfer_expires_at = ?
+     WHERE id = ? AND user_id = ?`,
+    [transferToken, expiresAt, row.id, userId],
+  )
+
+  return {
+    ticketId: row.id,
+    transferToken,
+    transferPath: `/transferir/${transferToken}`,
+    expiresAt,
+  }
+}
+
+export async function getTransferPreview(token) {
+  const transferToken = String(token || '').trim()
+  if (!transferToken) return null
+  const row = await queryOne(
+    `SELECT * FROM tickets WHERE transfer_token = ?`,
+    [transferToken],
+  )
+  if (!row) return null
+  if ((row.status || 'active') === 'cancelled' || row.checked_in_at) return null
+  if (
+    row.transfer_expires_at &&
+    new Date(row.transfer_expires_at).getTime() < Date.now()
+  ) {
+    return null
+  }
+
+  return {
+    movieTitle: row.movie_title,
+    moviePoster: row.movie_poster,
+    sessionDate: row.session_date,
+    sessionTime: row.session_time,
+    cinema: row.cinema,
+    room: row.room,
+    seatLabel: row.seat_label,
+    expiresAt: row.transfer_expires_at || undefined,
+  }
+}
+
+export async function claimTicketTransfer(user, token) {
+  const transferToken = String(token || '').trim()
+  if (!transferToken) {
+    const err = new Error('Token de transferência inválido.')
+    err.status = 400
+    throw err
+  }
+
+  const row = await queryOne(
+    `SELECT * FROM tickets WHERE transfer_token = ?`,
+    [transferToken],
+  )
+  if (!row) {
+    const err = new Error('Link de transferência inválido ou já usado.')
+    err.status = 404
+    throw err
+  }
+  if (row.user_id === user.id) {
+    const err = new Error('Este ingresso já está na sua conta.')
+    err.status = 409
+    throw err
+  }
+  if ((row.status || 'active') === 'cancelled') {
+    const err = new Error('Ingresso cancelado.')
+    err.status = 409
+    throw err
+  }
+  if (row.checked_in_at) {
+    const err = new Error('Ingresso já utilizado.')
+    err.status = 409
+    throw err
+  }
+  if (
+    row.transfer_expires_at &&
+    new Date(row.transfer_expires_at).getTime() < Date.now()
+  ) {
+    const err = new Error('Link de transferência expirado.')
+    err.status = 410
+    throw err
+  }
+  if (!isTicketSessionUpcoming(row.session_date, row.session_time)) {
+    const err = new Error('Sessão já iniciou — transferência bloqueada.')
+    err.status = 409
+    throw err
+  }
+
+  const shareToken = createShareToken()
+  const qrPayload = buildSignedQrPayload({ ticketId: row.id })
+
+  await execute(
+    `UPDATE tickets
+     SET user_id = ?,
+         user_email = ?,
+         cpf = ?,
+         qr_payload = ?,
+         share_token = ?,
+         transfer_token = NULL,
+         transfer_expires_at = NULL
+     WHERE id = ? AND transfer_token = ?`,
+    [
+      user.id,
+      user.email,
+      user.cpf || row.cpf || '',
+      qrPayload,
+      shareToken,
+      row.id,
+      transferToken,
+    ],
+  )
+
+  const updated = await queryOne(`SELECT * FROM tickets WHERE id = ?`, [row.id])
+  return mapTicket(updated)
+}
+
 export async function listGateSessions({
   beforeMinutes = 60,
   afterMinutes = 180,

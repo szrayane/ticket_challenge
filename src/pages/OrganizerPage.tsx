@@ -25,6 +25,7 @@ import {
 import { AppApiError } from '../api/appClient'
 import { RequireRole } from '../components/RequireRole'
 import { useAuth } from '../context/AuthContext'
+import { connectRealtime } from '../lib/realtime'
 import type { Movie, Session } from '../types'
 
 type TabId = 'publicar' | 'filmes' | 'sessoes' | 'relatorios'
@@ -65,6 +66,7 @@ function OrganizerDashboard() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [occupancy, setOccupancy] = useState<Record<string, ShowtimeOccupancy>>({})
   const [report, setReport] = useState<OrganizerReport | null>(null)
+  const [reportLive, setReportLive] = useState(false)
   const [form, setForm] = useState<LocalMovieInput>(emptyMovie)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [sessionDateIso, setSessionDateIso] = useState('')
@@ -148,9 +150,41 @@ function OrganizerDashboard() {
 
   useEffect(() => {
     if (tab !== 'relatorios') return
-    void reloadReport().catch((err) =>
-      setError(err instanceof Error ? err.message : 'Falha ao carregar relatório.'),
-    )
+    let active = true
+
+    async function refresh() {
+      try {
+        const data = await fetchOrganizerReport()
+        if (active) setReport(data)
+      } catch (err) {
+        if (active) {
+          setError(
+            err instanceof Error ? err.message : 'Falha ao carregar relatório.',
+          )
+        }
+      }
+    }
+
+    void refresh()
+    const intervalId = window.setInterval(() => {
+      void refresh()
+    }, 5000)
+
+    const client = connectRealtime()
+    client.subscribe('organizer')
+    const off = client.on((payload) => {
+      if (payload.type === 'connected') setReportLive(true)
+      if (payload.type === 'disconnected') setReportLive(false)
+      if (payload.type === 'stats.changed') void refresh()
+    })
+
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+      off()
+      client.close()
+      setReportLive(false)
+    }
   }, [tab])
 
   async function handleSaveMovie(e: FormEvent) {
@@ -773,12 +807,19 @@ function OrganizerDashboard() {
 
       {tab === 'sessoes' && (
         <div className="space-y-6">
-          <div className="glass-card space-y-4 rounded-xl p-card-padding">
-            <h2 className="text-headline-md text-on-surface">Gerenciar sessões</h2>
-            <label className="block space-y-1">
-              <span className="text-label-md text-on-surface-variant">Filme</span>
+          <div className="space-y-4 rounded-2xl border border-white/8 bg-surface-container/70 p-card-padding">
+            <div>
+              <h2 className="text-headline-md text-on-surface">Gerenciar sessões</h2>
+              <p className="mt-1 text-body-md text-on-surface-variant">
+                Escolha o filme para criar, editar ou remover horários.
+              </p>
+            </div>
+            <label className="block space-y-2">
+              <span className="text-caption uppercase tracking-wider text-on-surface-variant">
+                Filme
+              </span>
               <select
-                className="glass-input w-full rounded-lg px-4 py-3 text-body-md"
+                className="field-select w-full rounded-xl border border-white/10 px-4 py-3.5 text-body-md text-on-surface"
                 value={selectedId || ''}
                 onChange={(e) => setSelectedId(e.target.value || null)}
               >
@@ -793,8 +834,8 @@ function OrganizerDashboard() {
             </label>
 
             {selectedMovie && (
-              <p className="text-body-md text-on-surface-variant">
-                Sessões de <span className="text-on-surface">{selectedMovie.title}</span>
+              <p className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-body-md text-on-surface">
+                Sessões de <span className="font-medium">{selectedMovie.title}</span>
               </p>
             )}
 
@@ -973,30 +1014,98 @@ function OrganizerDashboard() {
 
       {tab === 'relatorios' && (
         <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-headline-md text-on-surface">Dashboard ao vivo</h2>
+              <p className="text-body-md text-on-surface-variant">
+                Ocupação, check-ins e receita atualizam em tempo real.
+              </p>
+            </div>
+            <div
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-caption ${
+                reportLive
+                  ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+                  : 'border-white/10 text-on-surface-variant'
+              }`}
+            >
+              <span
+                className={`size-2 rounded-full ${
+                  reportLive ? 'bg-emerald-400' : 'bg-on-surface-variant'
+                }`}
+              />
+              {reportLive ? 'WebSocket conectado' : 'Polling'}
+            </div>
+          </div>
+
           {!report ? (
             <p className="text-body-md text-on-surface-variant">Carregando relatório…</p>
           ) : (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  ['Filmes', String(report.movies)],
-                  ['Ativos', String(report.activeMovies)],
-                  ['Sessões', String(report.showtimes)],
+                  ['Ingressos vendidos', String(report.ticketsSold)],
+                  ['Check-ins', String(report.checkIns ?? 0)],
                   ['Receita', money(report.revenue)],
+                  ['Sessões', String(report.showtimes)],
                 ].map(([label, value]) => (
                   <div
                     key={label}
-                    className="glass-card rounded-xl border border-white/10 p-4"
+                    className="rounded-xl border border-white/10 bg-surface-container p-5"
                   >
-                    <p className="text-caption text-on-surface-variant">{label}</p>
-                    <p className="mt-1 text-headline-md text-on-surface">{value}</p>
+                    <p className="text-caption uppercase tracking-wider text-on-surface-variant">
+                      {label}
+                    </p>
+                    <p className="mt-2 text-4xl font-semibold tracking-tight text-on-surface">
+                      {value}
+                    </p>
                   </div>
                 ))}
               </div>
 
-              <p className="text-body-md text-on-surface-variant">
-                Ingressos ativos (locais): {report.ticketsSold}
-              </p>
+              <div className="rounded-xl border border-white/10 bg-surface-container p-5">
+                <h3 className="mb-4 text-label-md uppercase tracking-wider text-on-surface-variant">
+                  Ocupação por sessão
+                </h3>
+                <ul className="space-y-4">
+                  {report.sessions.slice(0, 8).map((session) => {
+                    const pct = session.occupancyPct ?? 0
+                    return (
+                      <li key={session.id} className="space-y-2">
+                        <div className="flex flex-wrap items-end justify-between gap-2">
+                          <div>
+                            <p className="text-label-md text-on-surface">
+                              {session.movieTitle}
+                            </p>
+                            <p className="text-caption text-on-surface-variant">
+                              {session.date} {session.time} · {session.room}
+                              {session.held > 0 ? ` · ${session.held} em hold` : ''}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-label-md text-on-surface">
+                              {session.sold}/{session.totalSeats} · {pct}%
+                            </p>
+                            <p className="text-caption text-on-surface-variant">
+                              {session.checkedIn ?? 0} check-ins · {money(session.revenue)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-neon transition-all duration-500"
+                            style={{ width: `${Math.min(100, pct)}%` }}
+                          />
+                        </div>
+                      </li>
+                    )
+                  })}
+                  {report.sessions.length === 0 && (
+                    <li className="text-body-md text-on-surface-variant">
+                      Sem sessões ainda.
+                    </li>
+                  )}
+                </ul>
+              </div>
 
               <div className="overflow-x-auto rounded-xl border border-white/10">
                 <table className="min-w-full text-left text-body-md">
@@ -1005,6 +1114,7 @@ function OrganizerDashboard() {
                       <th className="px-4 py-3 font-medium">Filme</th>
                       <th className="px-4 py-3 font-medium">Sessão</th>
                       <th className="px-4 py-3 font-medium">Ocupação</th>
+                      <th className="px-4 py-3 font-medium">Check-ins</th>
                       <th className="px-4 py-3 font-medium">Receita</th>
                     </tr>
                   </thead>
@@ -1026,6 +1136,9 @@ function OrganizerDashboard() {
                           {session.sold}/{session.totalSeats}
                           {session.held > 0 ? ` (+${session.held} hold)` : ''}
                         </td>
+                        <td className="px-4 py-3 text-on-surface-variant">
+                          {session.checkedIn ?? 0}
+                        </td>
                         <td className="px-4 py-3 text-on-surface">
                           {money(session.revenue)}
                         </td>
@@ -1034,7 +1147,7 @@ function OrganizerDashboard() {
                     {report.sessions.length === 0 && (
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="px-4 py-6 text-center text-on-surface-variant"
                         >
                           Sem sessões ainda.

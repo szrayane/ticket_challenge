@@ -1,4 +1,5 @@
 import {
+  getTmdbCast,
   getTmdbMovie,
   searchTmdbMovies,
 } from '../services/tmdb.service.js'
@@ -19,6 +20,19 @@ export async function getCatalogMovie(req, res, next) {
   try {
     const movie = await getTmdbMovie(req.params.tmdbId)
     res.json({ movie })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function getCatalogCast(req, res, next) {
+  try {
+    const data = await getTmdbCast({
+      tmdbId: req.query.tmdbId,
+      title: req.query.title || req.query.q,
+      limit: Number(req.query.limit) || 12,
+    })
+    res.json(data)
   } catch (error) {
     next(error)
   }

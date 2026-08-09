@@ -11,6 +11,8 @@ import { GateQrScanner } from '../components/GateQrScanner'
 import { Icon } from '../components/Icon'
 import { RequireRole } from '../components/RequireRole'
 import { useAuth } from '../context/AuthContext'
+import { feedbackGateResult } from '../lib/gateFeedback'
+import { connectRealtime } from '../lib/realtime'
 import type { CustomerTicket } from '../types'
 
 type GateResult = {
@@ -31,7 +33,9 @@ function GateDashboard() {
   const [result, setResult] = useState<GateResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [cameraOn, setCameraOn] = useState(false)
+  const [flash, setFlash] = useState<'ok' | 'error' | 'warn' | null>(null)
   const lastScanRef = useRef({ value: '', at: 0 })
+  const flashTimerRef = useRef<number | null>(null)
 
   const selectedSession =
     sessions.find((s) => s.sessionId === expectedSessionId) || null
@@ -68,6 +72,33 @@ function GateDashboard() {
     return () => window.clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    const client = connectRealtime()
+    client.subscribe('gate')
+    const off = client.on((payload) => {
+      if (payload.type === 'checkin') {
+        void reloadMeta({ preferAutoSelect: false }).catch(() => undefined)
+      }
+    })
+    return () => {
+      off()
+      client.close()
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current)
+    }
+  }, [])
+
+  function triggerFlash(kind: 'ok' | 'error' | 'warn') {
+    setFlash(kind)
+    feedbackGateResult(kind === 'error' ? false : true, kind === 'warn')
+    if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current)
+    flashTimerRef.current = window.setTimeout(() => setFlash(null), 2200)
+  }
+
   const runValidate = useCallback(
     async (raw: string, force = false) => {
       const qrPayload = raw.trim()
@@ -80,12 +111,14 @@ function GateDashboard() {
           expectedSessionId: expectedSessionId || undefined,
           force,
         })
-        setResult({
+        const next: GateResult = {
           ok: data.ok,
           message: data.message,
           warning: data.warning,
           ticket: data.ticket,
-        })
+        }
+        setResult(next)
+        triggerFlash(data.warning ? 'warn' : 'ok')
         setPayload('')
         await reloadMeta().catch(() => undefined)
       } catch (err) {
@@ -98,11 +131,13 @@ function GateDashboard() {
             ticket: err.ticket as CustomerTicket | undefined,
             pendingPayload: mismatch ? qrPayload : undefined,
           })
+          triggerFlash(mismatch ? 'warn' : 'error')
         } else {
           setResult({
             ok: false,
             message: 'Não foi possível validar o QR.',
           })
+          triggerFlash('error')
         }
       } finally {
         setSubmitting(false)
@@ -132,8 +167,36 @@ function GateDashboard() {
     [runValidate, submitting],
   )
 
+  const flashOverlay =
+    flash && (
+      <div
+        className={`pointer-events-none fixed inset-0 z-[80] flex items-center justify-center transition-opacity duration-300 ${
+          flash === 'ok'
+            ? 'bg-emerald-500/90'
+            : flash === 'warn'
+              ? 'bg-amber-500/90'
+              : 'bg-red-600/90'
+        }`}
+      >
+        <div className="px-6 text-center text-white">
+          <p className="text-6xl font-black tracking-tight md:text-8xl">
+            {flash === 'ok' ? 'OK' : flash === 'warn' ? 'ALERTA' : 'ERRO'}
+          </p>
+          {result?.ticket && (
+            <p className="mt-4 text-2xl font-semibold md:text-3xl">
+              {result.ticket.seatLabel} · {result.ticket.movieTitle}
+            </p>
+          )}
+          {result?.message && (
+            <p className="mt-2 max-w-xl text-lg opacity-90">{result.message}</p>
+          )}
+        </div>
+      </div>
+    )
+
   return (
     <main className="mx-auto w-full max-w-[860px] px-5 py-section-gap md:px-container-margin">
+      {flashOverlay}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-caption uppercase tracking-wider text-on-surface-variant">
@@ -144,22 +207,31 @@ function GateDashboard() {
           </h1>
           <p className="text-body-md text-on-surface-variant">{user?.email}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => void logout()}
-          className="rounded-lg border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
-        >
-          Sair
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="rounded-lg border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
+          >
+            Sair
+          </button>
+        </div>
       </div>
 
-      <section className="glass-card mb-6 space-y-3 rounded-xl p-card-padding">
-        <label className="block space-y-1">
-          <span className="text-label-md text-on-surface-variant">
-            Sessão desta sala (próximas por horário)
-          </span>
+      <section className="mb-6 space-y-4 rounded-2xl border border-white/8 bg-surface-container/70 p-card-padding">
+        <div>
+          <p className="text-caption uppercase tracking-wider text-on-surface-variant">
+            Portaria
+          </p>
+          <h2 className="text-headline-md text-on-surface">Sessão desta sala</h2>
+          <p className="mt-1 text-body-md text-on-surface-variant">
+            Próximas por horário — o scan alerta se o ingresso for de outra sala.
+          </p>
+        </div>
+        <label className="block space-y-2">
+          <span className="sr-only">Sessão desta sala</span>
           <select
-            className="glass-input w-full rounded-lg px-4 py-3 text-body-md"
+            className="field-select w-full rounded-xl border border-white/10 px-4 py-3.5 text-body-md text-on-surface"
             value={expectedSessionId}
             onChange={(e) => setExpectedSessionId(e.target.value)}
           >
@@ -183,12 +255,12 @@ function GateDashboard() {
           </select>
         </label>
         {sessions.length === 0 ? (
-          <p className="text-caption text-on-surface-variant">
+          <p className="rounded-xl border border-dashed border-white/12 px-4 py-3 text-caption text-on-surface-variant">
             Nenhuma sessão na janela próxima (1h atrás → 3h à frente). Crie uma
             sessão no organizador ou aguarde o horário.
           </p>
         ) : selectedSession ? (
-          <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-caption text-amber-100">
+          <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-4 py-3 text-caption text-amber-100">
             Conferindo contra{' '}
             <strong className="text-on-surface">{selectedSession.movieTitle}</strong>{' '}
             · {selectedSession.sessionTime} · {selectedSession.room}
@@ -215,15 +287,18 @@ function GateDashboard() {
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-body-md text-on-surface-variant">
-            Escaneie o QR com a câmera ou cole o código do cliente.
+            QR (câmera) ou cole o código do cliente.
           </p>
-          <button
-            type="button"
-            onClick={() => setCameraOn((prev) => !prev)}
-            className="rounded-lg border border-white/15 px-4 py-2 text-label-md text-on-surface-variant"
-          >
-            {cameraOn ? 'Fechar câmera' : 'Abrir câmera'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setCameraOn((prev) => !prev)}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-4 py-2 text-label-md text-on-surface-variant"
+            >
+              <Icon name="photo_camera" className="text-[18px]" />
+              {cameraOn ? 'Fechar câmera' : 'Abrir câmera'}
+            </button>
+          </div>
         </div>
 
         <GateQrScanner enabled={cameraOn} onScan={handleScan} />
@@ -231,7 +306,7 @@ function GateDashboard() {
         <textarea
           value={payload}
           onChange={(e) => setPayload(e.target.value)}
-          placeholder="CINERAY-TICKET|ID:..."
+          placeholder="CR2.… ou cole o token do ingresso"
           className="glass-input min-h-28 w-full rounded-lg px-4 py-3 font-mono text-caption text-on-surface"
           required={!cameraOn}
         />
