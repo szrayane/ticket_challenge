@@ -390,6 +390,13 @@ export function SeatsPage() {
             {displayMovie.title}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-4 text-body-md text-on-surface-variant">
+            <div className="flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-emerald-200">
+              <span className="relative flex size-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+              </span>
+              <span className="text-caption">Mapa ao vivo</span>
+            </div>
             <div className="flex items-center gap-1.5 rounded-full border border-white/5 bg-surface-container px-3 py-1">
               <Icon name="calendar_month" className="text-[18px]" />
               <span>{displaySession.dateLabel}</span>

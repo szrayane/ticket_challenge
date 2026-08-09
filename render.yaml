@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: cineray-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STAFF_INVITE_CODE
+        generateValue: true
+      - key: TICKET_QR_SECRET
+        generateValue: true
+      - key: TMDB_API_KEY
+        sync: false
+    disk:
+      name: cineray-data
+      mountPath: /opt/render/project/src/backend/data
+      sizeGB: 1

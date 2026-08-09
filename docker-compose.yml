@@ -1,0 +1,28 @@
+services:
+  api:
+    build:
+      context: ./backend
+    ports:
+      - "3333:3333"
+    environment:
+      PORT: 3333
+      STAFF_INVITE_CODE: cineray-staff
+      TICKET_QR_SECRET: cineray-qr-compose-secret
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+    volumes:
+      - cineray-data:/app/backend/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      args:
+        VITE_APP_API_URL: http://localhost:3333/api
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  cineray-data:

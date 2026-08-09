@@ -1,17 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { getMovies } from '../api/cinema'
 import { MovieCard } from '../components/MovieCard'
 import { Icon } from '../components/Icon'
 import { TrailerModal } from '../components/TrailerModal'
+import { formatMoney } from '../lib/money'
 import type { Movie } from '../types'
 
 const FEATURED_COUNT = 3
 const FEATURED_ROTATE_MS = 4000
 
 export function HomePage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
+  const genreFilter = searchParams.get('genre') || ''
+  const maxPriceFilter = searchParams.get('maxPrice') || ''
+  const onlyEvents = searchParams.get('events') === '1'
 
   const [movies, setMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
@@ -42,37 +46,76 @@ export function HomePage() {
     }
   }, [])
 
+  const genres = useMemo(() => {
+    const set = new Set<string>()
+    for (const movie of movies) {
+      String(movie.genre || '')
+        .split(',')
+        .map((g) => g.trim())
+        .filter(Boolean)
+        .forEach((g) => set.add(g))
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [movies])
+
   const filteredMovies = movies.filter((movie) => {
-    if (!searchQuery) return true
-    return (
-      movie.title.toLowerCase().includes(searchQuery) ||
-      movie.synopsis?.toLowerCase().includes(searchQuery)
-    )
+    if (searchQuery) {
+      const hit =
+        movie.title.toLowerCase().includes(searchQuery) ||
+        movie.synopsis?.toLowerCase().includes(searchQuery)
+      if (!hit) return false
+    }
+    if (genreFilter) {
+      const parts = String(movie.genre || '')
+        .split(',')
+        .map((g) => g.trim().toLowerCase())
+      if (!parts.includes(genreFilter.toLowerCase())) return false
+    }
+    if (onlyEvents && !movie.nextSession) return false
+    if (maxPriceFilter) {
+      const max = Number(maxPriceFilter)
+      if (!Number.isFinite(max)) return true
+      const price = movie.nextSession?.price
+      if (price == null || price > max) return false
+    }
+    return true
   })
 
+  const hasExtraFilters = Boolean(genreFilter || maxPriceFilter || onlyEvents)
   const featured = movies.slice(0, FEATURED_COUNT)
   const trending = movies.slice(FEATURED_COUNT)
   const activeFeatured = featured[featuredIndex] ?? featured[0]
-  const displayMovies = searchQuery
-    ? filteredMovies
-    : showAll
-      ? movies
-      : trending
+  const displayMovies =
+    searchQuery || hasExtraFilters
+      ? filteredMovies
+      : showAll
+        ? movies
+        : trending
+
+  function patchFilters(patch: Record<string, string | null>) {
+    const next = new URLSearchParams(searchParams)
+    for (const [key, value] of Object.entries(patch)) {
+      if (!value) next.delete(key)
+      else next.set(key, value)
+    }
+    setSearchParams(next, { replace: true })
+  }
 
   useEffect(() => {
-    // Busca limpa o modo "ver todos"
-    if (searchQuery) setShowAll(false)
-  }, [searchQuery])
+    if (searchQuery || hasExtraFilters) setShowAll(false)
+  }, [searchQuery, hasExtraFilters])
 
   useEffect(() => {
-    if (featured.length <= 1 || searchQuery || trailerOpen) return
+    if (featured.length <= 1 || searchQuery || hasExtraFilters || trailerOpen) {
+      return
+    }
 
     const timer = window.setInterval(() => {
       setFeaturedIndex((current) => (current + 1) % featured.length)
     }, FEATURED_ROTATE_MS)
 
     return () => window.clearInterval(timer)
-  }, [featured.length, searchQuery, trailerOpen])
+  }, [featured.length, searchQuery, hasExtraFilters, trailerOpen])
 
   if (loading) {
     return (
@@ -92,7 +135,7 @@ export function HomePage() {
 
   return (
     <main>
-      {!searchQuery && activeFeatured && (
+      {!searchQuery && !hasExtraFilters && activeFeatured && (
         <section className="relative flex min-h-[600px] h-[85vh] w-full items-end pt-32 pb-section-gap">
           <div className="absolute inset-0 z-0 overflow-hidden bg-background">
             {featured.map((movie, index) => {
@@ -191,28 +234,34 @@ export function HomePage() {
       )}
 
       <section className="mx-auto max-w-[1440px] px-5 py-section-gap md:px-container-margin">
-        <div className="mb-12 flex items-end justify-between gap-4">
+        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="flex items-center gap-3 text-headline-lg-mobile text-on-surface md:text-headline-lg">
               <Icon
-                name={searchQuery ? 'search' : showAll ? 'movie' : 'trending_up'}
+                name={
+                  searchQuery || hasExtraFilters
+                    ? 'search'
+                    : showAll
+                      ? 'movie'
+                      : 'trending_up'
+                }
                 className="text-[32px] text-primary md:text-[40px]"
               />
-              {searchQuery
-                ? `Resultados para "${searchQuery}"`
+              {searchQuery || hasExtraFilters
+                ? 'Resultados filtrados'
                 : showAll
                   ? 'Todos os filmes'
                   : 'Em alta'}
             </h2>
             <p className="mt-2 text-body-md text-on-surface-variant">
-              {searchQuery
-                ? `Encontramos ${filteredMovies.length} filme(s)`
+              {searchQuery || hasExtraFilters
+                ? `Encontramos ${filteredMovies.length} título(s)`
                 : showAll
                   ? `${movies.length} títulos em cartaz neste momento.`
                   : 'Os filmes mais assistidos desta semana.'}
             </p>
           </div>
-          {!searchQuery && (
+          {!searchQuery && !hasExtraFilters && (
             <button
               type="button"
               onClick={() => {
@@ -237,6 +286,66 @@ export function HomePage() {
           )}
         </div>
 
+        <div className="mb-10 flex flex-wrap items-end gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+          <label className="space-y-1">
+            <span className="text-caption text-on-surface-variant">Gênero</span>
+            <select
+              className="glass-input min-w-[160px] rounded-lg px-3 py-2 text-body-md"
+              value={genreFilter}
+              onChange={(e) => patchFilters({ genre: e.target.value || null })}
+            >
+              <option value="">Todos</option>
+              {genres.map((genre) => (
+                <option key={genre} value={genre}>
+                  {genre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-caption text-on-surface-variant">
+              Preço máx.
+            </span>
+            <select
+              className="glass-input min-w-[140px] rounded-lg px-3 py-2 text-body-md"
+              value={maxPriceFilter}
+              onChange={(e) =>
+                patchFilters({ maxPrice: e.target.value || null })
+              }
+            >
+              <option value="">Qualquer</option>
+              <option value="25">{formatMoney(25)}</option>
+              <option value="32">{formatMoney(32)}</option>
+              <option value="40">{formatMoney(40)}</option>
+              <option value="50">{formatMoney(50)}</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2">
+            <input
+              type="checkbox"
+              checked={onlyEvents}
+              onChange={(e) =>
+                patchFilters({ events: e.target.checked ? '1' : null })
+              }
+              className="size-4 accent-primary"
+            />
+            <span className="text-caption text-on-surface-variant">
+              Só com sessão publicada
+            </span>
+          </label>
+          {(genreFilter || maxPriceFilter || onlyEvents) && (
+            <button
+              type="button"
+              onClick={() =>
+                patchFilters({ genre: null, maxPrice: null, events: null })
+              }
+              className="rounded-full border border-white/15 px-4 py-2 text-caption text-on-surface-variant"
+            >
+              Limpar filtros
+            </button>
+          )}
+        </div>
+
         {displayMovies.length > 0 ? (
           <div
             id="catalog"
@@ -255,7 +364,7 @@ export function HomePage() {
         ) : (
           <div className="py-12 text-center">
             <p className="text-body-lg text-on-surface-variant">
-              Nenhum filme encontrado com o termo informado.
+              Nenhum filme encontrado com os filtros atuais.
             </p>
           </div>
         )}
