@@ -3,9 +3,8 @@ import { db } from '../db/index.js'
 import { getLocalMovie } from './movies.service.js'
 import { listHeldSeatIds, listSoldSeatIds, listUnavailableSeatIds } from './seats.service.js'
 
-export const TOTAL_LOCAL_SEATS = 50
-const ROW_LABELS = ['A', 'B', 'C', 'D', 'E']
-const SEATS_PER_ROW = 10
+export const DEFAULT_CAPACITY = 50
+export const DEFAULT_PRICE = 28
 
 function nowIso() {
   return new Date().toISOString()
@@ -35,6 +34,18 @@ function parseDateTime(sessionDate, sessionTime) {
   )
 }
 
+function normalizeCapacity(value, fallback = DEFAULT_CAPACITY) {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return fallback
+  return Math.min(200, Math.max(10, Math.round(n)))
+}
+
+function normalizePrice(value, fallback = DEFAULT_PRICE) {
+  const n = Number(value)
+  if (!Number.isFinite(n) || n <= 0) return fallback
+  return Math.round(n * 100) / 100
+}
+
 function normalizeSessionFields(input = {}, fallback = {}) {
   const sessionDate = String(
     input.sessionDate || input.date || fallback.session_date || fallback.date || '',
@@ -45,6 +56,11 @@ function normalizeSessionFields(input = {}, fallback = {}) {
   const room = String(input.room || fallback.room || '').trim() || 'Sala 1'
   const cinema =
     String(input.cinema || fallback.cinema || '').trim() || 'CineRay'
+  const capacity = normalizeCapacity(
+    input.capacity ?? fallback.capacity,
+    DEFAULT_CAPACITY,
+  )
+  const price = normalizePrice(input.price ?? fallback.price, DEFAULT_PRICE)
 
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(sessionDate)) {
     const err = new Error('Data inválida. Use DD/MM/AAAA.')
@@ -68,7 +84,7 @@ function normalizeSessionFields(input = {}, fallback = {}) {
     String(input.dateLabel || '').trim() ||
     `${weekdayLabel(at)}, ${sessionDate}`
 
-  return { sessionDate, sessionTime, room, cinema, dateLabel }
+  return { sessionDate, sessionTime, room, cinema, dateLabel, capacity, price }
 }
 
 function mapShowtime(row) {
@@ -80,6 +96,8 @@ function mapShowtime(row) {
     time: row.session_time,
     cinema: row.cinema,
     room: row.room,
+    capacity: Number(row.capacity) || DEFAULT_CAPACITY,
+    price: Number(row.price) || DEFAULT_PRICE,
     createdAt: row.created_at,
   }
 }
@@ -136,6 +154,7 @@ export function getShowtimeOccupancy(showtimeId) {
     throw err
   }
 
+  const totalSeats = showtime.capacity
   const sold = listSoldSeatIds(showtimeId).length
   const held = listHeldSeatIds(showtimeId).length
   const unavailable = listUnavailableSeatIds(showtimeId).length
@@ -150,11 +169,11 @@ export function getShowtimeOccupancy(showtimeId) {
   return {
     sessionId: showtimeId,
     session: showtime,
-    totalSeats: TOTAL_LOCAL_SEATS,
+    totalSeats,
     sold,
     held,
     unavailable,
-    available: Math.max(0, TOTAL_LOCAL_SEATS - unavailable),
+    available: Math.max(0, totalSeats - unavailable),
     revenue: Number(revenueRow?.revenue) || 0,
   }
 }
@@ -177,15 +196,19 @@ export function createShowtime(userId, movieId, input = {}) {
     date_label: fields.dateLabel,
     cinema: fields.cinema,
     room: fields.room,
+    capacity: fields.capacity,
+    price: fields.price,
     created_by: userId,
     created_at: nowIso(),
   }
 
   db.prepare(
     `INSERT INTO showtimes (
-      id, movie_id, session_date, session_time, date_label, cinema, room, created_by, created_at
+      id, movie_id, session_date, session_time, date_label, cinema, room,
+      capacity, price, created_by, created_at
     ) VALUES (
-      @id, @movie_id, @session_date, @session_time, @date_label, @cinema, @room, @created_by, @created_at
+      @id, @movie_id, @session_date, @session_time, @date_label, @cinema, @room,
+      @capacity, @price, @created_by, @created_at
     )`,
   ).run(row)
 
@@ -203,7 +226,8 @@ export function updateShowtime(id, input = {}) {
   const fields = normalizeSessionFields(input, current)
   db.prepare(
     `UPDATE showtimes
-     SET session_date = ?, session_time = ?, date_label = ?, cinema = ?, room = ?
+     SET session_date = ?, session_time = ?, date_label = ?, cinema = ?, room = ?,
+         capacity = ?, price = ?
      WHERE id = ?`,
   ).run(
     fields.sessionDate,
@@ -211,6 +235,8 @@ export function updateShowtime(id, input = {}) {
     fields.dateLabel,
     fields.cinema,
     fields.room,
+    fields.capacity,
+    fields.price,
     current.id,
   )
 
@@ -230,6 +256,8 @@ export function duplicateShowtime(userId, id, input = {}) {
     sessionTime: input.sessionTime || current.time,
     room: input.room || current.room,
     cinema: input.cinema || current.cinema,
+    capacity: input.capacity || current.capacity,
+    price: input.price || current.price,
     dateLabel: input.dateLabel,
   })
 }
@@ -254,15 +282,23 @@ export function deleteShowtime(id) {
 }
 
 export function buildLocalSeats(showtimeId) {
+  const showtime = getShowtime(showtimeId)
+  const capacity = showtime?.capacity || DEFAULT_CAPACITY
+  const price = showtime?.price || DEFAULT_PRICE
   const unavailable = new Set(listUnavailableSeatIds(showtimeId))
   const seats = []
+  const seatsPerRow = 10
+  const rows = Math.ceil(capacity / seatsPerRow)
 
-  for (let rowIndex = 0; rowIndex < ROW_LABELS.length; rowIndex += 1) {
-    const row = ROW_LABELS[rowIndex]
-    for (let n = 1; n <= SEATS_PER_ROW; n += 1) {
-      const index = rowIndex * SEATS_PER_ROW + (n - 1)
+  for (let rowIndex = 0; rowIndex < rows; rowIndex += 1) {
+    const row = String.fromCharCode(65 + (rowIndex % 26))
+    for (let n = 1; n <= seatsPerRow; n += 1) {
+      const index = rowIndex * seatsPerRow + (n - 1)
+      if (index >= capacity) break
       const id = `${showtimeId}_s${index + 1}`
-      const ticketType = rowIndex >= 4 ? 'vip' : rowIndex >= 2 ? 'premium' : 'basic'
+      const ticketType =
+        rowIndex >= rows - 1 ? 'vip' : rowIndex >= Math.floor(rows / 2) ? 'premium' : 'basic'
+      const multiplier = ticketType === 'vip' ? 1.5 : ticketType === 'premium' ? 1.2 : 1
       seats.push({
         id,
         name: String(n),
@@ -270,6 +306,7 @@ export function buildLocalSeats(showtimeId) {
         row,
         number: n,
         ticketType,
+        price: Math.round(price * multiplier * 100) / 100,
       })
     }
   }

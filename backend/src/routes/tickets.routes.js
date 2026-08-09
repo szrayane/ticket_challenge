@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   cancelMyTicket,
   createMyTickets,
+  getSharedTicket,
   listGateActiveSessions,
   listGateCheckIns,
   listMyTickets,
@@ -17,6 +18,7 @@ router.post(
   requireRole('portaria'),
   validateTicket,
 )
+router.get('/share/:shareToken', getSharedTicket)
 router.get(
   '/gate/sessions',
   requireAuth,

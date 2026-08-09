@@ -23,7 +23,8 @@ function mapMovie(row) {
     hero: row.hero || undefined,
     backdrop: row.backdrop || undefined,
     trailerUrl: row.trailer_url || undefined,
-    source: 'local',
+    source: row.source || 'local',
+    tmdbId: row.tmdb_id ? Number(row.tmdb_id) : undefined,
     isActive: Number(row.is_active ?? 1) === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -38,7 +39,30 @@ export function listLocalMovies({ includeInactive = false } = {}) {
           `SELECT * FROM movies WHERE is_active = 1 ORDER BY created_at DESC`,
         )
         .all()
-  return rows.map(mapMovie)
+
+  return rows.map((row) => {
+    const movie = mapMovie(row)
+    const next = db
+      .prepare(
+        `SELECT session_date, session_time, cinema, room, price, capacity
+         FROM showtimes
+         WHERE movie_id = ?
+         ORDER BY session_date ASC, session_time ASC
+         LIMIT 1`,
+      )
+      .get(row.id)
+    if (next) {
+      movie.nextSession = {
+        date: next.session_date,
+        time: next.session_time,
+        cinema: next.cinema,
+        room: next.room,
+        price: Number(next.price) || 28,
+        capacity: Number(next.capacity) || 50,
+      }
+    }
+    return movie
+  })
 }
 
 export function getLocalMovie(id, { includeInactive = true } = {}) {
@@ -99,15 +123,19 @@ export function createLocalMovie(userId, input = {}) {
     created_at: now,
     updated_at: now,
     is_active: 1,
+    tmdb_id: input.tmdbId ? Number(input.tmdbId) : null,
+    source: String(input.source || 'local'),
   }
 
   db.prepare(
     `INSERT INTO movies (
       id, title, synopsis, genre, rating, runtime, format, badge,
-      poster, hero, backdrop, trailer_url, created_by, created_at, updated_at, is_active
+      poster, hero, backdrop, trailer_url, created_by, created_at, updated_at, is_active,
+      tmdb_id, source
     ) VALUES (
       @id, @title, @synopsis, @genre, @rating, @runtime, @format, @badge,
-      @poster, @hero, @backdrop, @trailer_url, @created_by, @created_at, @updated_at, @is_active
+      @poster, @hero, @backdrop, @trailer_url, @created_by, @created_at, @updated_at, @is_active,
+      @tmdb_id, @source
     )`,
   ).run(row)
 

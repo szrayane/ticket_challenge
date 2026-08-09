@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node tests/qr.test.js && node tests/tickets-flow.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -1,8 +1,14 @@
+import { randomBytes } from 'node:crypto'
 import { db } from '../db/index.js'
 import {
   assertSeatsAvailable,
   releaseSeatsForHolder,
 } from './seats.service.js'
+import {
+  buildSignedQrPayload,
+  createShareToken,
+  verifySignedQrPayload,
+} from './qr.service.js'
 
 function isUniqueSeatConflict(error) {
   const message = String(error?.message || '')
@@ -12,6 +18,10 @@ function isUniqueSeatConflict(error) {
       message.includes('tickets.session_id') ||
       message.includes('tickets.seat_id'))
   )
+}
+
+function createId(prefix) {
+  return `${prefix}_${randomBytes(10).toString('hex')}`
 }
 
 function mapTicket(row) {
@@ -39,6 +49,8 @@ function mapTicket(row) {
     orderId: row.order_id || row.id,
     checkedInAt: row.checked_in_at || undefined,
     checkedInBy: row.checked_in_by || undefined,
+    shareToken: row.share_token || undefined,
+    sharePath: row.share_token ? `/i/${row.share_token}` : undefined,
   }
 }
 
@@ -94,12 +106,12 @@ export function createTickets(user, tickets, { holderKey } = {}) {
       id, user_id, user_email, movie_id, movie_title, movie_poster,
       session_id, session_date, session_time, cinema, room,
       seat_id, seat_label, cpf, payment_method, qr_payload,
-      purchased_at, total_paid, status, cancelled_at, order_id
+      purchased_at, total_paid, status, cancelled_at, order_id, share_token
     ) VALUES (
       @id, @user_id, @user_email, @movie_id, @movie_title, @movie_poster,
       @session_id, @session_date, @session_time, @cinema, @room,
       @seat_id, @seat_label, @cpf, @payment_method, @qr_payload,
-      @purchased_at, @total_paid, @status, @cancelled_at, @order_id
+      @purchased_at, @total_paid, @status, @cancelled_at, @order_id, @share_token
     )
   `)
 
@@ -135,8 +147,23 @@ export function createTickets(user, tickets, { holderKey } = {}) {
     }
 
     for (const ticket of tickets) {
+      const id = String(ticket.id || createId('tkt'))
+      const shareToken = createShareToken()
+      const qrPayload = buildSignedQrPayload({
+        ticketId: id,
+        userId: user.id,
+        userEmail: user.email,
+        cpf: String(ticket.cpf ?? ''),
+        movieTitle: String(ticket.movieTitle ?? ''),
+        sessionDate: String(ticket.sessionDate ?? ''),
+        sessionTime: String(ticket.sessionTime ?? ''),
+        cinema: String(ticket.cinema ?? ''),
+        room: String(ticket.room ?? ''),
+        seatLabel: String(ticket.seatLabel ?? ''),
+      })
+
       const row = {
-        id: String(ticket.id),
+        id,
         user_id: user.id,
         user_email: user.email,
         movie_id: String(ticket.movieId ?? ''),
@@ -151,12 +178,13 @@ export function createTickets(user, tickets, { holderKey } = {}) {
         seat_label: String(ticket.seatLabel ?? ''),
         cpf: String(ticket.cpf ?? ''),
         payment_method: String(ticket.paymentMethod ?? 'credit_card'),
-        qr_payload: String(ticket.qrPayload ?? ''),
+        qr_payload: qrPayload,
         purchased_at: String(ticket.purchasedAt ?? new Date().toISOString()),
         total_paid: Number(ticket.totalPaid) || 0,
         status: 'active',
         cancelled_at: null,
-        order_id: String(ticket.orderId ?? ticket.id),
+        order_id: String(ticket.orderId ?? id),
+        share_token: shareToken,
       }
       insert.run(row)
       created.push(mapTicket(row))
@@ -228,10 +256,23 @@ export function cancelTicketForUser(userId, ticketId) {
 }
 
 export function parseTicketIdFromQr(qrPayload) {
+  const verified = verifySignedQrPayload(qrPayload)
+  if (verified.ok && verified.ticketId) return verified.ticketId
+
+  // Legacy tickets without SIG still parse ID, but gate will reject unsigned.
   const raw = String(qrPayload || '').trim()
   if (!raw) return null
   const match = raw.match(/(?:^|\|)ID:([^|]+)/)
   return match ? match[1].trim() : null
+}
+
+export function getTicketByShareToken(shareToken) {
+  const token = String(shareToken || '').trim()
+  if (!token) return null
+  const row = db
+    .prepare(`SELECT * FROM tickets WHERE share_token = ?`)
+    .get(token)
+  return row ? mapTicket(row) : null
 }
 
 export function listGateSessions({
@@ -350,7 +391,16 @@ export function validateTicketCheckIn(staffUser, qrPayload, options = {}) {
   const expectedSessionId = String(options.expectedSessionId || '').trim()
   const force = Boolean(options.force)
 
-  const ticketId = parseTicketIdFromQr(qrPayload)
+  const verified = verifySignedQrPayload(qrPayload)
+  if (!verified.ok) {
+    const err = new Error(
+      'QR inválido ou adulterado. Este código não foi emitido pela CineRay.',
+    )
+    err.status = 400
+    throw err
+  }
+
+  const ticketId = verified.ticketId
   if (!ticketId) {
     const err = new Error('QR inválido. Não foi possível ler o ID do ingresso.')
     err.status = 400
@@ -361,6 +411,15 @@ export function validateTicketCheckIn(staffUser, qrPayload, options = {}) {
   if (!row) {
     const err = new Error('Ingresso não encontrado.')
     err.status = 404
+    throw err
+  }
+
+  if (String(row.qr_payload || '') !== String(qrPayload || '').trim()) {
+    const err = new Error(
+      'QR não corresponde ao ingresso emitido (possível falsificação).',
+    )
+    err.status = 400
+    err.ticket = mapTicket(row)
     throw err
   }
 

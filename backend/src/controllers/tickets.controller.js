@@ -1,6 +1,7 @@
 import {
   cancelTicketForUser,
   createTickets,
+  getTicketByShareToken,
   listGateSessions,
   listRecentCheckIns,
   listTicketsForUser,
@@ -34,6 +35,32 @@ export function cancelMyTicket(req, res, next) {
   try {
     const ticket = cancelTicketForUser(req.user.id, req.params.id)
     res.json({ ticket })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export function getSharedTicket(req, res, next) {
+  try {
+    const ticket = getTicketByShareToken(req.params.shareToken)
+    if (!ticket || ticket.status === 'cancelled') {
+      return res.status(404).json({ message: 'Ingresso não encontrado.' })
+    }
+    res.json({
+      ticket: {
+        id: ticket.id,
+        movieTitle: ticket.movieTitle,
+        moviePoster: ticket.moviePoster,
+        sessionDate: ticket.sessionDate,
+        sessionTime: ticket.sessionTime,
+        cinema: ticket.cinema,
+        room: ticket.room,
+        seatLabel: ticket.seatLabel,
+        qrPayload: ticket.qrPayload,
+        status: ticket.status,
+        checkedInAt: ticket.checkedInAt,
+      },
+    })
   } catch (error) {
     next(error)
   }
