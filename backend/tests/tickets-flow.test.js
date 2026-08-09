@@ -1,18 +1,26 @@
 import assert from 'node:assert/strict'
-import { createShowtime, buildLocalSeats, getShowtime } from '../src/services/showtimes.service.js'
-import { db } from '../src/db/index.js'
+import 'dotenv/config'
+import { initDb, queryOne } from '../src/db/index.js'
+import {
+  createShowtime,
+  buildLocalSeats,
+  getShowtime,
+} from '../src/services/showtimes.service.js'
 import { createLocalMovie } from '../src/services/movies.service.js'
 import {
   createTickets,
   validateTicketCheckIn,
 } from '../src/services/tickets.service.js'
 
-const organizer = db
-  .prepare(`SELECT id, email, name, role FROM users WHERE email = ?`)
-  .get('organizador@cineray.com')
+await initDb()
+
+const organizer = await queryOne(
+  `SELECT id, email, name, role FROM users WHERE email = ?`,
+  ['organizador@cineray.com'],
+)
 assert.ok(organizer, 'seed organizer required')
 
-const movie = createLocalMovie(organizer.id, {
+const movie = await createLocalMovie(organizer.id, {
   title: `Teste Assentos ${Date.now()}`,
   poster: 'https://image.tmdb.org/t/p/w500/vNMPddfv47amK83lCFoBd9wXVuc.jpg',
   synopsis: 'teste',
@@ -21,7 +29,7 @@ const movie = createLocalMovie(organizer.id, {
 const tomorrow = new Date(Date.now() + 26 * 60 * 60 * 1000)
 const pad = (n) => String(n).padStart(2, '0')
 const sessionDate = `${pad(tomorrow.getDate())}/${pad(tomorrow.getMonth() + 1)}/${tomorrow.getFullYear()}`
-const session = createShowtime(organizer.id, movie.id, {
+const session = await createShowtime(organizer.id, movie.id, {
   sessionDate,
   sessionTime: '21:15',
   room: 'Sala Teste',
@@ -30,16 +38,17 @@ const session = createShowtime(organizer.id, movie.id, {
   price: 30,
 })
 
-assert.equal(getShowtime(session.id)?.capacity, 20)
-const seats = buildLocalSeats(session.id)
+assert.equal((await getShowtime(session.id))?.capacity, 20)
+const seats = await buildLocalSeats(session.id)
 assert.equal(seats.length, 20)
 
-const client = db
-  .prepare(`SELECT id, email, name, role FROM users WHERE email = ?`)
-  .get('cliente1@cineray.com')
+const client = await queryOne(
+  `SELECT id, email, name, role FROM users WHERE email = ?`,
+  ['cliente1@cineray.com'],
+)
 assert.ok(client)
 
-const [ticket] = createTickets(
+const [ticket] = await createTickets(
   { id: client.id, email: client.email },
   [
     {
@@ -63,19 +72,21 @@ const [ticket] = createTickets(
   ],
 )
 
-assert.match(ticket.qrPayload, /\|SIG:[a-f0-9]{32}$/i)
+assert.match(ticket.qrPayload, /^CR2\.[A-Za-z0-9_-]+$/)
+assert.doesNotMatch(ticket.qrPayload, /EMAIL:|CPF:|FILME:|tkt_/i)
 assert.ok(ticket.shareToken)
 
-const gate = db
-  .prepare(`SELECT id, email, name, role FROM users WHERE email = ?`)
-  .get('portaria@cineray.com')
+const gate = await queryOne(
+  `SELECT id, email, name, role FROM users WHERE email = ?`,
+  ['portaria@cineray.com'],
+)
 
-const ok = validateTicketCheckIn(gate, ticket.qrPayload)
+const ok = await validateTicketCheckIn(gate, ticket.qrPayload)
 assert.equal(ok.ok, true)
 
 let rejected = false
 try {
-  validateTicketCheckIn(gate, ticket.qrPayload)
+  await validateTicketCheckIn(gate, ticket.qrPayload)
 } catch (error) {
   rejected = true
   assert.match(String(error.message), /já utilizado/i)
@@ -84,10 +95,11 @@ assert.equal(rejected, true)
 
 let forged = false
 try {
-  validateTicketCheckIn(gate, ticket.qrPayload.replace(/SIG:[a-f0-9]+$/i, 'SIG:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'))
+  await validateTicketCheckIn(gate, ticket.qrPayload.slice(0, -6) + 'AAAAAA')
 } catch {
   forged = true
 }
 assert.equal(forged, true)
 
 console.log('tickets-flow.test.js ok')
+process.exit(0)

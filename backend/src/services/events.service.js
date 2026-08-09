@@ -17,7 +17,7 @@ export async function createEventFromTmdb(userId, input = {}) {
     throw err
   }
 
-  const movie = createLocalMovie(userId, {
+  const movie = await createLocalMovie(userId, {
     title: remote.title,
     synopsis: remote.synopsis,
     genre: remote.genre,
@@ -32,7 +32,7 @@ export async function createEventFromTmdb(userId, input = {}) {
     source: 'tmdb',
   })
 
-  const session = createShowtime(userId, movie.id, {
+  const session = await createShowtime(userId, movie.id, {
     sessionDate: input.sessionDate,
     sessionTime: input.sessionTime,
     cinema: input.cinema || 'CineRay',

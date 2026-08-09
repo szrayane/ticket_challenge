@@ -312,7 +312,7 @@ export function TicketQrCard({
               </button>
             </div>
             <p className="break-all rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-[11px] leading-relaxed text-on-surface-variant">
-              {ticket.qrPayload}
+              Token cifrado (AES-GCM): {ticket.qrPayload}
             </p>
           </div>
         )}

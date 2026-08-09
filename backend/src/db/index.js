@@ -1,237 +1,165 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { randomBytes, scryptSync } from 'node:crypto'
-import { DatabaseSync } from 'node:sqlite'
+import {
+  createPoolFromEnv,
+  execute,
+  queryOne,
+  setPool,
+} from './client.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const dataDir = path.resolve(__dirname, '../../data')
-const dbPath = path.join(dataDir, 'cineray.sqlite')
+const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(64) PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  name VARCHAR(255) NOT NULL,
+  cpf VARCHAR(32) NULL,
+  password_hash VARCHAR(128) NOT NULL,
+  password_salt VARCHAR(64) NOT NULL,
+  created_at VARCHAR(40) NOT NULL,
+  role VARCHAR(32) NOT NULL DEFAULT 'cliente'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-fs.mkdirSync(dataDir, { recursive: true })
+CREATE TABLE IF NOT EXISTS sessions (
+  token VARCHAR(128) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  created_at VARCHAR(40) NOT NULL,
+  CONSTRAINT fk_sessions_user
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_sessions_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-export const db = new DatabaseSync(dbPath)
+CREATE TABLE IF NOT EXISTS movies (
+  id VARCHAR(64) PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  synopsis TEXT NOT NULL,
+  genre VARCHAR(255) NOT NULL DEFAULT '',
+  rating DOUBLE NOT NULL DEFAULT 0,
+  runtime VARCHAR(64) NOT NULL DEFAULT '',
+  format VARCHAR(64) NULL,
+  badge VARCHAR(64) NULL,
+  poster TEXT NOT NULL,
+  hero TEXT NULL,
+  backdrop TEXT NULL,
+  trailer_url TEXT NULL,
+  created_by VARCHAR(64) NULL,
+  created_at VARCHAR(40) NOT NULL,
+  updated_at VARCHAR(40) NOT NULL,
+  is_active TINYINT NOT NULL DEFAULT 1,
+  tmdb_id INT NULL,
+  source VARCHAR(32) NOT NULL DEFAULT 'local',
+  CONSTRAINT fk_movies_user
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-db.exec(`
-  PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS showtimes (
+  id VARCHAR(64) PRIMARY KEY,
+  movie_id VARCHAR(64) NOT NULL,
+  session_date VARCHAR(16) NOT NULL,
+  session_time VARCHAR(8) NOT NULL,
+  date_label VARCHAR(128) NOT NULL,
+  cinema VARCHAR(128) NOT NULL DEFAULT 'CineRay',
+  room VARCHAR(64) NOT NULL,
+  capacity INT NOT NULL DEFAULT 50,
+  price DECIMAL(10,2) NOT NULL DEFAULT 28,
+  created_by VARCHAR(64) NULL,
+  created_at VARCHAR(40) NOT NULL,
+  CONSTRAINT fk_showtimes_movie
+    FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE,
+  CONSTRAINT fk_showtimes_user
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_showtimes_movie (movie_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-  CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    email TEXT NOT NULL UNIQUE,
-    name TEXT NOT NULL,
-    cpf TEXT,
-    password_hash TEXT NOT NULL,
-    password_salt TEXT NOT NULL,
-    created_at TEXT NOT NULL
-  );
+CREATE TABLE IF NOT EXISTS tickets (
+  id VARCHAR(64) PRIMARY KEY,
+  user_id VARCHAR(64) NOT NULL,
+  user_email VARCHAR(255) NOT NULL,
+  movie_id VARCHAR(64) NOT NULL,
+  movie_title VARCHAR(255) NOT NULL,
+  movie_poster TEXT NOT NULL,
+  session_id VARCHAR(64) NOT NULL,
+  session_date VARCHAR(64) NOT NULL,
+  session_time VARCHAR(16) NOT NULL,
+  cinema VARCHAR(128) NOT NULL,
+  room VARCHAR(64) NOT NULL,
+  seat_id VARCHAR(128) NOT NULL,
+  seat_label VARCHAR(32) NOT NULL,
+  cpf VARCHAR(32) NOT NULL,
+  payment_method VARCHAR(64) NOT NULL,
+  qr_payload TEXT NOT NULL,
+  purchased_at VARCHAR(40) NOT NULL,
+  total_paid DECIMAL(10,2) NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'active',
+  cancelled_at VARCHAR(40) NULL,
+  order_id VARCHAR(64) NULL,
+  checked_in_at VARCHAR(40) NULL,
+  checked_in_by VARCHAR(64) NULL,
+  share_token VARCHAR(64) NULL,
+  active_slot VARCHAR(256)
+    GENERATED ALWAYS AS (
+      CASE
+        WHEN status = 'active' THEN CONCAT(session_id, ':', seat_id)
+        ELSE NULL
+      END
+    ) STORED,
+  CONSTRAINT fk_tickets_user
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY uk_tickets_active_slot (active_slot),
+  UNIQUE KEY uk_tickets_share_token (share_token),
+  INDEX idx_tickets_user (user_id),
+  INDEX idx_tickets_order (order_id),
+  INDEX idx_tickets_session (session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-  CREATE TABLE IF NOT EXISTS sessions (
-    token TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  );
+CREATE TABLE IF NOT EXISTS seat_holds (
+  session_id VARCHAR(64) NOT NULL,
+  seat_id VARCHAR(128) NOT NULL,
+  holder_key VARCHAR(128) NOT NULL,
+  expires_at VARCHAR(40) NOT NULL,
+  PRIMARY KEY (session_id, seat_id),
+  INDEX idx_seat_holds_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+`
 
-  CREATE TABLE IF NOT EXISTS tickets (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    user_email TEXT NOT NULL,
-    movie_id TEXT NOT NULL,
-    movie_title TEXT NOT NULL,
-    movie_poster TEXT NOT NULL,
-    session_id TEXT NOT NULL,
-    session_date TEXT NOT NULL,
-    session_time TEXT NOT NULL,
-    cinema TEXT NOT NULL,
-    room TEXT NOT NULL,
-    seat_id TEXT NOT NULL,
-    seat_label TEXT NOT NULL,
-    cpf TEXT NOT NULL,
-    payment_method TEXT NOT NULL,
-    qr_payload TEXT NOT NULL,
-    purchased_at TEXT NOT NULL,
-    total_paid REAL NOT NULL,
-    status TEXT NOT NULL DEFAULT 'active',
-    cancelled_at TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_tickets_user ON tickets(user_id);
-  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-
-  CREATE TABLE IF NOT EXISTS seat_holds (
-    session_id TEXT NOT NULL,
-    seat_id TEXT NOT NULL,
-    holder_key TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    PRIMARY KEY (session_id, seat_id)
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_seat_holds_expires ON seat_holds(expires_at);
-`)
-
-function ensureColumn(table, column, definition) {
-  const cols = db.prepare(`PRAGMA table_info(${table})`).all()
-  if (!cols.some((col) => col.name === column)) {
-    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+async function waitForMysql(pool, attempts = 30) {
+  let lastError
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      await pool.query('SELECT 1')
+      return
+    } catch (error) {
+      lastError = error
+      await new Promise((r) => setTimeout(r, 1000))
+    }
   }
+  throw lastError || new Error('MySQL indisponível')
 }
 
-ensureColumn('tickets', 'status', "TEXT NOT NULL DEFAULT 'active'")
-ensureColumn('tickets', 'cancelled_at', 'TEXT')
-ensureColumn('tickets', 'order_id', 'TEXT')
-ensureColumn('tickets', 'checked_in_at', 'TEXT')
-ensureColumn('tickets', 'checked_in_by', 'TEXT')
-ensureColumn('users', 'role', "TEXT NOT NULL DEFAULT 'cliente'")
-
-db.exec(`
-  UPDATE tickets SET status = 'active' WHERE status IS NULL OR status = '';
-`)
-
-db.exec(`
-  UPDATE tickets
-  SET order_id = id
-  WHERE order_id IS NULL OR order_id = '';
-`)
-
-db.exec(`
-  UPDATE users SET role = 'cliente' WHERE role IS NULL OR role = '';
-`)
-
-db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_tickets_order ON tickets(order_id);
-`)
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS movies (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    synopsis TEXT NOT NULL DEFAULT '',
-    genre TEXT NOT NULL DEFAULT '',
-    rating REAL NOT NULL DEFAULT 0,
-    runtime TEXT NOT NULL DEFAULT '',
-    format TEXT,
-    badge TEXT,
-    poster TEXT NOT NULL,
-    hero TEXT,
-    backdrop TEXT,
-    trailer_url TEXT,
-    created_by TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    FOREIGN KEY (created_by) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS showtimes (
-    id TEXT PRIMARY KEY,
-    movie_id TEXT NOT NULL,
-    session_date TEXT NOT NULL,
-    session_time TEXT NOT NULL,
-    date_label TEXT NOT NULL,
-    cinema TEXT NOT NULL DEFAULT 'CineRay',
-    room TEXT NOT NULL,
-    created_by TEXT,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES users(id)
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_showtimes_movie ON showtimes(movie_id);
-`)
-
-ensureColumn('movies', 'is_active', 'INTEGER NOT NULL DEFAULT 1')
-ensureColumn('movies', 'tmdb_id', 'INTEGER')
-ensureColumn('movies', 'source', "TEXT NOT NULL DEFAULT 'local'")
-ensureColumn('showtimes', 'capacity', 'INTEGER NOT NULL DEFAULT 50')
-ensureColumn('showtimes', 'price', 'REAL NOT NULL DEFAULT 28')
-ensureColumn('tickets', 'share_token', 'TEXT')
-
-db.exec(`
-  UPDATE movies SET is_active = 1 WHERE is_active IS NULL;
-  UPDATE showtimes SET capacity = 50 WHERE capacity IS NULL OR capacity = 0;
-  UPDATE showtimes SET price = 28 WHERE price IS NULL OR price = 0;
-`)
-
-db.exec(`
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_share_token
-  ON tickets(share_token)
-  WHERE share_token IS NOT NULL AND share_token != '';
-`)
-
-// Keep one active ticket per seat/session if legacy duplicates exist.
-db.exec(`
-  UPDATE tickets
-  SET status = 'cancelled',
-      cancelled_at = COALESCE(cancelled_at, datetime('now'))
-  WHERE status = 'active'
-    AND rowid NOT IN (
-      SELECT MIN(rowid)
-      FROM tickets
-      WHERE status = 'active'
-      GROUP BY session_id, seat_id
-    );
-`)
-
-// Hard concurrency guard: only one active ticket per seat in a session.
-db.exec(`
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_session_seat_active
-  ON tickets(session_id, seat_id)
-  WHERE status = 'active';
-`)
-
-function seedUser({ id, email, name, role, password }) {
+async function seedUser({ id, email, name, role, password }) {
   const salt = randomBytes(16).toString('hex')
   const hash = scryptSync(password, salt, 64).toString('hex')
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email)
+  const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email])
   if (existing) {
-    // Keep demo passwords in sync with README / login hints.
-    db.prepare(
+    await execute(
       `UPDATE users
        SET role = ?, name = ?, password_hash = ?, password_salt = ?
        WHERE email = ?`,
-    ).run(role, name, hash, salt, email)
+      [role, name, hash, salt, email],
+    )
     return existing.id
   }
-  db.prepare(
+  await execute(
     `INSERT INTO users (id, email, name, cpf, password_hash, password_salt, created_at, role)
      VALUES (?, ?, ?, NULL, ?, ?, ?, ?)`,
-  ).run(id, email, name, hash, salt, new Date().toISOString(), role)
+    [id, email, name, hash, salt, new Date().toISOString(), role],
+  )
   return id
 }
 
-const organizerId = seedUser({
-  id: 'usr_organizador_demo',
-  email: 'organizador@cineray.com',
-  name: 'Ana Organizadora',
-  role: 'organizador',
-  password: 'org1234',
-})
-seedUser({
-  id: 'usr_cliente_demo_1',
-  email: 'cliente1@cineray.com',
-  name: 'Bruno Cliente',
-  role: 'cliente',
-  password: 'cli1234',
-})
-seedUser({
-  id: 'usr_cliente_demo_2',
-  email: 'cliente2@cineray.com',
-  name: 'Carla Cliente',
-  role: 'cliente',
-  password: 'cli1234',
-})
-seedUser({
-  id: 'usr_portaria_demo',
-  email: 'portaria@cineray.com',
-  name: 'Diego Portaria',
-  role: 'portaria',
-  password: 'porta1234',
-})
-
-function seedPublishedEvent() {
-  const existing = db
-    .prepare(`SELECT id FROM movies WHERE id = ? OR tmdb_id = ?`)
-    .get('mov_seed_dune', 693134)
+async function seedPublishedEvent(organizerId) {
+  const existing = await queryOne(
+    `SELECT id FROM movies WHERE id = ? OR tmdb_id = ?`,
+    ['mov_seed_dune', 693134],
+  )
   if (existing) return
 
   const movieId = 'mov_seed_dune'
@@ -247,53 +175,108 @@ function seedPublishedEvent() {
   const backdrop =
     'https://image.tmdb.org/t/p/w1280/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg'
 
-  db.prepare(
+  await execute(
     `INSERT INTO movies (
       id, title, synopsis, genre, rating, runtime, format, badge,
       poster, hero, backdrop, trailer_url, created_by, created_at, updated_at,
       is_active, tmdb_id, source
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 1, ?, ?)`,
-  ).run(
-    movieId,
-    'Duna: Parte Dois',
-    'Paul Atreides se une a Chani e aos Fremen enquanto busca vingança contra os conspiradores que destruíram sua família.',
-    'Ficção científica, Aventura',
-    8.3,
-    '166 min',
-    '2D',
-    'TMDb',
-    poster,
-    backdrop,
-    backdrop,
-    organizerId,
-    now,
-    now,
-    693134,
-    'tmdb',
+    [
+      movieId,
+      'Duna: Parte Dois',
+      'Paul Atreides se une a Chani e aos Fremen enquanto busca vingança contra os conspiradores que destruíram sua família.',
+      'Ficção científica, Aventura',
+      8.3,
+      '166 min',
+      '2D',
+      'TMDb',
+      poster,
+      backdrop,
+      backdrop,
+      organizerId,
+      now,
+      now,
+      693134,
+      'tmdb',
+    ],
   )
 
-  db.prepare(
+  await execute(
     `INSERT INTO showtimes (
       id, movie_id, session_date, session_time, date_label, cinema, room,
       capacity, price, created_by, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    showtimeId,
-    movieId,
-    sessionDate,
-    sessionTime,
-    `${weekday}, ${sessionDate}`,
-    'CineRay Centro',
-    'Sala 1',
-    40,
-    32,
-    organizerId,
-    now,
+    [
+      showtimeId,
+      movieId,
+      sessionDate,
+      sessionTime,
+      `${weekday}, ${sessionDate}`,
+      'CineRay Centro',
+      'Sala 1',
+      40,
+      32,
+      organizerId,
+      now,
+    ],
   )
 }
 
-try {
-  seedPublishedEvent()
-} catch (error) {
-  console.warn('[seed] evento publicado:', error.message)
+export async function initDb() {
+  const pool = createPoolFromEnv()
+  setPool(pool)
+  await waitForMysql(pool)
+
+  for (const statement of SCHEMA_SQL.split(';')
+    .map((s) => s.trim())
+    .filter(Boolean)) {
+    await pool.query(statement)
+  }
+
+  const organizerId = await seedUser({
+    id: 'usr_organizador_demo',
+    email: 'organizador@cineray.com',
+    name: 'Ana Organizadora',
+    role: 'organizador',
+    password: 'org1234',
+  })
+  await seedUser({
+    id: 'usr_cliente_demo_1',
+    email: 'cliente1@cineray.com',
+    name: 'Bruno Cliente',
+    role: 'cliente',
+    password: 'cli1234',
+  })
+  await seedUser({
+    id: 'usr_cliente_demo_2',
+    email: 'cliente2@cineray.com',
+    name: 'Carla Cliente',
+    role: 'cliente',
+    password: 'cli1234',
+  })
+  await seedUser({
+    id: 'usr_portaria_demo',
+    email: 'portaria@cineray.com',
+    name: 'Diego Portaria',
+    role: 'portaria',
+    password: 'porta1234',
+  })
+
+  try {
+    await seedPublishedEvent(organizerId)
+  } catch (error) {
+    console.warn('[seed] evento publicado:', error.message)
+  }
+
+  return pool
 }
+
+// Re-export helpers for services
+export {
+  execute,
+  getPool,
+  isDuplicateKeyError,
+  query,
+  queryOne,
+  withTransaction,
+} from './client.js'

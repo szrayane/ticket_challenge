@@ -7,26 +7,34 @@ function readToken(req) {
     : String(req.headers['x-auth-token'] || '').trim()
 }
 
-export function optionalAuth(req, _res, next) {
-  const token = readToken(req)
-  const user = token ? getUserByToken(token) : null
-  if (user) {
-    req.user = user
-    req.token = token
+export async function optionalAuth(req, _res, next) {
+  try {
+    const token = readToken(req)
+    const user = token ? await getUserByToken(token) : null
+    if (user) {
+      req.user = user
+      req.token = token
+    }
+    next()
+  } catch (error) {
+    next(error)
   }
-  next()
 }
 
-export function requireAuth(req, res, next) {
-  const token = readToken(req)
-  const user = getUserByToken(token)
-  if (!user) {
-    return res.status(401).json({ message: 'Faça login para continuar.' })
-  }
+export async function requireAuth(req, res, next) {
+  try {
+    const token = readToken(req)
+    const user = await getUserByToken(token)
+    if (!user) {
+      return res.status(401).json({ message: 'Faça login para continuar.' })
+    }
 
-  req.user = user
-  req.token = token
-  next()
+    req.user = user
+    req.token = token
+    next()
+  } catch (error) {
+    next(error)
+  }
 }
 
 export function requireRole(...roles) {

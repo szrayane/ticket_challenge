@@ -1,20 +1,17 @@
 # Deploy CineRay (Vercel + Render)
 
-Objetivo: front na **Vercel** (+1 do desafio) e API no **Render** (Express + SQLite com disco).
+Objetivo: front na **Vercel** (+1 do desafio) e API no **Render** (Express + MySQL).
 
 ## 1) API no Render
 
 1. Crie conta em [render.com](https://render.com)
-2. **New → Blueprint** e aponte para o repo (usa `render.yaml`),  
-   ou **New → Web Service**:
+2. **New → MySQL** (ou banco externo: Aiven, PlanetScale, RDS) e anote host/porta/user/senha/database
+3. **New → Web Service** (ou Blueprint com `render.yaml`):
    - Root Directory: `backend`
    - Build: `npm install`
    - Start: `npm start`
-3. Adicione **Persistent Disk**:
-   - Mount path: `/opt/render/project/src/backend/data`  
-     (ou o path absoluto equivalente ao `backend/data` do serviço)
-   - Size: 1 GB
 4. Environment:
+   - `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`
    - `TMDB_API_KEY`
    - `TICKET_QR_SECRET` (valor longo aleatório)
    - `STAFF_INVITE_CODE`
@@ -22,6 +19,8 @@ Objetivo: front na **Vercel** (+1 do desafio) e API no **Render** (Express + SQL
 5. Copie a URL pública, ex.: `https://cineray-api.onrender.com`
 
 Teste: `https://SUA-API/health` → `{"status":"ok"}`
+
+> Não use mais disco persistente para SQLite — o banco é MySQL.
 
 ## 2) Front na Vercel
 
@@ -43,11 +42,16 @@ No README do formulário Elite Dev, cole:
 
 - [ ] Login com `cliente1@cineray.com` / `cli1234`
 - [ ] Ver evento seed na home
-- [ ] Comprar assento e abrir QR
+- [ ] Comprar assento e abrir QR (`CR2.…` cifrado)
 - [ ] Abrir link `/i/...`
 - [ ] Login portaria e validar QR
 - [ ] Organizador com `TMDB_API_KEY` busca/publica filme
 
 ## Alternativa tudo-em-um
 
-Railway/Render com Docker Compose também funciona, mas para o +1 explícito do PDF o front na Vercel é o caminho mais claro.
+```bash
+docker compose up --build
+# ou: docker-compose up --build
+```
+
+Sobe MySQL + API + front (ver README).

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { db } from '../db/index.js'
+import { execute, query, queryOne } from '../db/index.js'
 
 function nowIso() {
   return new Date().toISOString()
@@ -31,26 +31,24 @@ function mapMovie(row) {
   }
 }
 
-export function listLocalMovies({ includeInactive = false } = {}) {
+export async function listLocalMovies({ includeInactive = false } = {}) {
   const rows = includeInactive
-    ? db.prepare(`SELECT * FROM movies ORDER BY created_at DESC`).all()
-    : db
-        .prepare(
-          `SELECT * FROM movies WHERE is_active = 1 ORDER BY created_at DESC`,
-        )
-        .all()
-
-  return rows.map((row) => {
-    const movie = mapMovie(row)
-    const next = db
-      .prepare(
-        `SELECT session_date, session_time, cinema, room, price, capacity
-         FROM showtimes
-         WHERE movie_id = ?
-         ORDER BY session_date ASC, session_time ASC
-         LIMIT 1`,
+    ? await query(`SELECT * FROM movies ORDER BY created_at DESC`)
+    : await query(
+        `SELECT * FROM movies WHERE is_active = 1 ORDER BY created_at DESC`,
       )
-      .get(row.id)
+
+  const movies = []
+  for (const row of rows) {
+    const movie = mapMovie(row)
+    const next = await queryOne(
+      `SELECT session_date, session_time, cinema, room, price, capacity
+       FROM showtimes
+       WHERE movie_id = ?
+       ORDER BY session_date ASC, session_time ASC
+       LIMIT 1`,
+      [row.id],
+    )
     if (next) {
       movie.nextSession = {
         date: next.session_date,
@@ -61,37 +59,36 @@ export function listLocalMovies({ includeInactive = false } = {}) {
         capacity: Number(next.capacity) || 50,
       }
     }
-    return movie
-  })
+    movies.push(movie)
+  }
+  return movies
 }
 
-export function getLocalMovie(id, { includeInactive = true } = {}) {
-  const row = db.prepare(`SELECT * FROM movies WHERE id = ?`).get(String(id))
+export async function getLocalMovie(id, { includeInactive = true } = {}) {
+  const row = await queryOne(`SELECT * FROM movies WHERE id = ?`, [String(id)])
   if (!row) return null
   const movie = mapMovie(row)
   if (!includeInactive && !movie.isActive) return null
   return movie
 }
 
-export function countActiveTicketsForMovie(movieId) {
-  const showtimeIds = db
-    .prepare(`SELECT id FROM showtimes WHERE movie_id = ?`)
-    .all(String(movieId))
-    .map((row) => row.id)
+export async function countActiveTicketsForMovie(movieId) {
+  const showtimeIds = (
+    await query(`SELECT id FROM showtimes WHERE movie_id = ?`, [String(movieId)])
+  ).map((row) => row.id)
   if (showtimeIds.length === 0) return 0
 
   const placeholders = showtimeIds.map(() => '?').join(', ')
-  const row = db
-    .prepare(
-      `SELECT COUNT(*) AS total
-       FROM tickets
-       WHERE status = 'active' AND session_id IN (${placeholders})`,
-    )
-    .get(...showtimeIds)
+  const row = await queryOne(
+    `SELECT COUNT(*) AS total
+     FROM tickets
+     WHERE status = 'active' AND session_id IN (${placeholders})`,
+    showtimeIds,
+  )
   return Number(row?.total) || 0
 }
 
-export function createLocalMovie(userId, input = {}) {
+export async function createLocalMovie(userId, input = {}) {
   const title = String(input.title || '').trim()
   const poster = String(input.poster || '').trim()
   if (!title) {
@@ -127,23 +124,39 @@ export function createLocalMovie(userId, input = {}) {
     source: String(input.source || 'local'),
   }
 
-  db.prepare(
+  await execute(
     `INSERT INTO movies (
       id, title, synopsis, genre, rating, runtime, format, badge,
       poster, hero, backdrop, trailer_url, created_by, created_at, updated_at, is_active,
       tmdb_id, source
-    ) VALUES (
-      @id, @title, @synopsis, @genre, @rating, @runtime, @format, @badge,
-      @poster, @hero, @backdrop, @trailer_url, @created_by, @created_at, @updated_at, @is_active,
-      @tmdb_id, @source
-    )`,
-  ).run(row)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      row.id,
+      row.title,
+      row.synopsis,
+      row.genre,
+      row.rating,
+      row.runtime,
+      row.format,
+      row.badge,
+      row.poster,
+      row.hero,
+      row.backdrop,
+      row.trailer_url,
+      row.created_by,
+      row.created_at,
+      row.updated_at,
+      row.is_active,
+      row.tmdb_id,
+      row.source,
+    ],
+  )
 
   return mapMovie(row)
 }
 
-export function updateLocalMovie(id, input = {}) {
-  const current = db.prepare(`SELECT * FROM movies WHERE id = ?`).get(String(id))
+export async function updateLocalMovie(id, input = {}) {
+  const current = await queryOne(`SELECT * FROM movies WHERE id = ?`, [String(id)])
   if (!current) {
     const err = new Error('Filme não encontrado.')
     err.status = 404
@@ -184,39 +197,40 @@ export function updateLocalMovie(id, input = {}) {
     throw err
   }
 
-  db.prepare(
+  await execute(
     `UPDATE movies SET
-      title = @title, synopsis = @synopsis, genre = @genre, rating = @rating,
-      runtime = @runtime, format = @format, badge = @badge, poster = @poster,
-      hero = @hero, backdrop = @backdrop, trailer_url = @trailer_url,
-      is_active = @is_active, updated_at = @updated_at
-     WHERE id = @id`,
-  ).run({
-    id: current.id,
-    title: next.title,
-    synopsis: next.synopsis,
-    genre: next.genre,
-    rating: next.rating,
-    runtime: next.runtime,
-    format: next.format,
-    badge: next.badge,
-    poster: next.poster,
-    hero: next.hero,
-    backdrop: next.backdrop,
-    trailer_url: next.trailer_url,
-    is_active: next.is_active,
-    updated_at: next.updated_at,
-  })
+      title = ?, synopsis = ?, genre = ?, rating = ?,
+      runtime = ?, format = ?, badge = ?, poster = ?,
+      hero = ?, backdrop = ?, trailer_url = ?,
+      is_active = ?, updated_at = ?
+     WHERE id = ?`,
+    [
+      next.title,
+      next.synopsis,
+      next.genre,
+      next.rating,
+      next.runtime,
+      next.format,
+      next.badge,
+      next.poster,
+      next.hero,
+      next.backdrop,
+      next.trailer_url,
+      next.is_active,
+      next.updated_at,
+      current.id,
+    ],
+  )
 
   return mapMovie(next)
 }
 
-export function setMovieActive(id, isActive) {
+export async function setMovieActive(id, isActive) {
   return updateLocalMovie(id, { isActive: Boolean(isActive) })
 }
 
-export function deleteLocalMovie(id) {
-  const sold = countActiveTicketsForMovie(id)
+export async function deleteLocalMovie(id) {
+  const sold = await countActiveTicketsForMovie(id)
   if (sold > 0) {
     const err = new Error(
       `Não é possível excluir: há ${sold} ingresso(s) ativo(s). Desative o filme no catálogo.`,
@@ -225,8 +239,8 @@ export function deleteLocalMovie(id) {
     throw err
   }
 
-  const result = db.prepare(`DELETE FROM movies WHERE id = ?`).run(String(id))
-  if (result.changes === 0) {
+  const result = await execute(`DELETE FROM movies WHERE id = ?`, [String(id)])
+  if ((result.affectedRows || 0) === 0) {
     const err = new Error('Filme não encontrado.')
     err.status = 404
     throw err

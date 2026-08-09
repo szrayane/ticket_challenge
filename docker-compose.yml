@@ -1,4 +1,22 @@
 services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: cineray
+      MYSQL_USER: cineray
+      MYSQL_PASSWORD: cineray
+    ports:
+      - "3306:3306"
+    volumes:
+      - cineray-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   api:
     build:
       context: ./backend
@@ -10,8 +28,14 @@ services:
       STAFF_INVITE_CODE: cineray-staff
       TICKET_QR_SECRET: cineray-qr-compose-secret
       TMDB_API_KEY: ${TMDB_API_KEY:-}
-    volumes:
-      - cineray-data:/app/data
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: cineray
+      MYSQL_PASSWORD: cineray
+      MYSQL_DATABASE: cineray
+    depends_on:
+      mysql:
+        condition: service_healthy
     restart: unless-stopped
 
   web:
@@ -26,4 +50,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  cineray-data:
+  cineray-mysql:

@@ -223,18 +223,8 @@ export function CheckoutPage() {
         totalPaid: perSeatShare,
         status: 'active' as const,
         orderId,
-        qrPayload: buildTicketQrPayload({
-          ticketId,
-          userId: user.id,
-          userEmail: user.email,
-          movieTitle: movie.title,
-          sessionDate: session.dateLabel,
-          sessionTime: session.time,
-          cinema: session.cinema,
-          room: session.room,
-          seatLabel,
-          cpf: cpfDigits,
-        }) + `|AUTH:${authorizationId}|ORDER:${orderId}`,
+        // Backend sobrescreve com QR opaco assinado (CR1.<id>.<sig>).
+        qrPayload: buildTicketQrPayload(ticketId),
       }
     })
   }
@@ -251,9 +241,10 @@ export function CheckoutPage() {
       throw new Error('Nenhum ingresso para emitir')
     }
 
-    // Fonte da verdade local: só emite ingresso se o SQLite aceitar o assento.
+    // Fonte da verdade: QR opaco vem do backend (não do payload do cliente).
+    let savedTickets = tickets
     try {
-      await addTickets(tickets, { holderKey: getHoldClientId() })
+      savedTickets = await addTickets(tickets, { holderKey: getHoldClientId() })
     } catch (error) {
       completingRef.current = false
       console.warn('[CineRay] Falha ao reservar assentos no banco.', error)
@@ -279,7 +270,7 @@ export function CheckoutPage() {
     })
 
     navigate('/success', {
-      state: { tickets, orderId: tickets[0]?.orderId },
+      state: { tickets: savedTickets, orderId: savedTickets[0]?.orderId },
     })
     resetBooking()
   }

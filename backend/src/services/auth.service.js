@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
-import { db } from '../db/index.js'
+import { execute, queryOne } from '../db/index.js'
 
 const ROLES = new Set(['cliente', 'organizador', 'portaria'])
 
@@ -38,7 +38,7 @@ function publicUser(row) {
   }
 }
 
-export function registerUser({ email, password, name }) {
+export async function registerUser({ email, password, name }) {
   return createUserAccount({
     email,
     password,
@@ -47,7 +47,7 @@ export function registerUser({ email, password, name }) {
   })
 }
 
-export function registerStaffUser({ email, password, name, role, inviteCode }) {
+export async function registerStaffUser({ email, password, name, role, inviteCode }) {
   const expected = String(process.env.STAFF_INVITE_CODE || 'cineray-staff').trim()
   const provided = String(inviteCode || '').trim()
 
@@ -77,7 +77,7 @@ export function registerStaffUser({ email, password, name, role, inviteCode }) {
   })
 }
 
-function createUserAccount({ email, password, name, role }) {
+async function createUserAccount({ email, password, name, role }) {
   const normalized = String(email || '')
     .trim()
     .toLowerCase()
@@ -100,9 +100,9 @@ function createUserAccount({ email, password, name, role }) {
     throw err
   }
 
-  const existing = db
-    .prepare('SELECT id FROM users WHERE email = ?')
-    .get(normalized)
+  const existing = await queryOne('SELECT id FROM users WHERE email = ?', [
+    normalized,
+  ])
   if (existing) {
     const err = new Error('Já existe uma conta com este e-mail.')
     err.status = 409
@@ -121,26 +121,35 @@ function createUserAccount({ email, password, name, role }) {
     role: normalizeRole(role),
   }
 
-  db.prepare(
+  await execute(
     `INSERT INTO users (id, email, name, cpf, password_hash, password_salt, created_at, role)
-     VALUES (@id, @email, @name, @cpf, @password_hash, @password_salt, @created_at, @role)`,
-  ).run(user)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      user.id,
+      user.email,
+      user.name,
+      user.cpf,
+      user.password_hash,
+      user.password_salt,
+      user.created_at,
+      user.role,
+    ],
+  )
 
-  const token = createSession(user.id)
+  const token = await createSession(user.id)
   return { user: publicUser(user), token }
 }
 
-export function loginUser({ email, password }) {
+export async function loginUser({ email, password }) {
   const normalized = String(email || '')
     .trim()
     .toLowerCase()
   const pwd = String(password || '')
 
-  const row = db
-    .prepare(
-      'SELECT id, email, name, cpf, password_hash, password_salt, role FROM users WHERE email = ?',
-    )
-    .get(normalized)
+  const row = await queryOne(
+    'SELECT id, email, name, cpf, password_hash, password_salt, role FROM users WHERE email = ?',
+    [normalized],
+  )
 
   if (!row || !verifyPassword(pwd, row.password_salt, row.password_hash)) {
     const err = new Error('E-mail ou senha inválidos.')
@@ -148,40 +157,41 @@ export function loginUser({ email, password }) {
     throw err
   }
 
-  const token = createSession(row.id)
+  const token = await createSession(row.id)
   return { user: publicUser(row), token }
 }
 
-export function createSession(userId) {
+export async function createSession(userId) {
   const token = randomBytes(32).toString('hex')
-  db.prepare(
+  await execute(
     'INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)',
-  ).run(token, userId, nowIso())
+    [token, userId, nowIso()],
+  )
   return token
 }
 
-export function getUserByToken(token) {
+export async function getUserByToken(token) {
   if (!token) return null
-  const row = db
-    .prepare(
-      `SELECT u.id, u.email, u.name, u.cpf, u.role
-       FROM sessions s
-       JOIN users u ON u.id = s.user_id
-       WHERE s.token = ?`,
-    )
-    .get(token)
+  const row = await queryOne(
+    `SELECT u.id, u.email, u.name, u.cpf, u.role
+     FROM sessions s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.token = ?`,
+    [token],
+  )
   return row ? publicUser(row) : null
 }
 
-export function logoutUser(token) {
+export async function logoutUser(token) {
   if (!token) return
-  db.prepare('DELETE FROM sessions WHERE token = ?').run(token)
+  await execute('DELETE FROM sessions WHERE token = ?', [token])
 }
 
-export function updateUserProfile(userId, { name, cpf }) {
-  const current = db
-    .prepare('SELECT id, email, name, cpf, role FROM users WHERE id = ?')
-    .get(userId)
+export async function updateUserProfile(userId, { name, cpf }) {
+  const current = await queryOne(
+    'SELECT id, email, name, cpf, role FROM users WHERE id = ?',
+    [userId],
+  )
   if (!current) {
     const err = new Error('Usuário não encontrado.')
     err.status = 404
@@ -193,11 +203,11 @@ export function updateUserProfile(userId, { name, cpf }) {
   const nextCpf =
     typeof cpf === 'string' && cpf.trim() ? cpf.trim() : current.cpf
 
-  db.prepare('UPDATE users SET name = ?, cpf = ? WHERE id = ?').run(
+  await execute('UPDATE users SET name = ?, cpf = ? WHERE id = ?', [
     nextName,
     nextCpf,
     userId,
-  )
+  ])
 
   return publicUser({
     id: current.id,
@@ -208,12 +218,11 @@ export function updateUserProfile(userId, { name, cpf }) {
   })
 }
 
-export function changeUserPassword(userId, { currentPassword, newPassword }) {
-  const row = db
-    .prepare(
-      'SELECT id, password_hash, password_salt FROM users WHERE id = ?',
-    )
-    .get(userId)
+export async function changeUserPassword(userId, { currentPassword, newPassword }) {
+  const row = await queryOne(
+    'SELECT id, password_hash, password_salt FROM users WHERE id = ?',
+    [userId],
+  )
 
   if (!row) {
     const err = new Error('Usuário não encontrado.')
@@ -243,9 +252,10 @@ export function changeUserPassword(userId, { currentPassword, newPassword }) {
   }
 
   const { salt, hash } = hashPassword(next)
-  db.prepare(
+  await execute(
     'UPDATE users SET password_hash = ?, password_salt = ? WHERE id = ?',
-  ).run(hash, salt, userId)
+    [hash, salt, userId],
+  )
 
   return { ok: true }
 }

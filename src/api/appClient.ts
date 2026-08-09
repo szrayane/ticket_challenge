@@ -49,10 +49,18 @@ export async function appRequest<T>(
     if (token) headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const response = await fetch(`${APP_API_URL}${path}`, {
-    ...init,
-    headers,
-  })
+  let response: Response
+  try {
+    response = await fetch(`${APP_API_URL}${path}`, {
+      ...init,
+      headers,
+    })
+  } catch {
+    throw new AppApiError(
+      'Não foi possível conectar à API. Confira se o backend está rodando em http://localhost:3333.',
+      0,
+    )
+  }
 
   if (!response.ok) {
     let message = `API error: ${response.status}`

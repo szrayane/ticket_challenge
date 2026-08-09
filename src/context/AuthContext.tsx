@@ -54,7 +54,7 @@ interface AuthContextValue {
   addTickets: (
     tickets: CustomerTicket[],
     options?: { holderKey?: string },
-  ) => Promise<void>
+  ) => Promise<CustomerTicket[]>
   cancelTicket: (ticketId: string) => Promise<void>
   userTickets: CustomerTicket[]
 }
@@ -163,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ) => {
       const saved = await saveMyTickets(nextTickets, options?.holderKey)
       setTickets((prev) => [...saved, ...prev])
+      return saved
     },
     [],
   )

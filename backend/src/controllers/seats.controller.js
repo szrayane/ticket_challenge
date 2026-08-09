@@ -15,10 +15,10 @@ function holderFromRequest(req) {
   ).trim()
 }
 
-export function getOccupiedSeats(req, res, next) {
+export async function getOccupiedSeats(req, res, next) {
   try {
     const holderKey = holderFromRequest(req)
-    const seatIds = listUnavailableSeatIds(req.params.sessionId, {
+    const seatIds = await listUnavailableSeatIds(req.params.sessionId, {
       excludeHolderKey: holderKey || undefined,
     })
     res.json({ sessionId: String(req.params.sessionId), seatIds })
@@ -27,21 +27,21 @@ export function getOccupiedSeats(req, res, next) {
   }
 }
 
-export function checkSeatsAvailability(req, res, next) {
+export async function checkSeatsAvailability(req, res, next) {
   try {
     const sessionId = req.body?.sessionId
     const seatIds = req.body?.seatIds || []
     const holderKey = holderFromRequest(req)
-    assertSeatsAvailable(sessionId, seatIds, { holderKey })
+    await assertSeatsAvailable(sessionId, seatIds, { holderKey })
     res.json({ available: true })
   } catch (error) {
     next(error)
   }
 }
 
-export function holdSeatController(req, res, next) {
+export async function holdSeatController(req, res, next) {
   try {
-    const result = holdSeat({
+    const result = await holdSeat({
       sessionId: req.body?.sessionId,
       seatId: req.body?.seatId,
       holderKey: holderFromRequest(req),
@@ -52,9 +52,9 @@ export function holdSeatController(req, res, next) {
   }
 }
 
-export function releaseSeatController(req, res, next) {
+export async function releaseSeatController(req, res, next) {
   try {
-    const result = releaseSeat({
+    const result = await releaseSeat({
       sessionId: req.body?.sessionId,
       seatId: req.body?.seatId,
       holderKey: holderFromRequest(req),
@@ -65,9 +65,9 @@ export function releaseSeatController(req, res, next) {
   }
 }
 
-export function refreshHoldsController(req, res, next) {
+export async function refreshHoldsController(req, res, next) {
   try {
-    const result = refreshHolds({
+    const result = await refreshHolds({
       sessionId: req.body?.sessionId,
       seatIds: req.body?.seatIds || [],
       holderKey: holderFromRequest(req),

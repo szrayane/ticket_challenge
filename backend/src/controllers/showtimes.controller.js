@@ -7,9 +7,9 @@ import {
   deleteShowtime,
 } from '../services/showtimes.service.js'
 
-export function getShowtimeSeats(req, res, next) {
+export async function getShowtimeSeats(req, res, next) {
   try {
-    const data = getLocalShowtimeWithMovie(req.params.id)
+    const data = await getLocalShowtimeWithMovie(req.params.id)
     if (!data) {
       return res.status(404).json({ message: 'Sessão não encontrada.' })
     }
@@ -19,26 +19,26 @@ export function getShowtimeSeats(req, res, next) {
   }
 }
 
-export function getOccupancy(req, res, next) {
+export async function getOccupancy(req, res, next) {
   try {
-    res.json(getShowtimeOccupancy(req.params.id))
+    res.json(await getShowtimeOccupancy(req.params.id))
   } catch (error) {
     next(error)
   }
 }
 
-export function patchShowtime(req, res, next) {
+export async function patchShowtime(req, res, next) {
   try {
-    const session = updateShowtime(req.params.id, req.body || {})
+    const session = await updateShowtime(req.params.id, req.body || {})
     res.json({ session })
   } catch (error) {
     next(error)
   }
 }
 
-export function cloneShowtime(req, res, next) {
+export async function cloneShowtime(req, res, next) {
   try {
-    const session = duplicateShowtime(
+    const session = await duplicateShowtime(
       req.user.id,
       req.params.id,
       req.body || {},
@@ -49,13 +49,13 @@ export function cloneShowtime(req, res, next) {
   }
 }
 
-export function removeShowtime(req, res, next) {
+export async function removeShowtime(req, res, next) {
   try {
-    const existing = getShowtime(req.params.id)
+    const existing = await getShowtime(req.params.id)
     if (!existing) {
       return res.status(404).json({ message: 'Sessão não encontrada.' })
     }
-    deleteShowtime(req.params.id)
+    await deleteShowtime(req.params.id)
     res.status(204).end()
   } catch (error) {
     next(error)

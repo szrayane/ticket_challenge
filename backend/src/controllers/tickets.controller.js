@@ -8,21 +8,21 @@ import {
   validateTicketCheckIn,
 } from '../services/tickets.service.js'
 
-export function listMyTickets(req, res, next) {
+export async function listMyTickets(req, res, next) {
   try {
-    const tickets = listTicketsForUser(req.user.id)
+    const tickets = await listTicketsForUser(req.user.id)
     res.json({ tickets })
   } catch (error) {
     next(error)
   }
 }
 
-export function createMyTickets(req, res, next) {
+export async function createMyTickets(req, res, next) {
   try {
     const holderKey = String(
       req.body?.holderKey || req.headers['x-hold-key'] || '',
     ).trim()
-    const tickets = createTickets(req.user, req.body?.tickets || [], {
+    const tickets = await createTickets(req.user, req.body?.tickets || [], {
       holderKey,
     })
     res.status(201).json({ tickets })
@@ -31,18 +31,18 @@ export function createMyTickets(req, res, next) {
   }
 }
 
-export function cancelMyTicket(req, res, next) {
+export async function cancelMyTicket(req, res, next) {
   try {
-    const ticket = cancelTicketForUser(req.user.id, req.params.id)
+    const ticket = await cancelTicketForUser(req.user.id, req.params.id)
     res.json({ ticket })
   } catch (error) {
     next(error)
   }
 }
 
-export function getSharedTicket(req, res, next) {
+export async function getSharedTicket(req, res, next) {
   try {
-    const ticket = getTicketByShareToken(req.params.shareToken)
+    const ticket = await getTicketByShareToken(req.params.shareToken)
     if (!ticket || ticket.status === 'cancelled') {
       return res.status(404).json({ message: 'Ingresso não encontrado.' })
     }
@@ -66,9 +66,9 @@ export function getSharedTicket(req, res, next) {
   }
 }
 
-export function listGateCheckIns(req, res, next) {
+export async function listGateCheckIns(req, res, next) {
   try {
-    const tickets = listRecentCheckIns({
+    const tickets = await listRecentCheckIns({
       limit: Number(req.query.limit) || 30,
     })
     res.json({ tickets })
@@ -77,10 +77,10 @@ export function listGateCheckIns(req, res, next) {
   }
 }
 
-export function listGateActiveSessions(req, res, next) {
+export async function listGateActiveSessions(req, res, next) {
   try {
     res.json({
-      sessions: listGateSessions({
+      sessions: await listGateSessions({
         beforeMinutes: Number(req.query.beforeMinutes) || 60,
         afterMinutes: Number(req.query.afterMinutes) || 180,
       }),
@@ -90,9 +90,9 @@ export function listGateActiveSessions(req, res, next) {
   }
 }
 
-export function validateTicket(req, res, next) {
+export async function validateTicket(req, res, next) {
   try {
-    const result = validateTicketCheckIn(
+    const result = await validateTicketCheckIn(
       req.user,
       req.body?.qrPayload || req.body?.payload || '',
       {

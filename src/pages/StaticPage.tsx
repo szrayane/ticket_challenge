@@ -9,7 +9,7 @@ const PAGES: Record<
     title: 'Sobre nós',
     paragraphs: [
       'A CineRay é uma plataforma de compra de ingressos pensada para uma experiência rápida, visual e segura.',
-      'Este projeto é um challenge de front-end com backend local (Express + SQLite), pagamento demonstrativo e reserva de assentos com controle de concorrência.',
+      'Este projeto é um challenge de front-end com backend local (Express + MySQL), pagamento demonstrativo e reserva de assentos com controle de concorrência.',
     ],
   },
   suporte: {
@@ -31,9 +31,9 @@ const PAGES: Record<
   privacidade: {
     title: 'Política de privacidade',
     paragraphs: [
-      'Os dados de conta (nome, e-mail, CPF e senha com hash) ficam no SQLite local da sua máquina.',
+      'Os dados de conta (nome, e-mail, CPF e senha com hash) ficam no MySQL local.',
       'Não enviamos dados pessoais para serviços de marketing. Tokens de sessão ficam no navegador.',
-      'Você pode sair da conta a qualquer momento; o banco local pode ser apagado removendo o arquivo cineray.sqlite.',
+      'Você pode sair da conta a qualquer momento; o banco pode ser resetado recriando o volume Docker do MySQL.',
     ],
   },
   corporativo: {

@@ -7,9 +7,9 @@ Fluxo: organizador publica evento → cliente escolhe assento → pagamento simu
 ## Stack
 
 - Front: React 19, TypeScript, Vite, Tailwind
-- Back: Node.js 22+ (`node:sqlite`), Express, JavaScript
-- Banco: SQLite (`backend/data/cineray.sqlite`)
-- Extra: TMDb, Docker Compose, QR com HMAC, testes no backend
+- Back: Node.js 22+, Express, JavaScript, `mysql2`
+- Banco: MySQL 8 (`SELECT … FOR UPDATE` no hold/checkout)
+- Extra: TMDb, Docker Compose, QR com AES-256-GCM, testes no backend
 
 ## Decisões
 
@@ -17,11 +17,11 @@ Fluxo: organizador publica evento → cliente escolhe assento → pagamento simu
 
 **TMDb** — o organizador busca o filme e monta a sessão (data, local, capacidade, preço).
 
-**Hold de 10 min + índice único** — o assento trava na seleção; o banco impede venda duplicada.
+**Hold de 10 min + `SELECT … FOR UPDATE`** — o assento trava na seleção; MySQL serializa a compra e o índice único em `active_slot` impede venda duplicada.
 
 **Assentos ao vivo** — o mapa atualiza a cada poucos segundos enquanto outras pessoas compram.
 
-**QR com HMAC** — o código não vale se for inventado ou adulterado.
+**QR AES-256-GCM** — payload cifrado (`CR2.…`); ilegível sem `TICKET_QR_SECRET` e rejeitado se adulterado.
 
 **Link `/i/:shareToken`** — compartilhamento gerado pela app (além do share nativo).
 
@@ -39,7 +39,14 @@ Fluxo: organizador publica evento → cliente escolhe assento → pagamento simu
 
 ## Como rodar
 
-Precisa de Node.js 22+. Chave TMDb só é obrigatória para publicar títulos novos (o seed funciona sem ela).
+Precisa de Node.js 22+ e MySQL 8. Chave TMDb só é obrigatória para publicar títulos novos (o seed funciona sem ela).
+
+### MySQL (local)
+
+```bash
+docker compose up -d mysql
+# se o plugin não existir: docker-compose up -d mysql
+```
 
 ### Backend
 
@@ -48,6 +55,7 @@ cd backend
 npm install
 cp .env.example .env
 # TMDB_API_KEY=sua_chave
+# MYSQL_* já vem no .env.example (host 127.0.0.1)
 npm run dev
 ```
 
@@ -72,6 +80,7 @@ docker compose up --build
 
 - Front: `http://localhost:8080`
 - API: `http://localhost:3333`
+- MySQL: `localhost:3306` (user/senha `cineray`)
 
 ### Testes
 
@@ -80,7 +89,7 @@ cd backend
 npm test
 ```
 
-Cobre assinatura/adulteração do QR, sessão com capacidade/mapa, check-in e reuso.
+Cobre QR AES-GCM, sessão com capacidade/mapa, check-in e reuso (requer MySQL no ar).
 
 ## Contas de teste
 
@@ -115,6 +124,11 @@ NODE_ENV=development
 STAFF_INVITE_CODE=cineray-staff
 TICKET_QR_SECRET=sua_chave_secreta
 TMDB_API_KEY=sua_chave_tmdb
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_USER=cineray
+MYSQL_PASSWORD=cineray
+MYSQL_DATABASE=cineray
 ```
 
 Front (`.env`):
@@ -128,25 +142,25 @@ Não versionar `.env` com secrets reais.
 
 ## Deploy
 
-Guia em [`DEPLOY.md`](./DEPLOY.md). Sugestão: API no Render (com disco em `backend/data`) + front na Vercel (`VITE_APP_API_URL` apontando para a API).
+Guia em [`DEPLOY.md`](./DEPLOY.md). Sugestão: API no Render **+ MySQL** + front na Vercel (`VITE_APP_API_URL` apontando para a API).
 
 ## Uso de IA
 
-Usei Cursor para acelerar implementação e debug. As decisões (mapa, hold, HMAC, link, staff, portaria) e a validação do fluxo foram minhas. Detalhes em [`AI.md`](./AI.md).
+Usei Cursor para acelerar implementação e debug. As decisões (mapa de assentos, hold + `FOR UPDATE`, QR AES-GCM, link de compartilhamento, staff, portaria, MySQL) e a validação do fluxo foram minhas. Detalhes em [`AI.md`](./AI.md).
 
 ## Limitações
 
 - Pagamento fictício
 - Sem `TMDB_API_KEY`, o seed ainda roda; publicar pela busca TMDb precisa da chave
 - Home também pode listar o mock Cineflex (Driven), além do catálogo local/TMDb
-- SQLite em PaaS free precisa de disco persistente
+- MySQL em PaaS free precisa de plano com banco (ou MySQL gerenciado)
 - Fora do escopo: nota fiscal, e-mail de ingresso, app nativo, recuperação de senha
 
 ## Estrutura
 
 ```text
 ticket_challenge/
-├── backend/          # API Express + SQLite + testes
+├── backend/          # API Express + MySQL + testes
 ├── src/              # React (Vite)
 ├── public/
 ├── docker-compose.yml

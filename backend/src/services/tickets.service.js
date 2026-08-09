@@ -1,5 +1,11 @@
 import { randomBytes } from 'node:crypto'
-import { db } from '../db/index.js'
+import {
+  execute,
+  isDuplicateKeyError,
+  query,
+  queryOne,
+  withTransaction,
+} from '../db/index.js'
 import {
   assertSeatsAvailable,
   releaseSeatsForHolder,
@@ -9,16 +15,6 @@ import {
   createShareToken,
   verifySignedQrPayload,
 } from './qr.service.js'
-
-function isUniqueSeatConflict(error) {
-  const message = String(error?.message || '')
-  return (
-    message.includes('UNIQUE constraint failed') &&
-    (message.includes('idx_tickets_session_seat_active') ||
-      message.includes('tickets.session_id') ||
-      message.includes('tickets.seat_id'))
-  )
-}
 
 function createId(prefix) {
   return `${prefix}_${randomBytes(10).toString('hex')}`
@@ -43,7 +39,7 @@ function mapTicket(row) {
     paymentMethod: row.payment_method,
     qrPayload: row.qr_payload,
     purchasedAt: row.purchased_at,
-    totalPaid: row.total_paid,
+    totalPaid: Number(row.total_paid),
     status: row.status || 'active',
     cancelledAt: row.cancelled_at || undefined,
     orderId: row.order_id || row.id,
@@ -81,18 +77,17 @@ export function isTicketSessionUpcoming(sessionDate, sessionTime) {
   return at.getTime() > Date.now()
 }
 
-export function listTicketsForUser(userId) {
-  const rows = db
-    .prepare(
-      `SELECT * FROM tickets
-       WHERE user_id = ?
-       ORDER BY purchased_at DESC`,
-    )
-    .all(userId)
+export async function listTicketsForUser(userId) {
+  const rows = await query(
+    `SELECT * FROM tickets
+     WHERE user_id = ?
+     ORDER BY purchased_at DESC`,
+    [userId],
+  )
   return rows.map(mapTicket)
 }
 
-export function createTickets(user, tickets, { holderKey } = {}) {
+export async function createTickets(user, tickets, { holderKey } = {}) {
   if (!Array.isArray(tickets) || tickets.length === 0) {
     const err = new Error('Envie ao menos um ingresso.')
     err.status = 400
@@ -101,109 +96,114 @@ export function createTickets(user, tickets, { holderKey } = {}) {
 
   const holder = String(holderKey || '').trim()
 
-  const insert = db.prepare(`
-    INSERT INTO tickets (
-      id, user_id, user_email, movie_id, movie_title, movie_poster,
-      session_id, session_date, session_time, cinema, room,
-      seat_id, seat_label, cpf, payment_method, qr_payload,
-      purchased_at, total_paid, status, cancelled_at, order_id, share_token
-    ) VALUES (
-      @id, @user_id, @user_email, @movie_id, @movie_title, @movie_poster,
-      @session_id, @session_date, @session_time, @cinema, @room,
-      @seat_id, @seat_label, @cpf, @payment_method, @qr_payload,
-      @purchased_at, @total_paid, @status, @cancelled_at, @order_id, @share_token
-    )
-  `)
-
-  const created = []
-  // IMMEDIATE locks writes so two checkouts cannot claim the same seat.
-  db.exec('BEGIN IMMEDIATE')
   try {
-    const bySession = new Map()
+    return await withTransaction(async (conn) => {
+      const bySession = new Map()
 
-    for (const ticket of tickets) {
-      const sessionId = String(ticket.sessionId ?? '')
-      const seatId = String(ticket.seatId ?? '')
-      if (!sessionId || !seatId) {
-        const err = new Error('Sessão e assento são obrigatórios.')
-        err.status = 400
-        throw err
+      for (const ticket of tickets) {
+        const sessionId = String(ticket.sessionId ?? '')
+        const seatId = String(ticket.seatId ?? '')
+        if (!sessionId || !seatId) {
+          const err = new Error('Sessão e assento são obrigatórios.')
+          err.status = 400
+          throw err
+        }
+
+        if (!bySession.has(sessionId)) bySession.set(sessionId, [])
+        const seats = bySession.get(sessionId)
+        if (seats.includes(seatId)) {
+          const err = new Error(`Assento duplicado na compra: ${seatId}.`)
+          err.status = 400
+          throw err
+        }
+        seats.push(seatId)
       }
 
-      if (!bySession.has(sessionId)) bySession.set(sessionId, [])
-      const seats = bySession.get(sessionId)
-      if (seats.includes(seatId)) {
-        const err = new Error(
-          `Assento duplicado na compra: ${seatId}.`,
-        )
-        err.status = 400
-        throw err
-      }
-      seats.push(seatId)
-    }
-
-    for (const [sessionId, seatIds] of bySession) {
-      assertSeatsAvailable(sessionId, seatIds, { holderKey: holder })
-    }
-
-    for (const ticket of tickets) {
-      const id = String(ticket.id || createId('tkt'))
-      const shareToken = createShareToken()
-      const qrPayload = buildSignedQrPayload({
-        ticketId: id,
-        userId: user.id,
-        userEmail: user.email,
-        cpf: String(ticket.cpf ?? ''),
-        movieTitle: String(ticket.movieTitle ?? ''),
-        sessionDate: String(ticket.sessionDate ?? ''),
-        sessionTime: String(ticket.sessionTime ?? ''),
-        cinema: String(ticket.cinema ?? ''),
-        room: String(ticket.room ?? ''),
-        seatLabel: String(ticket.seatLabel ?? ''),
-      })
-
-      const row = {
-        id,
-        user_id: user.id,
-        user_email: user.email,
-        movie_id: String(ticket.movieId ?? ''),
-        movie_title: String(ticket.movieTitle ?? ''),
-        movie_poster: String(ticket.moviePoster ?? ''),
-        session_id: String(ticket.sessionId ?? ''),
-        session_date: String(ticket.sessionDate ?? ''),
-        session_time: String(ticket.sessionTime ?? ''),
-        cinema: String(ticket.cinema ?? ''),
-        room: String(ticket.room ?? ''),
-        seat_id: String(ticket.seatId ?? ''),
-        seat_label: String(ticket.seatLabel ?? ''),
-        cpf: String(ticket.cpf ?? ''),
-        payment_method: String(ticket.paymentMethod ?? 'credit_card'),
-        qr_payload: qrPayload,
-        purchased_at: String(ticket.purchasedAt ?? new Date().toISOString()),
-        total_paid: Number(ticket.totalPaid) || 0,
-        status: 'active',
-        cancelled_at: null,
-        order_id: String(ticket.orderId ?? id),
-        share_token: shareToken,
-      }
-      insert.run(row)
-      created.push(mapTicket(row))
-    }
-
-    if (holder) {
       for (const [sessionId, seatIds] of bySession) {
-        releaseSeatsForHolder(sessionId, seatIds, holder)
+        await assertSeatsAvailable(sessionId, seatIds, {
+          holderKey: holder,
+          forUpdate: true,
+          conn,
+        })
       }
-    }
 
-    db.exec('COMMIT')
+      const created = []
+      for (const ticket of tickets) {
+        const id = String(ticket.id || createId('tkt'))
+        const shareToken = createShareToken()
+        const qrPayload = buildSignedQrPayload({ ticketId: id })
+
+        const row = {
+          id,
+          user_id: user.id,
+          user_email: user.email,
+          movie_id: String(ticket.movieId ?? ''),
+          movie_title: String(ticket.movieTitle ?? ''),
+          movie_poster: String(ticket.moviePoster ?? ''),
+          session_id: String(ticket.sessionId ?? ''),
+          session_date: String(ticket.sessionDate ?? ''),
+          session_time: String(ticket.sessionTime ?? ''),
+          cinema: String(ticket.cinema ?? ''),
+          room: String(ticket.room ?? ''),
+          seat_id: String(ticket.seatId ?? ''),
+          seat_label: String(ticket.seatLabel ?? ''),
+          cpf: String(ticket.cpf ?? ''),
+          payment_method: String(ticket.paymentMethod ?? 'credit_card'),
+          qr_payload: qrPayload,
+          purchased_at: String(ticket.purchasedAt ?? new Date().toISOString()),
+          total_paid: Number(ticket.totalPaid) || 0,
+          status: 'active',
+          cancelled_at: null,
+          order_id: String(ticket.orderId ?? id),
+          share_token: shareToken,
+        }
+
+        await execute(
+          `INSERT INTO tickets (
+            id, user_id, user_email, movie_id, movie_title, movie_poster,
+            session_id, session_date, session_time, cinema, room,
+            seat_id, seat_label, cpf, payment_method, qr_payload,
+            purchased_at, total_paid, status, cancelled_at, order_id, share_token
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            row.id,
+            row.user_id,
+            row.user_email,
+            row.movie_id,
+            row.movie_title,
+            row.movie_poster,
+            row.session_id,
+            row.session_date,
+            row.session_time,
+            row.cinema,
+            row.room,
+            row.seat_id,
+            row.seat_label,
+            row.cpf,
+            row.payment_method,
+            row.qr_payload,
+            row.purchased_at,
+            row.total_paid,
+            row.status,
+            row.cancelled_at,
+            row.order_id,
+            row.share_token,
+          ],
+          conn,
+        )
+        created.push(mapTicket(row))
+      }
+
+      if (holder) {
+        for (const [sessionId, seatIds] of bySession) {
+          await releaseSeatsForHolder(sessionId, seatIds, holder, conn)
+        }
+      }
+
+      return created
+    })
   } catch (error) {
-    try {
-      db.exec('ROLLBACK')
-    } catch {
-      // ignore if transaction already closed
-    }
-    if (isUniqueSeatConflict(error)) {
+    if (isDuplicateKeyError(error)) {
       const err = new Error(
         'Um ou mais assentos acabaram de ser reservados por outra pessoa. Escolha outros assentos.',
       )
@@ -212,14 +212,13 @@ export function createTickets(user, tickets, { holderKey } = {}) {
     }
     throw error
   }
-
-  return created
 }
 
-export function cancelTicketForUser(userId, ticketId) {
-  const row = db
-    .prepare('SELECT * FROM tickets WHERE id = ? AND user_id = ?')
-    .get(ticketId, userId)
+export async function cancelTicketForUser(userId, ticketId) {
+  const row = await queryOne(
+    'SELECT * FROM tickets WHERE id = ? AND user_id = ?',
+    [ticketId, userId],
+  )
 
   if (!row) {
     const err = new Error('Ingresso não encontrado.')
@@ -242,11 +241,12 @@ export function cancelTicketForUser(userId, ticketId) {
   }
 
   const cancelledAt = new Date().toISOString()
-  db.prepare(
+  await execute(
     `UPDATE tickets
      SET status = 'cancelled', cancelled_at = ?
      WHERE id = ? AND user_id = ?`,
-  ).run(cancelledAt, ticketId, userId)
+    [cancelledAt, ticketId, userId],
+  )
 
   return mapTicket({
     ...row,
@@ -259,67 +259,62 @@ export function parseTicketIdFromQr(qrPayload) {
   const verified = verifySignedQrPayload(qrPayload)
   if (verified.ok && verified.ticketId) return verified.ticketId
 
-  // Legacy tickets without SIG still parse ID, but gate will reject unsigned.
   const raw = String(qrPayload || '').trim()
   if (!raw) return null
   const match = raw.match(/(?:^|\|)ID:([^|]+)/)
   return match ? match[1].trim() : null
 }
 
-export function getTicketByShareToken(shareToken) {
+export async function getTicketByShareToken(shareToken) {
   const token = String(shareToken || '').trim()
   if (!token) return null
-  const row = db
-    .prepare(`SELECT * FROM tickets WHERE share_token = ?`)
-    .get(token)
+  const row = await queryOne(`SELECT * FROM tickets WHERE share_token = ?`, [
+    token,
+  ])
   return row ? mapTicket(row) : null
 }
 
-export function listGateSessions({
+export async function listGateSessions({
   beforeMinutes = 60,
   afterMinutes = 180,
 } = {}) {
-  const fromTickets = db
-    .prepare(
-      `SELECT
-         session_id AS sessionId,
-         movie_title AS movieTitle,
-         session_date AS sessionDate,
-         session_time AS sessionTime,
-         cinema,
-         room,
-         COUNT(*) AS tickets,
-         SUM(CASE WHEN checked_in_at IS NOT NULL THEN 1 ELSE 0 END) AS checkedIn
-       FROM tickets
-       WHERE status = 'active'
-       GROUP BY session_id, movie_title, session_date, session_time, cinema, room`,
-    )
-    .all()
+  const fromTickets = await query(
+    `SELECT
+       session_id AS sessionId,
+       movie_title AS movieTitle,
+       session_date AS sessionDate,
+       session_time AS sessionTime,
+       cinema,
+       room,
+       COUNT(*) AS tickets,
+       SUM(CASE WHEN checked_in_at IS NOT NULL THEN 1 ELSE 0 END) AS checkedIn
+     FROM tickets
+     WHERE status = 'active'
+     GROUP BY session_id, movie_title, session_date, session_time, cinema, room`,
+  )
 
-  const fromShowtimes = db
-    .prepare(
-      `SELECT
-         s.id AS sessionId,
-         m.title AS movieTitle,
-         s.session_date AS sessionDate,
-         s.session_time AS sessionTime,
-         s.cinema AS cinema,
-         s.room AS room,
-         (
-           SELECT COUNT(*) FROM tickets t
-           WHERE t.session_id = s.id AND t.status = 'active'
-         ) AS tickets,
-         (
-           SELECT COUNT(*) FROM tickets t
-           WHERE t.session_id = s.id
-             AND t.status = 'active'
-             AND t.checked_in_at IS NOT NULL
-         ) AS checkedIn
-       FROM showtimes s
-       JOIN movies m ON m.id = s.movie_id
-       WHERE COALESCE(m.is_active, 1) = 1`,
-    )
-    .all()
+  const fromShowtimes = await query(
+    `SELECT
+       s.id AS sessionId,
+       m.title AS movieTitle,
+       s.session_date AS sessionDate,
+       s.session_time AS sessionTime,
+       s.cinema AS cinema,
+       s.room AS room,
+       (
+         SELECT COUNT(*) FROM tickets t
+         WHERE t.session_id = s.id AND t.status = 'active'
+       ) AS tickets,
+       (
+         SELECT COUNT(*) FROM tickets t
+         WHERE t.session_id = s.id
+           AND t.status = 'active'
+           AND t.checked_in_at IS NOT NULL
+       ) AS checkedIn
+     FROM showtimes s
+     JOIN movies m ON m.id = s.movie_id
+     WHERE COALESCE(m.is_active, 1) = 1`,
+  )
 
   const byId = new Map()
   for (const row of [...fromShowtimes, ...fromTickets]) {
@@ -373,21 +368,19 @@ export function listGateSessions({
   }))
 }
 
-export function listRecentCheckIns({ limit = 30 } = {}) {
+export async function listRecentCheckIns({ limit = 30 } = {}) {
   const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100)
-  const rows = db
-    .prepare(
-      `SELECT *
-       FROM tickets
-       WHERE checked_in_at IS NOT NULL
-       ORDER BY checked_in_at DESC
-       LIMIT ?`,
-    )
-    .all(safeLimit)
+  const rows = await query(
+    `SELECT *
+     FROM tickets
+     WHERE checked_in_at IS NOT NULL
+     ORDER BY checked_in_at DESC
+     LIMIT ${safeLimit}`,
+  )
   return rows.map(mapTicket)
 }
 
-export function validateTicketCheckIn(staffUser, qrPayload, options = {}) {
+export async function validateTicketCheckIn(staffUser, qrPayload, options = {}) {
   const expectedSessionId = String(options.expectedSessionId || '').trim()
   const force = Boolean(options.force)
 
@@ -407,7 +400,7 @@ export function validateTicketCheckIn(staffUser, qrPayload, options = {}) {
     throw err
   }
 
-  const row = db.prepare(`SELECT * FROM tickets WHERE id = ?`).get(ticketId)
+  const row = await queryOne(`SELECT * FROM tickets WHERE id = ?`, [ticketId])
   if (!row) {
     const err = new Error('Ingresso não encontrado.')
     err.status = 404
@@ -469,13 +462,14 @@ export function validateTicketCheckIn(staffUser, qrPayload, options = {}) {
   }
 
   const checkedInAt = new Date().toISOString()
-  db.prepare(
+  await execute(
     `UPDATE tickets
      SET checked_in_at = ?, checked_in_by = ?
      WHERE id = ? AND checked_in_at IS NULL`,
-  ).run(checkedInAt, staffUser.id, ticketId)
+    [checkedInAt, staffUser.id, ticketId],
+  )
 
-  const updated = db.prepare(`SELECT * FROM tickets WHERE id = ?`).get(ticketId)
+  const updated = await queryOne(`SELECT * FROM tickets WHERE id = ?`, [ticketId])
   const ticket = mapTicket(updated)
   const mismatched =
     Boolean(expectedSessionId) && ticket.sessionId !== expectedSessionId

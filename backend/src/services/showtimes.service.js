@@ -1,7 +1,11 @@
 import { randomBytes } from 'node:crypto'
-import { db } from '../db/index.js'
+import { execute, query, queryOne } from '../db/index.js'
 import { getLocalMovie } from './movies.service.js'
-import { listHeldSeatIds, listSoldSeatIds, listUnavailableSeatIds } from './seats.service.js'
+import {
+  listHeldSeatIds,
+  listSoldSeatIds,
+  listUnavailableSeatIds,
+} from './seats.service.js'
 
 export const DEFAULT_CAPACITY = 50
 export const DEFAULT_PRICE = 28
@@ -102,26 +106,23 @@ function mapShowtime(row) {
   }
 }
 
-export function listShowtimesForMovie(movieId) {
-  const rows = db
-    .prepare(
-      `SELECT * FROM showtimes
-       WHERE movie_id = ?
-       ORDER BY session_date ASC, session_time ASC`,
-    )
-    .all(String(movieId))
+export async function listShowtimesForMovie(movieId) {
+  const rows = await query(
+    `SELECT * FROM showtimes
+     WHERE movie_id = ?
+     ORDER BY session_date ASC, session_time ASC`,
+    [String(movieId)],
+  )
   return rows.map(mapShowtime)
 }
 
-export function listAllShowtimes() {
-  const rows = db
-    .prepare(
-      `SELECT s.*, m.title AS movie_title, m.poster AS movie_poster, m.is_active AS movie_active
-       FROM showtimes s
-       JOIN movies m ON m.id = s.movie_id
-       ORDER BY s.session_date ASC, s.session_time ASC`,
-    )
-    .all()
+export async function listAllShowtimes() {
+  const rows = await query(
+    `SELECT s.*, m.title AS movie_title, m.poster AS movie_poster, m.is_active AS movie_active
+     FROM showtimes s
+     JOIN movies m ON m.id = s.movie_id
+     ORDER BY s.session_date ASC, s.session_time ASC`,
+  )
   return rows.map((row) => ({
     ...mapShowtime(row),
     movieTitle: row.movie_title,
@@ -130,24 +131,23 @@ export function listAllShowtimes() {
   }))
 }
 
-export function getShowtime(id) {
-  const row = db.prepare(`SELECT * FROM showtimes WHERE id = ?`).get(String(id))
+export async function getShowtime(id) {
+  const row = await queryOne(`SELECT * FROM showtimes WHERE id = ?`, [String(id)])
   return row ? mapShowtime(row) : null
 }
 
-export function countActiveTicketsForShowtime(showtimeId) {
-  const row = db
-    .prepare(
-      `SELECT COUNT(*) AS total
-       FROM tickets
-       WHERE session_id = ? AND status = 'active'`,
-    )
-    .get(String(showtimeId))
+export async function countActiveTicketsForShowtime(showtimeId) {
+  const row = await queryOne(
+    `SELECT COUNT(*) AS total
+     FROM tickets
+     WHERE session_id = ? AND status = 'active'`,
+    [String(showtimeId)],
+  )
   return Number(row?.total) || 0
 }
 
-export function getShowtimeOccupancy(showtimeId) {
-  const showtime = getShowtime(showtimeId)
+export async function getShowtimeOccupancy(showtimeId) {
+  const showtime = await getShowtime(showtimeId)
   if (!showtime) {
     const err = new Error('Sessão não encontrada.')
     err.status = 404
@@ -155,16 +155,15 @@ export function getShowtimeOccupancy(showtimeId) {
   }
 
   const totalSeats = showtime.capacity
-  const sold = listSoldSeatIds(showtimeId).length
-  const held = listHeldSeatIds(showtimeId).length
-  const unavailable = listUnavailableSeatIds(showtimeId).length
-  const revenueRow = db
-    .prepare(
-      `SELECT COALESCE(SUM(total_paid), 0) AS revenue
-       FROM tickets
-       WHERE session_id = ? AND status = 'active'`,
-    )
-    .get(String(showtimeId))
+  const sold = (await listSoldSeatIds(showtimeId)).length
+  const held = (await listHeldSeatIds(showtimeId)).length
+  const unavailable = (await listUnavailableSeatIds(showtimeId)).length
+  const revenueRow = await queryOne(
+    `SELECT COALESCE(SUM(total_paid), 0) AS revenue
+     FROM tickets
+     WHERE session_id = ? AND status = 'active'`,
+    [String(showtimeId)],
+  )
 
   return {
     sessionId: showtimeId,
@@ -178,8 +177,8 @@ export function getShowtimeOccupancy(showtimeId) {
   }
 }
 
-export function createShowtime(userId, movieId, input = {}) {
-  const movie = getLocalMovie(movieId)
+export async function createShowtime(userId, movieId, input = {}) {
+  const movie = await getLocalMovie(movieId)
   if (!movie) {
     const err = new Error('Filme não encontrado.')
     err.status = 404
@@ -202,21 +201,33 @@ export function createShowtime(userId, movieId, input = {}) {
     created_at: nowIso(),
   }
 
-  db.prepare(
+  await execute(
     `INSERT INTO showtimes (
       id, movie_id, session_date, session_time, date_label, cinema, room,
       capacity, price, created_by, created_at
-    ) VALUES (
-      @id, @movie_id, @session_date, @session_time, @date_label, @cinema, @room,
-      @capacity, @price, @created_by, @created_at
-    )`,
-  ).run(row)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      row.id,
+      row.movie_id,
+      row.session_date,
+      row.session_time,
+      row.date_label,
+      row.cinema,
+      row.room,
+      row.capacity,
+      row.price,
+      row.created_by,
+      row.created_at,
+    ],
+  )
 
   return mapShowtime(row)
 }
 
-export function updateShowtime(id, input = {}) {
-  const current = db.prepare(`SELECT * FROM showtimes WHERE id = ?`).get(String(id))
+export async function updateShowtime(id, input = {}) {
+  const current = await queryOne(`SELECT * FROM showtimes WHERE id = ?`, [
+    String(id),
+  ])
   if (!current) {
     const err = new Error('Sessão não encontrada.')
     err.status = 404
@@ -224,27 +235,28 @@ export function updateShowtime(id, input = {}) {
   }
 
   const fields = normalizeSessionFields(input, current)
-  db.prepare(
+  await execute(
     `UPDATE showtimes
      SET session_date = ?, session_time = ?, date_label = ?, cinema = ?, room = ?,
          capacity = ?, price = ?
      WHERE id = ?`,
-  ).run(
-    fields.sessionDate,
-    fields.sessionTime,
-    fields.dateLabel,
-    fields.cinema,
-    fields.room,
-    fields.capacity,
-    fields.price,
-    current.id,
+    [
+      fields.sessionDate,
+      fields.sessionTime,
+      fields.dateLabel,
+      fields.cinema,
+      fields.room,
+      fields.capacity,
+      fields.price,
+      current.id,
+    ],
   )
 
   return getShowtime(current.id)
 }
 
-export function duplicateShowtime(userId, id, input = {}) {
-  const current = getShowtime(id)
+export async function duplicateShowtime(userId, id, input = {}) {
+  const current = await getShowtime(id)
   if (!current) {
     const err = new Error('Sessão não encontrada.')
     err.status = 404
@@ -262,8 +274,8 @@ export function duplicateShowtime(userId, id, input = {}) {
   })
 }
 
-export function deleteShowtime(id) {
-  const sold = countActiveTicketsForShowtime(id)
+export async function deleteShowtime(id) {
+  const sold = await countActiveTicketsForShowtime(id)
   if (sold > 0) {
     const err = new Error(
       `Não é possível remover: há ${sold} ingresso(s) ativo(s) nesta sessão.`,
@@ -272,8 +284,8 @@ export function deleteShowtime(id) {
     throw err
   }
 
-  const result = db.prepare(`DELETE FROM showtimes WHERE id = ?`).run(String(id))
-  if (result.changes === 0) {
+  const result = await execute(`DELETE FROM showtimes WHERE id = ?`, [String(id)])
+  if ((result.affectedRows || 0) === 0) {
     const err = new Error('Sessão não encontrada.')
     err.status = 404
     throw err
@@ -281,11 +293,11 @@ export function deleteShowtime(id) {
   return { deleted: true }
 }
 
-export function buildLocalSeats(showtimeId) {
-  const showtime = getShowtime(showtimeId)
+export async function buildLocalSeats(showtimeId) {
+  const showtime = await getShowtime(showtimeId)
   const capacity = showtime?.capacity || DEFAULT_CAPACITY
   const price = showtime?.price || DEFAULT_PRICE
-  const unavailable = new Set(listUnavailableSeatIds(showtimeId))
+  const unavailable = new Set(await listUnavailableSeatIds(showtimeId))
   const seats = []
   const seatsPerRow = 10
   const rows = Math.ceil(capacity / seatsPerRow)
@@ -314,39 +326,39 @@ export function buildLocalSeats(showtimeId) {
   return seats
 }
 
-export function getLocalShowtimeWithMovie(showtimeId) {
-  const showtime = getShowtime(showtimeId)
+export async function getLocalShowtimeWithMovie(showtimeId) {
+  const showtime = await getShowtime(showtimeId)
   if (!showtime) return null
-  const movie = getLocalMovie(showtime.movieId, { includeInactive: false })
+  const movie = await getLocalMovie(showtime.movieId, { includeInactive: false })
   if (!movie) return null
-  return { movie, session: showtime, seats: buildLocalSeats(showtimeId) }
+  return { movie, session: showtime, seats: await buildLocalSeats(showtimeId) }
 }
 
-export function getOrganizerReport() {
-  const movies = db.prepare(`SELECT COUNT(*) AS total FROM movies`).get()
-  const activeMovies = db
-    .prepare(`SELECT COUNT(*) AS total FROM movies WHERE is_active = 1`)
-    .get()
-  const showtimes = db.prepare(`SELECT COUNT(*) AS total FROM showtimes`).get()
-  const tickets = db
-    .prepare(
-      `SELECT COUNT(*) AS total, COALESCE(SUM(total_paid), 0) AS revenue
-       FROM tickets
-       WHERE status = 'active' AND session_id LIKE 'st_%'`,
-    )
-    .get()
+export async function getOrganizerReport() {
+  const movies = await queryOne(`SELECT COUNT(*) AS total FROM movies`)
+  const activeMovies = await queryOne(
+    `SELECT COUNT(*) AS total FROM movies WHERE is_active = 1`,
+  )
+  const showtimes = await queryOne(`SELECT COUNT(*) AS total FROM showtimes`)
+  const tickets = await queryOne(
+    `SELECT COUNT(*) AS total, COALESCE(SUM(total_paid), 0) AS revenue
+     FROM tickets
+     WHERE status = 'active' AND session_id LIKE 'st_%'`,
+  )
 
-  const bySession = listAllShowtimes().map((session) => {
-    const occupancy = getShowtimeOccupancy(session.id)
-    return {
+  const allSessions = await listAllShowtimes()
+  const bySession = []
+  for (const session of allSessions) {
+    const occupancy = await getShowtimeOccupancy(session.id)
+    bySession.push({
       ...session,
       sold: occupancy.sold,
       held: occupancy.held,
       available: occupancy.available,
       totalSeats: occupancy.totalSeats,
       revenue: occupancy.revenue,
-    }
-  })
+    })
+  }
 
   return {
     movies: Number(movies?.total) || 0,
