@@ -140,6 +140,30 @@ export function LoginPage() {
           error={error}
           submitting={submitting}
         />
+
+        <details className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left">
+          <summary className="cursor-pointer text-caption text-on-surface-variant hover:text-on-surface">
+            Contas de teste
+          </summary>
+          <div className="mt-3 space-y-1 text-caption text-on-surface-variant">
+            <p>
+              <span className="text-on-surface">Organizador</span> —{' '}
+              organizador@cineray.com / org1234
+            </p>
+            <p>
+              <span className="text-on-surface">Cliente</span> — cliente1@cineray.com /
+              cli1234
+            </p>
+            <p>
+              <span className="text-on-surface">Cliente</span> — cliente2@cineray.com /
+              cli1234
+            </p>
+            <p>
+              <span className="text-on-surface">Portaria</span> — portaria@cineray.com /
+              porta1234
+            </p>
+          </div>
+        </details>
       </div>
     </main>
   )

@@ -180,17 +180,18 @@ db.exec(`
 `)
 
 function seedUser({ id, email, name, role, password }) {
-  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email)
-  if (existing) {
-    db.prepare('UPDATE users SET role = ?, name = ? WHERE email = ?').run(
-      role,
-      name,
-      email,
-    )
-    return existing.id
-  }
   const salt = randomBytes(16).toString('hex')
   const hash = scryptSync(password, salt, 64).toString('hex')
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email)
+  if (existing) {
+    // Keep demo passwords in sync with README / login hints.
+    db.prepare(
+      `UPDATE users
+       SET role = ?, name = ?, password_hash = ?, password_salt = ?
+       WHERE email = ?`,
+    ).run(role, name, hash, salt, email)
+    return existing.id
+  }
   db.prepare(
     `INSERT INTO users (id, email, name, cpf, password_hash, password_salt, created_at, role)
      VALUES (?, ?, ?, NULL, ?, ?, ?, ?)`,
