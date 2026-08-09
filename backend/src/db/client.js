@@ -8,6 +8,10 @@ export function getPool() {
 }
 
 export function createPoolFromEnv() {
+  const sslEnabled = ['1', 'true', 'required', 'REQUIRED'].includes(
+    String(process.env.MYSQL_SSL || '').trim(),
+  )
+
   return mysql.createPool({
     host: process.env.MYSQL_HOST || '127.0.0.1',
     port: Number(process.env.MYSQL_PORT || 3306),
@@ -18,6 +22,8 @@ export function createPoolFromEnv() {
     connectionLimit: Number(process.env.MYSQL_POOL || 10),
     namedPlaceholders: false,
     timezone: 'Z',
+    // Aiven e outros MySQL gerenciados pedem SSL (ssl-mode=REQUIRED).
+    ...(sslEnabled ? { ssl: { rejectUnauthorized: false } } : {}),
   })
 }
 
