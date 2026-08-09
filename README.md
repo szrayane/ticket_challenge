@@ -1,10 +1,10 @@
-# CineRay
+# CineRay 🎬
 
 Plataforma de eventos e ingressos desenvolvida como parte do **desafio Elite Dev 2026**.
 
-O projeto foi desenvolvido a partir dos requisitos do desafio, com foco em um fluxo completo de cinema: criação de eventos, consulta de sessões, seleção de assentos, pagamento simulado, emissão de ingresso com QR Code e validação na portaria.
+O projeto foi desenvolvido a partir dos requisitos do desafio, com foco em um fluxo completo de cinema: criação de eventos e sessões, consulta de filmes, seleção de assentos, pagamento simulado, emissão de ingresso com QR Code e validação na portaria.
 
-## Tecnologias
+## 🛠️ Tecnologias
 
 ### Front-end
 
@@ -30,11 +30,11 @@ O projeto foi desenvolvido a partir dos requisitos do desafio, com foco em um fl
 * Docker Compose
 * QR Code
 * HMAC
-* Testes automatizados
+* Vitest
 
 ---
 
-## Sobre o projeto
+## 📌 Sobre o projeto
 
 A proposta do desafio é criar uma plataforma onde um organizador publica eventos e clientes podem comprar ingressos. O catálogo de filmes é obtido através de uma API externa, e o cliente pode escolher seu lugar, realizar um pagamento simulado e receber um ingresso com QR Code para validação na entrada.
 
@@ -62,11 +62,11 @@ Validação na portaria
 
 ---
 
-## Perfis de usuário
+## 👥 Perfis de usuário
 
 O sistema possui três papéis:
 
-### Cliente
+### 🎟️ Cliente
 
 * Busca e consulta eventos
 * Visualiza sessões
@@ -76,15 +76,17 @@ O sistema possui três papéis:
 * Consulta seus ingressos
 * Visualiza o QR Code
 * Compartilha o ingresso por link
+* Pode cancelar o ingresso antes do início da sessão
 
-### Organizador
+### 🎬 Organizador
 
 * Pesquisa filmes através do TMDb
 * Cria eventos
+* Cria e gerencia sessões
 * Define data, local, capacidade e preço
 * Gerencia os eventos publicados
 
-### Portaria
+### 🚪 Portaria
 
 * Consulta sessões próximas
 * Valida ingressos
@@ -92,11 +94,11 @@ O sistema possui três papéis:
 * Permite digitação manual do código
 * Identifica ingressos inválidos
 * Impede a utilização de um ingresso mais de uma vez
-* Verifica se o ingresso pertence ao evento correto
+* Verifica se o ingresso pertence ao evento/sessão correta
 
 ---
 
-## Principais decisões
+## 💡 Principais decisões
 
 ### Mapa de assentos
 
@@ -106,7 +108,7 @@ O desafio permitia escolher entre um mapa de assentos ou uma quantidade de ingre
 
 Utilizei o **TMDb** como catálogo externo de filmes.
 
-O organizador utiliza a busca de filmes para selecionar um título e, a partir dele, cria o próprio evento informando os dados da sessão.
+O organizador utiliza a busca de filmes para selecionar um título e, a partir dele, cria o próprio evento informando os dados específicos da sessão.
 
 ### Reserva temporária
 
@@ -118,7 +120,7 @@ Além disso, o banco possui uma restrição de unicidade para evitar que o mesmo
 
 ### Atualização dos assentos
 
-A disponibilidade dos assentos é atualizada periodicamente no front-end. Isso permite refletir alterações feitas por outros clientes durante a seleção.
+A disponibilidade dos assentos é atualizada periodicamente no front-end, permitindo refletir alterações feitas por outros clientes durante a seleção.
 
 ### QR Code
 
@@ -140,7 +142,7 @@ Assim, o ingresso pode ser compartilhado através de um link gerado pela aplica�
 
 A validação pode ser realizada pela câmera ou através da digitação manual do código.
 
-O backend verifica o ingresso antes de confirmar sua utilização, incluindo situações de ingresso inválido, adulterado, já utilizado ou pertencente a outro evento.
+O backend verifica o ingresso antes de confirmar sua utilização, incluindo situações de ingresso inválido, adulterado, já utilizado ou pertencente a outro evento/sessão.
 
 ### Usuários da equipe
 
@@ -150,13 +152,13 @@ Para esses perfis, é necessário utilizar o código configurado em `STAFF_INVIT
 
 ---
 
-## Funcionalidades
+## ✨ Funcionalidades
 
 * Autenticação com diferentes papéis
 * Busca de filmes através do TMDb
 * Criação e gerenciamento de eventos
+* Criação e gerenciamento de sessões
 * Busca e filtros de eventos
-* Sessões de cinema
 * Mapa de assentos
 * Atualização da disponibilidade dos lugares
 * Hold de assentos por 10 minutos
@@ -166,6 +168,7 @@ Para esses perfis, é necessário utilizar o código configurado em `STAFF_INVIT
 * Área "Meus ingressos"
 * Geração de QR Code
 * Compartilhamento de ingresso por link
+* Cancelamento de ingresso antes do início da sessão
 * Validação de ingresso pela câmera
 * Validação manual do código
 * Bloqueio de reutilização de ingressos
@@ -175,7 +178,7 @@ Para esses perfis, é necessário utilizar o código configurado em `STAFF_INVIT
 
 ---
 
-# Como executar
+# 🚀 Como executar
 
 ## Pré-requisitos
 
@@ -224,7 +227,7 @@ A API estará disponível em:
 http://localhost:3333
 ```
 
-O banco SQLite utilizado pela aplicação fica em:
+O banco SQLite é armazenado em:
 
 ```text
 backend/data/cineray.sqlite
@@ -260,7 +263,7 @@ http://localhost:5173
 
 ---
 
-# Docker Compose
+# 🐳 Docker Compose
 
 Também é possível executar o projeto utilizando Docker:
 
@@ -278,7 +281,7 @@ API       → http://localhost:3333
 
 ---
 
-# Testes
+# 🧪 Testes
 
 Para executar os testes do backend:
 
@@ -297,7 +300,7 @@ Os testes cobrem regras importantes do sistema, incluindo:
 
 ---
 
-# Contas para teste
+# 🔐 Contas para teste
 
 O projeto possui dados de teste previamente cadastrados para facilitar a avaliação.
 
@@ -336,7 +339,7 @@ STAFF_INVITE_CODE=cineray-staff
 
 ---
 
-# Fluxo recomendado para avaliação
+# 🎯 Fluxo recomendado para avaliação
 
 1. Acesse `/login`.
 2. Entre utilizando o usuário de organizador.
@@ -349,11 +352,11 @@ STAFF_INVITE_CODE=cineray-staff
 9. Acesse **Meus ingressos**.
 10. Visualize o QR Code ou copie o link do ingresso.
 11. Entre com o usuário de portaria.
-12. Valide o ingresso através da câmera ou do código manual.
+12. Valide o ingresso através da câmera ou do código manualmente.
 
 ---
 
-# Variáveis de ambiente
+# ⚙️ Variáveis de ambiente
 
 ## Backend
 
@@ -368,14 +371,14 @@ TMDB_API_KEY=sua_chave_tmdb
 
 ```env
 VITE_APP_API_URL=http://localhost:3333/api
-VITE_CINEMA_API_URL=https://mock-api.driven.com.br/api/v8/cineflex
+VITE_CINEMA_API_URL=...
 ```
 
-> Não versionar arquivos `.env` contendo chaves ou secrets reais.
+> Não versione arquivos `.env` contendo chaves ou secrets reais.
 
 ---
 
-# Deploy
+# ☁️ Deploy
 
 O projeto pode ser publicado separando o front-end da API.
 
@@ -400,13 +403,28 @@ Mais detalhes sobre o deploy estão disponíveis em [`DEPLOY.md`](./DEPLOY.md).
 
 ---
 
-# Uso de IA
+# 🤖 Uso de IA
 
-Ver [`AI.md`](./AI.md).
+Utilizei o **Cursor** como ferramenta de apoio durante o desenvolvimento para acelerar tarefas de implementação, revisão e debugging.
+
+A ferramenta foi utilizada principalmente em partes relacionadas ao backend com Express/SQLite, reservas temporárias, integração com o TMDb, QR Code, portaria e configuração com Docker.
+
+As decisões de produto e arquitetura foram feitas durante o desenvolvimento a partir dos requisitos do desafio. Entre elas estão:
+
+* escolha do mapa de assentos;
+* autenticação com diferentes papéis;
+* uso de HMAC nos ingressos;
+* criação do link de compartilhamento;
+* reserva temporária dos assentos;
+* fluxo específico para a portaria.
+
+Também realizei testes manuais do fluxo completo e corrigi problemas encontrados durante a execução local, incluindo configuração da API, dados do seed, senhas e integração com a chave do TMDb.
+
+A IA foi utilizada como ferramenta de apoio ao desenvolvimento, enquanto as decisões, validações e ajustes do resultado final foram realizados durante o desenvolvimento do projeto.
 
 ---
 
-# Limitações
+# 📋 Limitações
 
 * O pagamento é simulado e não realiza transações financeiras reais.
 * A chave do TMDb é necessária para pesquisar e publicar novos títulos através da API.
@@ -416,13 +434,12 @@ Ver [`AI.md`](./AI.md).
 
 ---
 
-# Estrutura do projeto
+# 📁 Estrutura do projeto
 
 ```text
 cineray/
 ├── backend/
 │   ├── data/
-│   │   └── cineray.sqlite
 │   ├── src/
 │   ├── tests/
 │   └── package.json
@@ -437,6 +454,6 @@ cineray/
 
 ---
 
-## Contexto
+# 📌 Contexto
 
 Este projeto foi desenvolvido como parte do **Desafio Elite Dev 2026**, um desafio técnico de processo seletivo voltado à avaliação de desenvolvimento Front-end, Back-end, lógica de programação e capacidade de transformar requisitos em uma solução funcional.
