@@ -1,9 +1,14 @@
-# Backend
-FROM node:22-alpine AS backend
-WORKDIR /app/backend
-COPY backend/package*.json ./
+# Backend (build context: ./backend)
+FROM node:22-alpine
+WORKDIR /app
+
+COPY package*.json ./
 RUN npm ci --omit=dev
-COPY backend/ ./
+
+COPY . .
+
 ENV NODE_ENV=production
+ENV PORT=3333
+
 EXPOSE 3333
 CMD ["node", "src/server.js"]

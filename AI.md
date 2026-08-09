@@ -1,18 +1,13 @@
 # Uso de IA
 
-Utilizei o **Cursor** como ferramenta de apoio durante o desenvolvimento para acelerar tarefas de implementação, revisão e debugging.
+Usei **Cursor** para acelerar código e debug (Express/SQLite, holds, TMDb, QR, portaria, Docker).
 
-A ferramenta foi utilizada principalmente em partes relacionadas ao backend com Express/SQLite, reservas temporárias, integração com o TMDb, QR Code, portaria e configuração com Docker.
+O que eu decidi a partir do PDF:
 
-As decisões de produto e arquitetura foram feitas durante o desenvolvimento a partir dos requisitos do desafio. Entre elas estão:
+- mapa de assentos (não pista)
+- login com papéis + convite staff
+- hold de assento + QR com HMAC
+- link `/i/:shareToken`
+- fluxo da portaria (sessão certa, check-in único)
 
-* escolha do mapa de assentos;
-* autenticação com diferentes papéis;
-* uso de HMAC nos ingressos;
-* criação do link de compartilhamento;
-* reserva temporária dos assentos;
-* fluxo específico para a portaria.
-
-Também realizei testes manuais do fluxo completo e corrigi problemas encontrados durante a execução local, incluindo configuração da API, dados do seed, senhas e integração com a chave do TMDb.
-
-A IA foi utilizada como ferramenta de apoio ao desenvolvimento, enquanto as decisões, validações e ajustes do resultado final foram realizados durante o desenvolvimento do projeto.
+Testei o fluxo local e corrigi o que quebrou (API, seed, senhas, chave TMDb). A IA ajudou a escrever; as escolhas e a validação final foram minhas.

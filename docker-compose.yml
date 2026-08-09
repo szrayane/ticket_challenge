@@ -6,11 +6,12 @@ services:
       - "3333:3333"
     environment:
       PORT: 3333
+      NODE_ENV: production
       STAFF_INVITE_CODE: cineray-staff
       TICKET_QR_SECRET: cineray-qr-compose-secret
       TMDB_API_KEY: ${TMDB_API_KEY:-}
     volumes:
-      - cineray-data:/app/backend/data
+      - cineray-data:/app/data
     restart: unless-stopped
 
   web:
