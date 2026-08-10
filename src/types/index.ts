@@ -30,7 +30,6 @@ export interface Movie {
   trailerUrl?: string
   source?: 'cineflex' | 'local' | 'tmdb'
   tmdbId?: number
-  isActive?: boolean
   nextSession?: {
     date: string
     time: string

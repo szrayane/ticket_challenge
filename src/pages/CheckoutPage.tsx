@@ -192,7 +192,7 @@ export function CheckoutPage() {
     }
   }
 
-  function createTicketsForPurchase(authorizationId: string): CustomerTicket[] {
+  function createTicketsForPurchase(_authorizationId: string): CustomerTicket[] {
     if (!movie || !session || !user) return []
 
     const purchasedAt = new Date().toISOString()
