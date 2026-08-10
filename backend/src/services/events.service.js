@@ -1,5 +1,5 @@
 import { getTmdbMovie } from './tmdb.service.js'
-import { createLocalMovie } from './movies.service.js'
+import { createMovie } from './movies.service.js'
 import { createShowtime } from './showtimes.service.js'
 
 export async function createEventFromTmdb(userId, input = {}) {
@@ -17,7 +17,7 @@ export async function createEventFromTmdb(userId, input = {}) {
     throw err
   }
 
-  const movie = await createLocalMovie(userId, {
+  const movie = await createMovie(userId, {
     title: remote.title,
     synopsis: remote.synopsis,
     genre: remote.genre,

@@ -1,7 +1,10 @@
 import 'dotenv/config'
+import { assertRequiredSecrets } from './config/secrets.js'
 import { initDb } from './db/index.js'
 import app from './app.js'
 import { attachRealtime } from './realtime/hub.js'
+
+assertRequiredSecrets()
 
 const PORT = process.env.PORT || 3333
 

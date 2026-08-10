@@ -4,9 +4,7 @@ import {
   claimTransfer,
   createMyTickets,
   createTransfer,
-  getMyTicketGoogleWallet,
   getSharedTicket,
-  googleWalletStatus,
   listGateActiveSessions,
   listGateCheckIns,
   listMyTickets,
@@ -37,13 +35,11 @@ router.get(
   requireRole('portaria'),
   listGateCheckIns,
 )
-router.get('/wallet/google/status', googleWalletStatus)
 
 router.use(requireAuth)
 router.get('/', listMyTickets)
 router.post('/', createMyTickets)
 router.post('/transfer/:token/claim', claimTransfer)
-router.get('/:id/google-wallet', getMyTicketGoogleWallet)
 router.post('/:id/transfer', createTransfer)
 router.post('/:id/cancel', cancelMyTicket)
 

@@ -1,6 +1,6 @@
 import {
   duplicateShowtime,
-  getLocalShowtimeWithMovie,
+  getShowtimeWithMovie,
   getShowtime,
   getShowtimeOccupancy,
   updateShowtime,
@@ -9,7 +9,7 @@ import {
 
 export async function getShowtimeSeats(req, res, next) {
   try {
-    const data = await getLocalShowtimeWithMovie(req.params.id)
+    const data = await getShowtimeWithMovie(req.params.id)
     if (!data) {
       return res.status(404).json({ message: 'Sessão não encontrada.' })
     }

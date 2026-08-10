@@ -39,7 +39,7 @@ jobs:
           echo "API health check falhou"
           exit 1
 
-      - name: API catalog + wallet status
+      - name: API catalog
         run: |
           set -e
           movies=$(curl -sS -o /tmp/movies.json -w "%{http_code}" --max-time 60 \
@@ -47,12 +47,6 @@ jobs:
           echo "movies http=$movies"
           test "$movies" = "200"
           grep -q '"movies"' /tmp/movies.json
-
-          wallet=$(curl -sS -o /tmp/wallet.json -w "%{http_code}" --max-time 60 \
-            https://cinerar-api.onrender.com/api/tickets/wallet/google/status)
-          echo "wallet http=$wallet body=$(cat /tmp/wallet.json)"
-          test "$wallet" = "200"
-          grep -q '"configured"' /tmp/wallet.json
 
       - name: Front no ar (Vercel)
         run: |

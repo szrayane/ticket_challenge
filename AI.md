@@ -7,7 +7,8 @@ O que eu decidi a partir do PDF:
 - mapa de assentos (não pista)
 - login com papéis + convite staff
 - hold de assento (10 min) + `SELECT … FOR UPDATE` no MySQL
-- QR cifrado AES-256-GCM (`CR2.…`)
+- QR cifrado AES-256-GCM (`CR2.…`) — `TICKET_QR_SECRET` obrigatório
+- TMDb como única API externa
 - link `/i/:shareToken`
 - fluxo da portaria (sessão certa, check-in único)
 - Docker Compose (MySQL + API + front)

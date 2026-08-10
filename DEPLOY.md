@@ -13,15 +13,10 @@ Objetivo: front na **Vercel** (+1 do desafio) e API no **Render** (Express + MyS
 4. Environment:
    - `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`
    - `TMDB_API_KEY`
-   - `TICKET_QR_SECRET` (valor longo aleatório)
-   - `STAFF_INVITE_CODE`
+   - `TICKET_QR_SECRET` (obrigatório — `openssl rand -hex 32`; sem fallback no código)
+   - `STAFF_INVITE_CODE` (não use o valor de exemplo em produção)
    - `NODE_ENV=production`
    - `APP_PUBLIC_URL=https://seu-app.vercel.app` (URL do front)
-   - Google Wallet (opcional):
-     - `GOOGLE_WALLET_ISSUER_ID`
-     - `GOOGLE_WALLET_SA_EMAIL`
-     - `GOOGLE_WALLET_SA_PRIVATE_KEY`
-     - `GOOGLE_WALLET_ORIGINS=https://seu-app.vercel.app`
 5. Copie a URL pública, ex.: `https://cinerar-api.onrender.com`
 
 Teste: `https://SUA-API/health` → `{"status":"ok"}`
@@ -39,7 +34,6 @@ Teste: `https://SUA-API/health` → `{"status":"ok"}`
 
 Depois do primeiro deploy, **atualize no Render**:
 - `APP_PUBLIC_URL` = URL real da Vercel
-- `GOOGLE_WALLET_ORIGINS` = mesma URL (e no Wallet Console, origins permitidas)
 
 No README do formulário Elite Dev, cole:
 
@@ -52,8 +46,8 @@ No README do formulário Elite Dev, cole:
 | Variável | Local (`backend/.env` / raiz `.env`) | Produção |
 |----------|--------------------------------------|----------|
 | `APP_PUBLIC_URL` | `http://localhost:5173` | `https://seu-app.vercel.app` |
-| `GOOGLE_WALLET_ORIGINS` | `http://localhost:5173` | `https://seu-app.vercel.app` |
 | `VITE_APP_API_URL` | `/api` (proxy Vite) | `https://sua-api.onrender.com/api` |
+| `TICKET_QR_SECRET` | qualquer valor longo no `.env` | aleatório forte (obrigatório) |
 
 Links de transferir/compartilhar usam `window.location.origin` — no ar já saem com o domínio do front.
 
@@ -66,7 +60,6 @@ Links de transferir/compartilhar usam `window.location.origin` — no ar já sae
 - [ ] Transferir ingresso e reivindicar em outra conta
 - [ ] Login portaria e validar QR
 - [ ] Organizador com `TMDB_API_KEY` busca/publica filme
-- [ ] Google Wallet (Android + conta de teste no console)
 
 ## Alternativa tudo-em-um
 

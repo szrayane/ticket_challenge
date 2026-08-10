@@ -32,7 +32,7 @@ function mapMovie(row) {
   }
 }
 
-export async function listLocalMovies({ includeInactive = false } = {}) {
+export async function listMovies({ includeInactive = false } = {}) {
   const rows = includeInactive
     ? await query(`SELECT * FROM movies ORDER BY created_at DESC`)
     : await query(
@@ -68,7 +68,7 @@ export async function listLocalMovies({ includeInactive = false } = {}) {
   return movies
 }
 
-export async function getLocalMovie(id, { includeInactive = true } = {}) {
+export async function getMovie(id, { includeInactive = true } = {}) {
   const row = await queryOne(`SELECT * FROM movies WHERE id = ?`, [String(id)])
   if (!row) return null
   const movie = mapMovie(row)
@@ -92,7 +92,7 @@ export async function countActiveTicketsForMovie(movieId) {
   return Number(row?.total) || 0
 }
 
-export async function createLocalMovie(userId, input = {}) {
+export async function createMovie(userId, input = {}) {
   const title = String(input.title || '').trim()
   const poster = String(input.poster || '').trim()
   if (!title) {
@@ -159,7 +159,7 @@ export async function createLocalMovie(userId, input = {}) {
   return mapMovie(row)
 }
 
-export async function updateLocalMovie(id, input = {}) {
+export async function updateMovie(id, input = {}) {
   const current = await queryOne(`SELECT * FROM movies WHERE id = ?`, [String(id)])
   if (!current) {
     const err = new Error('Filme não encontrado.')
@@ -230,10 +230,10 @@ export async function updateLocalMovie(id, input = {}) {
 }
 
 export async function setMovieActive(id, isActive) {
-  return updateLocalMovie(id, { isActive: Boolean(isActive) })
+  return updateMovie(id, { isActive: Boolean(isActive) })
 }
 
-export async function deleteLocalMovie(id) {
+export async function deleteMovie(id) {
   const sold = await countActiveTicketsForMovie(id)
   if (sold > 0) {
     const err = new Error(

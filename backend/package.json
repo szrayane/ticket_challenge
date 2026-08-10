@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "npm run test:unit && node tests/qr.test.js && node tests/tickets-flow.test.js",
-    "test:unit": "node tests/auth.unit.test.js && node tests/showtimes.unit.test.js && node tests/tickets.unit.test.js && node tests/middleware.unit.test.js && node tests/qr.unit.test.js && node tests/googleWallet.unit.test.js"
+    "test": "npm run test:unit && node tests/qr.test.js && node tests/tickets-flow.test.js && node tests/seats-lock.test.js",
+    "test:unit": "node tests/auth.unit.test.js && node tests/showtimes.unit.test.js && node tests/tickets.unit.test.js && node tests/middleware.unit.test.js && node tests/qr.unit.test.js && node tests/secrets.unit.test.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

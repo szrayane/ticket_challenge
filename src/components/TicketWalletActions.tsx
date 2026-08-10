@@ -1,9 +1,4 @@
-import { useEffect, useState } from 'react'
-import { AppApiError } from '../api/appClient'
-import {
-  fetchGoogleWalletSaveUrl,
-  fetchGoogleWalletStatus,
-} from '../api/auth'
+import { useState } from 'react'
 import type { CustomerTicket } from '../types'
 import { Icon } from './Icon'
 
@@ -23,137 +18,59 @@ export function TicketWalletActions({
   onHint,
   onError,
 }: TicketWalletActionsProps) {
-  const [googleConfigured, setGoogleConfigured] = useState<boolean | null>(null)
-  const [addingGoogle, setAddingGoogle] = useState(false)
-  const [sendingIphone, setSendingIphone] = useState(false)
+  const [sending, setSending] = useState(false)
   const shareUrl = getShareUrl(ticket)
 
-  useEffect(() => {
-    let active = true
-    void fetchGoogleWalletStatus()
-      .then((status) => {
-        if (active) setGoogleConfigured(Boolean(status.configured))
-      })
-      .catch(() => {
-        if (active) setGoogleConfigured(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [])
-
-  async function handleAddGoogleWallet() {
-    setAddingGoogle(true)
-    onError?.('')
-    // Abre a aba já no clique (antes do await) — senão o Android bloqueia o popup.
-    const popup = window.open('about:blank', '_blank')
-    try {
-      const data = await fetchGoogleWalletSaveUrl(ticket.id)
-      if (popup && !popup.closed) {
-        popup.location.href = data.saveUrl
-      } else {
-        window.location.assign(data.saveUrl)
-      }
-      onHint?.(
-        'Abrindo Google Wallet… Se a aba não abrir, permita pop-ups neste site.',
-      )
-    } catch (err) {
-      popup?.close()
-      const message =
-        err instanceof AppApiError
-          ? err.message
-          : 'Não foi possível gerar o passe do Google Wallet.'
-      onError?.(message)
-    } finally {
-      setAddingGoogle(false)
-    }
-  }
-
-  async function handleSendToIphone() {
+  async function handleShare() {
     if (!shareUrl) {
       onError?.('Este ingresso ainda não tem link de compartilhamento.')
       return
     }
 
-    setSendingIphone(true)
+    setSending(true)
     onError?.('')
     try {
       if (navigator.share) {
         await navigator.share({
           title: `Ingresso ${ticket.movieTitle}`,
-          text: `Seu ingresso CineRay (abre o QR no iPhone):\n${ticket.movieTitle} • ${ticket.sessionDate} ${ticket.sessionTime} • Assento ${ticket.seatLabel}`,
+          text: `Ingresso CineRay:\n${ticket.movieTitle} • ${ticket.sessionDate} ${ticket.sessionTime} • Assento ${ticket.seatLabel}`,
           url: shareUrl,
         })
-        onHint?.('Link enviado. No iPhone, abra o link para ver o QR.')
+        onHint?.('Link enviado. Abra no celular para ver o QR.')
         return
       }
 
       await navigator.clipboard.writeText(shareUrl)
-      onHint?.(
-        'Link copiado. Cole no WhatsApp/AirDrop e abra no iPhone para ver o QR.',
-      )
+      onHint?.('Link copiado. Cole no WhatsApp/AirDrop para abrir o QR.')
     } catch (err) {
       if (err instanceof Error && /abort/i.test(err.message)) return
       try {
         await navigator.clipboard.writeText(shareUrl)
-        onHint?.(
-          'Link copiado. Cole no WhatsApp e abra no iPhone para ver o QR.',
-        )
+        onHint?.('Link copiado. Cole no WhatsApp para abrir o QR.')
       } catch {
         onError?.('Não foi possível compartilhar. Copie o link manualmente.')
       }
     } finally {
-      setSendingIphone(false)
+      setSending(false)
     }
   }
 
   return (
     <div className="min-w-0 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3">
       <p className="text-caption leading-snug text-on-surface-variant">
-        No Android use a Google Wallet. No iPhone, envie o link do ingresso
-        (QR no Safari).
+        Compartilhe o link do ingresso para abrir o QR em outro aparelho.
       </p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <button
-          type="button"
-          disabled={addingGoogle || googleConfigured === false}
-          onClick={() => {
-            void handleAddGoogleWallet()
-          }}
-          className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg bg-[#1a73e8] px-3 py-2.5 text-caption leading-tight text-white transition-all hover:brightness-110 disabled:opacity-50"
-          title={
-            googleConfigured === false
-              ? 'Configure GOOGLE_WALLET_* no backend'
-              : 'Salvar QR na Google Wallet'
-          }
-        >
-          <Icon name="account_balance_wallet" className="shrink-0 text-[16px]" />
-          <span className="min-w-0 text-left">
-            {addingGoogle
-              ? 'Gerando…'
-              : googleConfigured === false
-                ? 'Wallet (configurar)'
-                : 'Google Wallet'}
-          </span>
-        </button>
-        <button
-          type="button"
-          disabled={sendingIphone}
-          onClick={() => {
-            void handleSendToIphone()
-          }}
-          className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/15 px-3 py-2.5 text-caption leading-tight text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
-        >
-          <Icon name="phone_iphone" className="shrink-0 text-[16px]" />
-          <span className="min-w-0">{sendingIphone ? 'Abrindo…' : 'Enviar p/ iPhone'}</span>
-        </button>
-      </div>
-      {googleConfigured === false && (
-        <p className="text-[11px] leading-snug text-on-surface-variant/80">
-          Sem credenciais Google: o botão da Wallet fica off; “Enviar para
-          iPhone” continua disponível.
-        </p>
-      )}
+      <button
+        type="button"
+        disabled={sending || !shareUrl}
+        onClick={() => {
+          void handleShare()
+        }}
+        className="inline-flex w-full min-w-0 items-center justify-center gap-1 rounded-lg border border-white/15 px-3 py-2.5 text-caption leading-tight text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+      >
+        <Icon name="share" className="shrink-0 text-[16px]" />
+        <span className="min-w-0">{sending ? 'Abrindo…' : 'Compartilhar ingresso'}</span>
+      </button>
     </div>
   )
 }

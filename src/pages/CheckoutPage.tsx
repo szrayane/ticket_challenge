@@ -89,12 +89,7 @@ export function CheckoutPage() {
     }
   }, [isAuthenticated, navigate])
 
-  useEffect(() => {
-    if (completingRef.current) return
-    if (!movie || !session || selectedSeats.length === 0) {
-      if (isAuthenticated) navigate('/', { replace: true })
-    }
-  }, [movie, session, selectedSeats.length, navigate, isAuthenticated])
+  const bookingReady = Boolean(movie && session && selectedSeats.length > 0)
 
   useEffect(() => {
     if (!user) return
@@ -125,6 +120,23 @@ export function CheckoutPage() {
       userId: user.id,
     })
   }, [movie, seatsLabel, selectedSeats.length, total, user, pixUnlocked, cardName])
+
+  if (isAuthenticated && !bookingReady && !completingRef.current) {
+    return (
+      <main className="mx-auto flex min-h-[50vh] w-full max-w-[720px] flex-col items-center justify-center gap-4 px-5 py-section-gap text-center">
+        <p className="text-body-lg text-on-surface-variant">
+          Nenhum assento selecionado para o checkout.
+        </p>
+        <Link
+          to="/"
+          className="rounded-lg bg-primary px-6 py-3 text-label-md text-white"
+          data-testid="checkout-empty-cta"
+        >
+          Escolher filme
+        </Link>
+      </main>
+    )
+  }
 
   if (!isAuthenticated || !user || !movie || !session || selectedSeats.length === 0) {
     return null

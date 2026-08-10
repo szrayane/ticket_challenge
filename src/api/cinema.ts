@@ -1,8 +1,8 @@
 import {
-  fetchLocalMovieShowtimes,
-  fetchLocalMovies,
-  fetchLocalShowtimeSeats,
-} from './localCatalog'
+  fetchMovieShowtimes,
+  fetchMovies,
+  fetchShowtimeSeats,
+} from './catalog'
 import {
   compareSessionsByDateTime,
   isSessionUpcoming,
@@ -11,12 +11,12 @@ import { TICKET_LABELS, TICKET_PRICES } from '../lib/money'
 import type { Movie, Seat, Session } from '../types'
 
 export async function getMovies(): Promise<Movie[]> {
-  return fetchLocalMovies()
+  return fetchMovies()
 }
 
 export async function getMovieById(movieId: string): Promise<Movie | undefined> {
   try {
-    const { movie } = await fetchLocalMovieShowtimes(movieId)
+    const { movie } = await fetchMovieShowtimes(movieId)
     return movie
   } catch {
     return undefined
@@ -28,7 +28,7 @@ export async function getMovieShowtimes(movieId: string): Promise<{
   sessions: Session[]
   scheduleStart?: string
 }> {
-  const data = await fetchLocalMovieShowtimes(movieId)
+  const data = await fetchMovieShowtimes(movieId)
   const sessions = data.sessions
     .filter((session) => isSessionUpcoming(session))
     .sort(compareSessionsByDateTime)
@@ -44,7 +44,7 @@ export async function getShowtimeSeats(showtimeId: string): Promise<{
   session: Session
   seats: Seat[]
 }> {
-  const data = await fetchLocalShowtimeSeats(showtimeId)
+  const data = await fetchShowtimeSeats(showtimeId)
   const seats: Seat[] = data.seats.map((seat) => {
     const ticketType = seat.ticketType
     const price = Number(seat.price) || TICKET_PRICES[ticketType]
@@ -71,7 +71,7 @@ export async function getShowtimeSeats(showtimeId: string): Promise<{
     }
   })
   return {
-    movie: { ...data.movie, source: 'local' },
+    movie: data.movie,
     session: data.session,
     seats,
   }

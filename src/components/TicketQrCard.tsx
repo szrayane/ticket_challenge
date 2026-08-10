@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react'
 import { AppApiError } from '../api/appClient'
-import { createTicketTransfer } from '../api/localCatalog'
+import { createTicketTransfer } from '../api/catalog'
 import type { CustomerTicket } from '../types'
 import { formatMoney } from '../lib/money'
 import {

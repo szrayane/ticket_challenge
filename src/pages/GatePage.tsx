@@ -5,7 +5,7 @@ import {
   fetchGateSessions,
   validateTicketQr,
   type GateSession,
-} from '../api/localCatalog'
+} from '../api/catalog'
 import { GateQrScanner } from '../components/GateQrScanner'
 import { Icon } from '../components/Icon'
 import { RequireRole } from '../components/RequireRole'
@@ -33,6 +33,8 @@ function GateDashboard() {
   const [submitting, setSubmitting] = useState(false)
   const [cameraOn, setCameraOn] = useState(false)
   const [flash, setFlash] = useState<'ok' | 'error' | 'warn' | null>(null)
+  const [metaLoading, setMetaLoading] = useState(true)
+  const [metaError, setMetaError] = useState<string | null>(null)
   const lastScanRef = useRef({ value: '', at: 0 })
   const flashTimerRef = useRef<number | null>(null)
 
@@ -46,6 +48,7 @@ function GateDashboard() {
     ])
     setSessions(nextSessions)
     setHistory(nextHistory)
+    setMetaError(null)
 
     const suggested =
       nextSessions.find((s) => s.suggested) || nextSessions[0] || null
@@ -62,8 +65,12 @@ function GateDashboard() {
   }
 
   useEffect(() => {
-    void reloadMeta({ preferAutoSelect: true }).catch(() => {
-    })
+    setMetaLoading(true)
+    void reloadMeta({ preferAutoSelect: true })
+      .catch(() => {
+        setMetaError('Não foi possível carregar as sessões da portaria.')
+      })
+      .finally(() => setMetaLoading(false))
     const timer = window.setInterval(() => {
       void reloadMeta({ preferAutoSelect: false }).catch(() => undefined)
     }, 60_000)
@@ -215,6 +222,31 @@ function GateDashboard() {
           </button>
         </div>
       </div>
+
+      {metaLoading && (
+        <p className="mb-6 text-body-md text-on-surface-variant">
+          Carregando sessões…
+        </p>
+      )}
+      {metaError && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-body-md text-primary">{metaError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setMetaLoading(true)
+              void reloadMeta({ preferAutoSelect: true })
+                .catch(() => {
+                  setMetaError('Não foi possível carregar as sessões da portaria.')
+                })
+                .finally(() => setMetaLoading(false))
+            }}
+            className="rounded-lg bg-primary px-4 py-2 text-label-md text-white"
+          >
+            Tentar de novo
+          </button>
+        </div>
+      )}
 
       <section className="mb-6 space-y-4 rounded-2xl border border-white/8 bg-surface-container/70 p-card-padding">
         <div>

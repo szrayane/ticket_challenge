@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getMovieShowtimes, getMovies } from '../api/cinema'
-import { fetchMovieCast, type MovieCastMember } from '../api/localCatalog'
+import { fetchMovieCast, type MovieCastMember } from '../api/catalog'
 import { Icon } from '../components/Icon'
 import { TrailerModal } from '../components/TrailerModal'
 import type { Movie, Session } from '../types'

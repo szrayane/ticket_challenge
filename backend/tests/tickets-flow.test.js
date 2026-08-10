@@ -3,10 +3,10 @@ import 'dotenv/config'
 import { initDb, queryOne } from '../src/db/index.js'
 import {
   createShowtime,
-  buildLocalSeats,
+  buildSeats,
   getShowtime,
 } from '../src/services/showtimes.service.js'
-import { createLocalMovie } from '../src/services/movies.service.js'
+import { createMovie } from '../src/services/movies.service.js'
 import {
   createTickets,
   validateTicketCheckIn,
@@ -20,7 +20,7 @@ const organizer = await queryOne(
 )
 assert.ok(organizer, 'seed organizer required')
 
-const movie = await createLocalMovie(organizer.id, {
+const movie = await createMovie(organizer.id, {
   title: `Teste Assentos ${Date.now()}`,
   poster: 'https://image.tmdb.org/t/p/w500/vNMPddfv47amK83lCFoBd9wXVuc.jpg',
   synopsis: 'teste',
@@ -39,7 +39,7 @@ const session = await createShowtime(organizer.id, movie.id, {
 })
 
 assert.equal((await getShowtime(session.id))?.capacity, 20)
-const seats = await buildLocalSeats(session.id)
+const seats = await buildSeats(session.id)
 assert.equal(seats.length, 20)
 
 const client = await queryOne(

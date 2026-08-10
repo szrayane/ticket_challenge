@@ -1,10 +1,10 @@
 import {
-  createLocalMovie,
-  deleteLocalMovie,
-  getLocalMovie,
-  listLocalMovies,
+  createMovie as createMovieRecord,
+  deleteMovie as deleteMovieRecord,
+  getMovie as getMovieRecord,
+  listMovies as listMovieRecords,
   setMovieActive,
-  updateLocalMovie,
+  updateMovie as updateMovieRecord,
 } from '../services/movies.service.js'
 import {
   createShowtime,
@@ -16,7 +16,7 @@ export async function listMovies(req, res, next) {
   try {
     const includeInactive =
       req.query.includeInactive === '1' && req.user?.role === 'organizador'
-    res.json({ movies: await listLocalMovies({ includeInactive }) })
+    res.json({ movies: await listMovieRecords({ includeInactive }) })
   } catch (error) {
     next(error)
   }
@@ -24,7 +24,7 @@ export async function listMovies(req, res, next) {
 
 export async function listAdminMovies(_req, res, next) {
   try {
-    res.json({ movies: await listLocalMovies({ includeInactive: true }) })
+    res.json({ movies: await listMovieRecords({ includeInactive: true }) })
   } catch (error) {
     next(error)
   }
@@ -33,7 +33,7 @@ export async function listAdminMovies(_req, res, next) {
 export async function getMovie(req, res, next) {
   try {
     const asOrganizer = req.user?.role === 'organizador'
-    const movie = await getLocalMovie(req.params.id, {
+    const movie = await getMovieRecord(req.params.id, {
       includeInactive: asOrganizer,
     })
     if (!movie) {
@@ -47,7 +47,7 @@ export async function getMovie(req, res, next) {
 
 export async function createMovie(req, res, next) {
   try {
-    const movie = await createLocalMovie(req.user.id, req.body || {})
+    const movie = await createMovieRecord(req.user.id, req.body || {})
     res.status(201).json({ movie })
   } catch (error) {
     next(error)
@@ -56,7 +56,7 @@ export async function createMovie(req, res, next) {
 
 export async function updateMovie(req, res, next) {
   try {
-    const movie = await updateLocalMovie(req.params.id, req.body || {})
+    const movie = await updateMovieRecord(req.params.id, req.body || {})
     res.json({ movie })
   } catch (error) {
     next(error)
@@ -75,7 +75,7 @@ export async function setActiveMovie(req, res, next) {
 
 export async function removeMovie(req, res, next) {
   try {
-    await deleteLocalMovie(req.params.id)
+    await deleteMovieRecord(req.params.id)
     res.status(204).end()
   } catch (error) {
     next(error)
@@ -85,14 +85,13 @@ export async function removeMovie(req, res, next) {
 export async function getMovieShowtimes(req, res, next) {
   try {
     const asOrganizer = req.user?.role === 'organizador'
-    const movie = await getLocalMovie(req.params.id, {
+    const movie = await getMovieRecord(req.params.id, {
       includeInactive: asOrganizer,
     })
     if (!movie) {
       return res.status(404).json({ message: 'Filme não encontrado.' })
     }
     const sessions = await listShowtimesForMovie(movie.id, {
-      // Cliente não vê sessão lotada; organizador precisa ver todas.
       onlyWithAvailability: !asOrganizer,
     })
     res.json({ movie, sessions })

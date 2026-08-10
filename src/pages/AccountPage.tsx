@@ -156,7 +156,7 @@ export function AccountPage() {
             )}
           </section>
 
-          {historyOrders.length > 0 && (
+          {historyOrders.length > 0 ? (
             <section className="space-y-4">
               <div className="flex items-center gap-2">
                 <Icon name="history" className="text-primary" />
@@ -171,7 +171,11 @@ export function AccountPage() {
                 ))}
               </div>
             </section>
-          )}
+          ) : upcomingOrders.length === 0 ? (
+            <p className="text-body-md text-on-surface-variant">
+              Sem histórico ainda.
+            </p>
+          ) : null}
         </>
       )}
 

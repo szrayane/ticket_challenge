@@ -22,7 +22,6 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null)
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [trailerOpen, setTrailerOpen] = useState(false)
-  const [showAll, setShowAll] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
 
   useEffect(() => {
@@ -84,14 +83,11 @@ export function HomePage() {
 
   const hasExtraFilters = Boolean(genreFilter || maxPriceFilter || onlyEvents)
   const featured = movies.slice(0, FEATURED_COUNT)
-  const trending = movies.slice(FEATURED_COUNT)
   const activeFeatured = featured[featuredIndex] ?? featured[0]
   const displayMovies =
     searchQuery || hasExtraFilters
       ? filteredMovies
-      : showAll
-        ? movies
-        : trending
+      : movies
 
   function patchFilters(patch: Record<string, string | null>) {
     const next = new URLSearchParams(searchParams)
@@ -101,10 +97,6 @@ export function HomePage() {
     }
     setSearchParams(next, { replace: true })
   }
-
-  useEffect(() => {
-    if (searchQuery || hasExtraFilters) setShowAll(false)
-  }, [searchQuery, hasExtraFilters])
 
   useEffect(() => {
     if (featured.length <= 1 || searchQuery || hasExtraFilters || trailerOpen) {
@@ -128,8 +120,22 @@ export function HomePage() {
 
   if (error) {
     return (
-      <main className="mx-auto flex min-h-[60vh] max-w-[1440px] items-center justify-center px-5">
+      <main className="mx-auto flex min-h-[60vh] max-w-[1440px] flex-col items-center justify-center gap-4 px-5 text-center">
         <p className="text-body-lg text-primary">{error}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setLoading(true)
+            setError(null)
+            void getMovies()
+              .then(setMovies)
+              .catch(() => setError('Não foi possível carregar os filmes da API.'))
+              .finally(() => setLoading(false))
+          }}
+          className="rounded-lg bg-primary px-6 py-3 text-label-md text-white"
+        >
+          Tentar de novo
+        </button>
       </main>
     )
   }
@@ -137,7 +143,7 @@ export function HomePage() {
   return (
     <main>
       {!searchQuery && !hasExtraFilters && activeFeatured && (
-        <section className="relative flex min-h-[600px] h-[85vh] w-full items-end pt-32 pb-section-gap">
+        <section className="relative flex min-h-[420px] h-[70vh] max-h-[760px] w-full items-end pt-24 pb-section-gap sm:min-h-[520px] sm:h-[85vh] sm:pt-32">
           <div className="absolute inset-0 z-0 overflow-hidden bg-background">
             {featured.map((movie, index) => {
               const src = movie.hero ?? movie.poster
@@ -239,52 +245,17 @@ export function HomePage() {
           <div>
             <h2 className="flex items-center gap-3 text-headline-lg-mobile text-on-surface md:text-headline-lg">
               <Icon
-                name={
-                  searchQuery || hasExtraFilters
-                    ? 'search'
-                    : showAll
-                      ? 'movie'
-                      : 'trending_up'
-                }
+                name={searchQuery || hasExtraFilters ? 'search' : 'local_movies'}
                 className="text-[32px] text-primary md:text-[40px]"
               />
-              {searchQuery || hasExtraFilters
-                ? 'Resultados filtrados'
-                : showAll
-                  ? 'Todos os filmes'
-                  : 'Em alta'}
+              {searchQuery || hasExtraFilters ? 'Resultados filtrados' : 'Em cartaz'}
             </h2>
             <p className="mt-2 text-body-md text-on-surface-variant">
               {searchQuery || hasExtraFilters
                 ? `Encontramos ${filteredMovies.length} título(s)`
-                : showAll
-                  ? `${movies.length} títulos em cartaz neste momento.`
-                  : 'Os filmes mais assistidos desta semana.'}
+                : `${movies.length} título(s) no catálogo.`}
             </p>
           </div>
-          {!searchQuery && !hasExtraFilters && (
-            <button
-              type="button"
-              onClick={() => {
-                const next = !showAll
-                setShowAll(next)
-                if (next) {
-                  requestAnimationFrame(() => {
-                    document
-                      .getElementById('catalog')
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  })
-                }
-              }}
-              className="group flex items-center gap-1 text-label-md text-primary uppercase transition-colors hover:text-secondary"
-            >
-              {showAll ? 'Ver em alta' : 'Ver todos'}
-              <Icon
-                name={showAll ? 'arrow_upward' : 'arrow_forward'}
-                className="transition-transform group-hover:translate-x-1"
-              />
-            </button>
-          )}
         </div>
 
         <div className="mb-10 rounded-xl border border-white/8 bg-surface-container/60 backdrop-blur-sm">

@@ -104,23 +104,6 @@ export async function cancelMyTicket(ticketId: string) {
   return data.ticket
 }
 
-export async function fetchGoogleWalletStatus() {
-  return appRequest<{ configured: boolean; issuerId: string | null }>(
-    '/tickets/wallet/google/status',
-    { auth: false },
-  )
-}
-
-export async function fetchGoogleWalletSaveUrl(ticketId: string) {
-  return appRequest<{
-    saveUrl: string
-    objectId: string
-    classId: string
-    shareUrl: string
-    ticketId: string
-  }>(`/tickets/${encodeURIComponent(ticketId)}/google-wallet`)
-}
-
 export async function fetchOccupiedSeatIds(
   sessionId: string,
   holderKey?: string,

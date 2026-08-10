@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { fetchSharedTicket } from '../api/localCatalog'
+import { fetchSharedTicket } from '../api/catalog'
 import { AppApiError } from '../api/appClient'
 
 export function SharedTicketPage() {

@@ -1,7 +1,7 @@
 import { appRequest } from './appClient'
 import type { Movie, Session } from '../types'
 
-export type LocalMovieInput = {
+export type MovieInput = {
   title: string
   synopsis?: string
   genre?: string
@@ -16,7 +16,7 @@ export type LocalMovieInput = {
   isActive?: boolean
 }
 
-export type LocalShowtimeInput = {
+export type ShowtimeInput = {
   sessionDate: string
   sessionTime: string
   cinema?: string
@@ -63,38 +63,30 @@ export type OrganizerReport = {
 
 export const POSTER_GALLERY = [
   {
-    label: 'Noir urbano',
-    url: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=600&q=80',
+    label: 'Poster 1',
+    url: 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
   },
   {
-    label: 'Drama íntimo',
-    url: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&q=80',
+    label: 'Poster 2',
+    url: 'https://image.tmdb.org/t/p/w500/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg',
   },
   {
-    label: 'Ação noturna',
-    url: 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?w=600&q=80',
+    label: 'Poster 3',
+    url: 'https://image.tmdb.org/t/p/w500/qNBAXBIQlnOThruvIas3jnG3Blp.jpg',
   },
   {
-    label: 'Ficção',
-    url: 'https://images.unsplash.com/photo-1440404653325-ab127d49abc1?w=600&q=80',
+    label: 'Poster 4',
+    url: 'https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94SAGUJRV.jpg',
   },
   {
-    label: 'Clássico',
-    url: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=600&q=80',
+    label: 'Poster 5',
+    url: 'https://image.tmdb.org/t/p/w500/1E5baAaEse26fej7uHcjOgEE2t2.jpg',
   },
   {
-    label: 'Suspense',
-    url: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=600&q=80',
+    label: 'Poster 6',
+    url: 'https://image.tmdb.org/t/p/w500/rrjoeR5m98ptkGUJ2Z7G4t2lXMg.jpg',
   },
 ]
-
-export function isLocalMovieId(id: string) {
-  return String(id).startsWith('mov_')
-}
-
-export function isLocalShowtimeId(id: string) {
-  return String(id).startsWith('st_')
-}
 
 export function toBrDate(isoDate: string) {
   const m = String(isoDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -108,39 +100,39 @@ export function toIsoDate(brDate: string) {
   return `${m[3]}-${m[2]}-${m[1]}`
 }
 
-export async function fetchLocalMovies() {
+export async function fetchMovies() {
   const data = await appRequest<{ movies: Movie[] }>('/movies', { auth: false })
-  return data.movies.map((movie) => ({ ...movie, source: 'local' as const }))
+  return data.movies
 }
 
-export async function fetchAdminLocalMovies() {
+export async function fetchAdminMovies() {
   const data = await appRequest<{ movies: Movie[] }>('/movies/admin')
-  return data.movies.map((movie) => ({ ...movie, source: 'local' as const }))
+  return data.movies
 }
 
 export async function fetchOrganizerReport() {
   return appRequest<OrganizerReport>('/movies/report')
 }
 
-export async function fetchLocalMovie(id: string) {
+export async function fetchMovie(id: string) {
   const data = await appRequest<{ movie: Movie }>(
     `/movies/${encodeURIComponent(id)}`,
     { auth: false },
   )
-  return { ...data.movie, source: 'local' as const }
+  return data.movie
 }
 
-export async function fetchLocalMovieShowtimes(movieId: string) {
+export async function fetchMovieShowtimes(movieId: string) {
   const data = await appRequest<{ movie: Movie; sessions: Session[] }>(
     `/movies/${encodeURIComponent(movieId)}/showtimes`,
   )
   return {
-    movie: { ...data.movie, source: 'local' as const },
+    movie: data.movie,
     sessions: data.sessions,
   }
 }
 
-export async function fetchLocalShowtimeSeats(showtimeId: string) {
+export async function fetchShowtimeSeats(showtimeId: string) {
   const data = await appRequest<{
     movie: Movie
     session: Session
@@ -163,7 +155,7 @@ export async function fetchShowtimeOccupancy(showtimeId: string) {
   )
 }
 
-export async function createLocalMovie(input: LocalMovieInput) {
+export async function createMovie(input: MovieInput) {
   const data = await appRequest<{ movie: Movie }>('/movies', {
     method: 'POST',
     body: JSON.stringify(input),
@@ -171,7 +163,7 @@ export async function createLocalMovie(input: LocalMovieInput) {
   return data.movie
 }
 
-export async function updateLocalMovie(id: string, input: Partial<LocalMovieInput>) {
+export async function updateMovie(id: string, input: Partial<MovieInput>) {
   const data = await appRequest<{ movie: Movie }>(
     `/movies/${encodeURIComponent(id)}`,
     {
@@ -182,7 +174,7 @@ export async function updateLocalMovie(id: string, input: Partial<LocalMovieInpu
   return data.movie
 }
 
-export async function setLocalMovieActive(id: string, isActive: boolean) {
+export async function setMovieActive(id: string, isActive: boolean) {
   const data = await appRequest<{ movie: Movie }>(
     `/movies/${encodeURIComponent(id)}/active`,
     {
@@ -193,15 +185,15 @@ export async function setLocalMovieActive(id: string, isActive: boolean) {
   return data.movie
 }
 
-export async function deleteLocalMovie(id: string) {
+export async function deleteMovie(id: string) {
   await appRequest<void>(`/movies/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   })
 }
 
-export async function createLocalShowtime(
+export async function createShowtime(
   movieId: string,
-  input: LocalShowtimeInput,
+  input: ShowtimeInput,
 ) {
   const data = await appRequest<{ session: Session }>(
     `/movies/${encodeURIComponent(movieId)}/showtimes`,
@@ -213,9 +205,9 @@ export async function createLocalShowtime(
   return data.session
 }
 
-export async function updateLocalShowtime(
+export async function updateShowtime(
   showtimeId: string,
-  input: LocalShowtimeInput,
+  input: ShowtimeInput,
 ) {
   const data = await appRequest<{ session: Session }>(
     `/showtimes/${encodeURIComponent(showtimeId)}`,
@@ -227,9 +219,9 @@ export async function updateLocalShowtime(
   return data.session
 }
 
-export async function duplicateLocalShowtime(
+export async function duplicateShowtime(
   showtimeId: string,
-  input: Partial<LocalShowtimeInput> = {},
+  input: Partial<ShowtimeInput> = {},
 ) {
   const data = await appRequest<{ session: Session }>(
     `/showtimes/${encodeURIComponent(showtimeId)}/duplicate`,
@@ -241,7 +233,7 @@ export async function duplicateLocalShowtime(
   return data.session
 }
 
-export async function deleteLocalShowtime(showtimeId: string) {
+export async function deleteShowtime(showtimeId: string) {
   await appRequest<void>(`/showtimes/${encodeURIComponent(showtimeId)}`, {
     method: 'DELETE',
   })

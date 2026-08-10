@@ -100,8 +100,7 @@ Health check: [https://cinerar-api.onrender.com/health](https://cinerar-api.onre
 **Extras**
 
 - Transferência / reivindicação de ingresso
-- Google Wallet (Android, opcional)
-- Link do ingresso pro iPhone
+- Link do ingresso com QR
 - Assentos ao vivo (mapa atualiza enquanto outras pessoas compram)
 - Docker Compose (MySQL + API + front)
 - Testes unitários no backend + CI/CD no GitHub Actions
@@ -126,7 +125,7 @@ Health check: [https://cinerar-api.onrender.com/health](https://cinerar-api.onre
 
 **Extras**
 
-- TMDb API · QR AES-256-GCM · Google Wallet (opcional)
+- TMDb API · QR AES-256-GCM
 
 MySQL com `SELECT … FOR UPDATE` no hold/checkout e índice único em `active_slot` pra não vender o mesmo assento duas vezes.
 
@@ -231,7 +230,7 @@ Front (`.env` na raiz):
 VITE_APP_API_URL=http://localhost:3333/api
 ```
 
-Não versionar `.env` com secrets reais. Google Wallet (opcional): ver `.env.example` do backend e [`DEPLOY.md`](./DEPLOY.md).
+Não versionar `.env` com secrets reais. `TICKET_QR_SECRET` é **obrigatório** (sem fallback no código).
 
 #### Testes
 
@@ -239,6 +238,9 @@ Não versionar `.env` com secrets reais. Google Wallet (opcional): ver `.env.exa
 cd backend
 npm run test:unit   # unitários (sem DB)
 npm test            # unitários + QR + fluxo de ingressos
+
+# Na raiz (API + Vite no ar):
+npm run test:e2e:purchase
 ```
 
 ### Contas de teste
@@ -350,8 +352,7 @@ ticket_challenge/
 
 - Pagamento fictício
 - Sem `TMDB_API_KEY`, o seed roda; publicar pela busca TMDb precisa da chave
-- Apple Wallet oficial exige conta paga — aqui o iPhone recebe o link `/i/...`
-- Sem `GOOGLE_WALLET_*`, o botão Android fica off; “Enviar para iPhone” continua
+- Única API externa: TMDb (imagens/CDN do próprio TMDb no catálogo)
 
 ## Licença
 

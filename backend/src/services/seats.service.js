@@ -1,4 +1,10 @@
-import { execute, query, withTransaction } from '../db/index.js'
+import {
+  execute,
+  isDuplicateKeyError,
+  query,
+  queryOne,
+  withTransaction,
+} from '../db/index.js'
 
 export const HOLD_TTL_MS = 10 * 60 * 1000
 
@@ -14,6 +20,30 @@ export async function purgeExpiredHolds(conn = null) {
   await execute(`DELETE FROM seat_holds WHERE expires_at <= ?`, [nowIso()], conn)
 }
 
+export async function lockSessionForUpdate(sessionId, conn) {
+  const session = String(sessionId || '').trim()
+  if (!session) {
+    const err = new Error('Sessão inválida.')
+    err.status = 400
+    throw err
+  }
+  if (!conn) {
+    throw new Error('lockSessionForUpdate exige conexão de transação.')
+  }
+
+  const row = await queryOne(
+    `SELECT id FROM showtimes WHERE id = ? FOR UPDATE`,
+    [session],
+    conn,
+  )
+  if (!row) {
+    const err = new Error('Sessão não encontrada.')
+    err.status = 404
+    throw err
+  }
+  return row
+}
+
 export async function lockSeatsForUpdate(sessionId, seatIds, conn) {
   const session = String(sessionId || '').trim()
   const seats = [...new Set((seatIds || []).map((id) => String(id)).filter(Boolean))]
@@ -21,6 +51,8 @@ export async function lockSeatsForUpdate(sessionId, seatIds, conn) {
   if (!conn) {
     throw new Error('lockSeatsForUpdate exige conexão de transação.')
   }
+
+  await lockSessionForUpdate(session, conn)
 
   const placeholders = seats.map(() => '?').join(', ')
 
@@ -225,12 +257,23 @@ export async function holdSeat({ sessionId, seatId, holderKey }) {
         conn,
       )
     } else {
-      await execute(
-        `INSERT INTO seat_holds (session_id, seat_id, holder_key, expires_at)
-         VALUES (?, ?, ?, ?)`,
-        [session, seat, holder, expires],
-        conn,
-      )
+      try {
+        await execute(
+          `INSERT INTO seat_holds (session_id, seat_id, holder_key, expires_at)
+           VALUES (?, ?, ?, ?)`,
+          [session, seat, holder, expires],
+          conn,
+        )
+      } catch (error) {
+        if (isDuplicateKeyError(error)) {
+          const err = new Error(
+            'Este assento já está selecionado por outra pessoa.',
+          )
+          err.status = 409
+          throw err
+        }
+        throw error
+      }
     }
 
     return { sessionId: session, seatId: seat, expiresAt: expires }

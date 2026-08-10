@@ -159,31 +159,17 @@ async function seedUser({ id, email, name, role, password }) {
 }
 
 async function seedPublishedEvent(organizerId) {
-  const movieId = 'mov_seed_dune'
-  const trailerUrl = 'https://www.youtube.com/watch?v=ncwsW3qxQlo'
+  const movieId = 'mov_seed_toystory5'
+  const trailerUrl = 'https://www.youtube.com/watch?v=c51ND9Hdbw0'
   const existing = await queryOne(
     `SELECT id, trailer_url FROM movies WHERE id = ? OR tmdb_id = ?`,
-    [movieId, 693134],
+    [movieId, 1084244],
   )
   if (existing) {
-    const dunePoster =
-      'https://image.tmdb.org/t/p/w500/rrjoeR5m98ptkGUJ2Z7G4t2lXMg.jpg'
-    const duneBackdrop =
-      'https://image.tmdb.org/t/p/w1280/eZ239CUp1d6OryZEBPnO2n87gMG.jpg'
-    await execute(
-      `UPDATE movies
-       SET trailer_url = COALESCE(NULLIF(trailer_url, ''), ?),
-           poster = ?,
-           hero = ?,
-           backdrop = ?,
-           updated_at = ?
-       WHERE id = ?`,
-      [trailerUrl, dunePoster, duneBackdrop, duneBackdrop, new Date().toISOString(), existing.id],
-    )
     return
   }
 
-  const showtimeId = 'st_seed_dune'
+  const showtimeId = 'st_seed_toystory5'
   const now = new Date().toISOString()
   const start = new Date(Date.now() + 2 * 60 * 60 * 1000)
   const pad = (n) => String(n).padStart(2, '0')
@@ -191,9 +177,9 @@ async function seedPublishedEvent(organizerId) {
   const sessionTime = `${pad(start.getHours())}:${pad(start.getMinutes())}`
   const weekday = start.toLocaleDateString('pt-BR', { weekday: 'long' })
   const poster =
-    'https://image.tmdb.org/t/p/w500/rrjoeR5m98ptkGUJ2Z7G4t2lXMg.jpg'
+    'https://image.tmdb.org/t/p/w500/sssrBhdvDcczgMQYDc8oCoSuFEJ.jpg'
   const backdrop =
-    'https://image.tmdb.org/t/p/w1280/eZ239CUp1d6OryZEBPnO2n87gMG.jpg'
+    'https://image.tmdb.org/t/p/w1280/8sSKdEmlmqF4kJUd28SqthXC4yZ.jpg'
 
   await execute(
     `INSERT INTO movies (
@@ -203,13 +189,13 @@ async function seedPublishedEvent(organizerId) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     [
       movieId,
-      'Duna: Parte Dois',
-      'Paul Atreides se une a Chani e aos Fremen enquanto busca vingança contra os conspiradores que destruíram sua família.',
-      'Ficção científica, Aventura',
-      8.3,
-      '166 min',
+      'Toy Story 5',
+      'Woody, Buzz e a turma enfrentam uma nova ameaça à diversão: a tecnologia.',
+      'Animação, Família, Comédia',
+      7.4,
+      '100 min',
       '2D',
-      'TMDb',
+      '2026',
       poster,
       backdrop,
       backdrop,
@@ -217,7 +203,7 @@ async function seedPublishedEvent(organizerId) {
       organizerId,
       now,
       now,
-      693134,
+      1084244,
       'tmdb',
     ],
   )
@@ -311,6 +297,18 @@ export async function initDb() {
     await seedPublishedEvent(organizerId)
   } catch (error) {
     console.warn('[seed] evento publicado:', error.message)
+  }
+
+  try {
+    const { seedDemoCatalog } = await import('./seedCatalog.js')
+    const result = await seedDemoCatalog(organizerId)
+    if (result.created > 0 || result.deactivated > 0) {
+      console.log(
+        `[seed] catálogo 2026: +${result.created}, sync ${result.skipped}, off ${result.deactivated || 0}`,
+      )
+    }
+  } catch (error) {
+    console.warn('[seed] catálogo demo:', error.message)
   }
 
   return pool

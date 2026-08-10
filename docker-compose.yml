@@ -24,9 +24,9 @@ services:
       - "3333:3333"
     environment:
       PORT: 3333
-      NODE_ENV: production
+      NODE_ENV: development
       STAFF_INVITE_CODE: cineray-staff
-      TICKET_QR_SECRET: cineray-qr-compose-secret
+      TICKET_QR_SECRET: cineray-compose-qr-secret-change-in-prod
       TMDB_API_KEY: ${TMDB_API_KEY:-}
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306

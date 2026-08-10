@@ -3,26 +3,26 @@ import { Link } from 'react-router-dom'
 import {
   POSTER_GALLERY,
   createEventFromTmdb,
-  createLocalMovie,
-  createLocalShowtime,
-  deleteLocalMovie,
-  deleteLocalShowtime,
-  duplicateLocalShowtime,
-  fetchAdminLocalMovies,
-  fetchLocalMovieShowtimes,
-  fetchLocalShowtimeSeats,
+  createMovie,
+  createShowtime,
+  deleteMovie,
+  deleteShowtime,
+  duplicateShowtime,
+  fetchAdminMovies,
+  fetchMovieShowtimes,
+  fetchShowtimeSeats,
   fetchOrganizerReport,
   fetchShowtimeOccupancy,
   searchTmdbCatalog,
-  setLocalMovieActive,
+  setMovieActive,
   toBrDate,
   toIsoDate,
-  updateLocalMovie,
-  updateLocalShowtime,
-  type LocalMovieInput,
+  updateMovie,
+  updateShowtime,
+  type MovieInput,
   type OrganizerReport,
   type ShowtimeOccupancy,
-} from '../api/localCatalog'
+} from '../api/catalog'
 import { AppApiError } from '../api/appClient'
 import { Icon } from '../components/Icon'
 import { RequireRole } from '../components/RequireRole'
@@ -67,7 +67,7 @@ function groupSeatMapByRow(seats: SeatMapSeat[]) {
 
 type TabId = 'dashboard' | 'publicar' | 'filmes' | 'sessoes'
 
-const emptyMovie: LocalMovieInput = {
+const emptyMovie: MovieInput = {
   title: '',
   synopsis: '',
   genre: 'Drama',
@@ -79,7 +79,7 @@ const emptyMovie: LocalMovieInput = {
   trailerUrl: '',
 }
 
-function fieldError(form: LocalMovieInput) {
+function fieldError(form: MovieInput) {
   if (!form.title.trim()) return 'Informe o título do filme.'
   if (!form.poster.trim()) return 'Informe a URL do poster ou escolha da galeria.'
   if (!/^https?:\/\//i.test(form.poster.trim())) {
@@ -111,7 +111,7 @@ function OrganizerDashboard() {
   const [occupancy, setOccupancy] = useState<Record<string, ShowtimeOccupancy>>({})
   const [report, setReport] = useState<OrganizerReport | null>(null)
   const [reportLive, setReportLive] = useState(false)
-  const [form, setForm] = useState<LocalMovieInput>(emptyMovie)
+  const [form, setForm] = useState<MovieInput>(emptyMovie)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [sessionDateIso, setSessionDateIso] = useState('')
   const [sessionTime, setSessionTime] = useState('20:00')
@@ -175,7 +175,7 @@ function OrganizerDashboard() {
       seats: [],
     })
     try {
-      const data = await fetchLocalShowtimeSeats(session.id)
+      const data = await fetchShowtimeSeats(session.id)
       setSeatMapView((prev) =>
         prev && prev.sessionId === session.id
           ? { ...prev, seats: data.seats }
@@ -197,13 +197,13 @@ function OrganizerDashboard() {
   }
 
   async function reloadMovies() {
-    const list = await fetchAdminLocalMovies()
+    const list = await fetchAdminMovies()
     setMovies(list)
     return list
   }
 
   async function reloadSessions(movieId: string) {
-    const data = await fetchLocalMovieShowtimes(movieId)
+    const data = await fetchMovieShowtimes(movieId)
     setSessions(data.sessions)
     const next: Record<string, ShowtimeOccupancy> = {}
     await Promise.all(
@@ -289,7 +289,6 @@ function OrganizerDashboard() {
       document.body.style.overflow = previous
       window.removeEventListener('keydown', onKey)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only lock scroll while a map is open
   }, [seatMapView?.sessionId])
 
   async function handleSaveMovie(e: FormEvent) {
@@ -302,10 +301,10 @@ function OrganizerDashboard() {
 
     try {
       if (editingId) {
-        await updateLocalMovie(editingId, form)
+        await updateMovie(editingId, form)
         setSuccess('Filme atualizado.')
       } else {
-        const movie = await createLocalMovie(form)
+        const movie = await createMovie(form)
         setSuccess('Filme criado.')
         setSelectedId(movie.id)
       }
@@ -321,7 +320,7 @@ function OrganizerDashboard() {
   async function handleToggleActive(movie: Movie) {
     const next = !(movie.isActive !== false)
     try {
-      await setLocalMovieActive(movie.id, next)
+      await setMovieActive(movie.id, next)
       await reloadMovies()
       setSuccess(next ? 'Filme ativado no catálogo.' : 'Filme desativado do catálogo.')
     } catch (err) {
@@ -338,7 +337,7 @@ function OrganizerDashboard() {
       return
     }
     try {
-      await deleteLocalMovie(id)
+      await deleteMovie(id)
       if (selectedId === id) setSelectedId(null)
       if (editingId === id) {
         setEditingId(null)
@@ -375,10 +374,10 @@ function OrganizerDashboard() {
 
     try {
       if (editingSessionId) {
-        await updateLocalShowtime(editingSessionId, payload)
+        await updateShowtime(editingSessionId, payload)
         setSuccess('Sessão atualizada.')
       } else {
-        await createLocalShowtime(selectedId, payload)
+        await createShowtime(selectedId, payload)
         setSuccess('Sessão adicionada.')
       }
       setEditingSessionId(null)
@@ -395,7 +394,7 @@ function OrganizerDashboard() {
   async function handleDuplicateSession(session: Session) {
     if (!selectedId) return
     try {
-      await duplicateLocalShowtime(session.id)
+      await duplicateShowtime(session.id)
       await reloadSessions(selectedId)
       setSuccess('Sessão duplicada. Ajuste data/hora se precisar.')
     } catch (err) {
@@ -408,7 +407,7 @@ function OrganizerDashboard() {
       return
     }
     try {
-      await deleteLocalShowtime(id)
+      await deleteShowtime(id)
       if (selectedId) await reloadSessions(selectedId)
       setSuccess('Sessão removida.')
     } catch (err) {
@@ -447,7 +446,7 @@ function OrganizerDashboard() {
   }
 
   const tabs: Array<{ id: TabId; label: string }> = [
-    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'dashboard', label: 'Visão geral' },
     { id: 'publicar', label: 'Publicar (TMDb)' },
     { id: 'filmes', label: 'Filmes' },
     { id: 'sessoes', label: 'Sessões' },
@@ -511,7 +510,7 @@ function OrganizerDashboard() {
             Painel do organizador
           </p>
           <h1 className="text-headline-lg-mobile text-on-surface md:text-headline-lg">
-            Dashboard
+            Visão geral
           </h1>
           <p className="text-body-md text-on-surface-variant">{user?.email}</p>
         </div>
@@ -817,12 +816,12 @@ function OrganizerDashboard() {
           </form>
 
           <div className="space-y-4">
-            <h2 className="text-headline-md text-on-surface">Filmes locais</h2>
+            <h2 className="text-headline-md text-on-surface">Catálogo</h2>
             {loading ? (
               <p className="text-body-md text-on-surface-variant">Carregando…</p>
             ) : movies.length === 0 ? (
               <p className="rounded-xl border border-dashed border-white/15 p-6 text-body-md text-on-surface-variant">
-                Nenhum filme local ainda. Crie o primeiro ao lado.
+                Nenhum filme no catálogo ainda. Publique o primeiro ao lado.
               </p>
             ) : (
               <div className="space-y-3">
@@ -1120,7 +1119,7 @@ function OrganizerDashboard() {
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-headline-md text-on-surface">Dashboard</h2>
+              <h2 className="text-headline-md text-on-surface">Visão geral</h2>
               <p className="text-body-md text-on-surface-variant">
                 Visão geral do cinema: eventos, vendas e próximas sessões.
               </p>

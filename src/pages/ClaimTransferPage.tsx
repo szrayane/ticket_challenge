@@ -4,7 +4,7 @@ import { AppApiError } from '../api/appClient'
 import {
   claimTicketTransfer,
   fetchTransferPreview,
-} from '../api/localCatalog'
+} from '../api/catalog'
 import { Icon } from '../components/Icon'
 import { useAuth } from '../context/AuthContext'
 

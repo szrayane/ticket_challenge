@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { execute, query, queryOne } from '../db/index.js'
-import { getLocalMovie } from './movies.service.js'
+import { getMovie } from './movies.service.js'
 import {
   listHeldSeatIds,
   listSoldSeatIds,
@@ -198,7 +198,7 @@ export async function getShowtimeOccupancy(showtimeId) {
 }
 
 export async function createShowtime(userId, movieId, input = {}) {
-  const movie = await getLocalMovie(movieId)
+  const movie = await getMovie(movieId)
   if (!movie) {
     const err = new Error('Filme não encontrado.')
     err.status = 404
@@ -313,7 +313,7 @@ export async function deleteShowtime(id) {
   return { deleted: true }
 }
 
-export async function buildLocalSeats(showtimeId) {
+export async function buildSeats(showtimeId) {
   const showtime = await getShowtime(showtimeId)
   const capacity = showtime?.capacity || DEFAULT_CAPACITY
   const price = showtime?.price || DEFAULT_PRICE
@@ -346,12 +346,12 @@ export async function buildLocalSeats(showtimeId) {
   return seats
 }
 
-export async function getLocalShowtimeWithMovie(showtimeId) {
+export async function getShowtimeWithMovie(showtimeId) {
   const showtime = await getShowtime(showtimeId)
   if (!showtime) return null
-  const movie = await getLocalMovie(showtime.movieId, { includeInactive: false })
+  const movie = await getMovie(showtime.movieId, { includeInactive: false })
   if (!movie) return null
-  return { movie, session: showtime, seats: await buildLocalSeats(showtimeId) }
+  return { movie, session: showtime, seats: await buildSeats(showtimeId) }
 }
 
 export async function getOrganizerReport() {

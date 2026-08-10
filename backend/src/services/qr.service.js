@@ -6,9 +6,9 @@ import {
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto'
+import { getTicketQrSecret } from '../config/secrets.js'
 
-const SECRET = () =>
-  String(process.env.TICKET_QR_SECRET || 'cineray-qr-dev-secret').trim()
+const SECRET = () => getTicketQrSecret()
 
 const ENC_PREFIX = 'CR2'
 const OPAQUE_PREFIX = 'CR1'

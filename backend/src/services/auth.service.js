@@ -1,4 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { getStaffInviteCode } from '../config/secrets.js'
 import { execute, queryOne } from '../db/index.js'
 
 const ROLES = new Set(['cliente', 'organizador', 'portaria'])
@@ -48,7 +49,7 @@ export async function registerUser({ email, password, name }) {
 }
 
 export async function registerStaffUser({ email, password, name, role, inviteCode }) {
-  const expected = String(process.env.STAFF_INVITE_CODE || 'cineray-staff').trim()
+  const expected = getStaffInviteCode()
   const provided = String(inviteCode || '').trim()
 
   if (!expected) {
