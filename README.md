@@ -85,14 +85,14 @@ Optei por **mapa de assentos** (não pista) porque faz mais sentido para cinema 
 
 | Camada | Onde | URL |
 |--------|------|-----|
-| Frontend | [Vercel](https://vercel.com) | _cole a URL do front_ |
-| API | [Render](https://render.com) | _cole a URL da API_ |
-| Banco | MySQL (Render / gerenciado) | — |
+| Frontend | [Vercel](https://vercel.com) | [ticket-challenge-qpel.vercel.app](https://ticket-challenge-qpel.vercel.app) |
+| API | [Render](https://render.com) | [cinerar-api.onrender.com](https://cinerar-api.onrender.com) |
+| Banco | [Aiven](https://aiven.io) MySQL | — |
 
 > [!IMPORTANT]
 > Em plano gratuito, a API no Render pode “acordar” lentamente. Se falhar no primeiro request, espere ~30s e tente de novo.
 
-Passo a passo de deploy: [`DEPLOY.md`](./DEPLOY.md).
+Health check da API: [https://cinerar-api.onrender.com/health](https://cinerar-api.onrender.com/health)
 
 <div id="funcionalidades"></div>
 
@@ -151,7 +151,12 @@ MySQL 8, com `SELECT … FOR UPDATE` no hold/checkout e índice único em `activ
 
 <div id="começando"></div>
 
-Você pode rodar tudo localmente (recomendado para avaliar) ou acessar o deploy quando as URLs acima estiverem preenchidas.
+Você pode rodar tudo localmente ou acessar o deploy:
+
+- Front: [https://ticket-challenge-qpel.vercel.app](https://ticket-challenge-qpel.vercel.app)
+- API: [https://cinerar-api.onrender.com](https://cinerar-api.onrender.com)
+
+Passo a passo de deploy: [`DEPLOY.md`](./DEPLOY.md).
 
 ### Pré-requisitos
 
@@ -386,10 +391,10 @@ ticket_challenge/
 - [x] Organizador + TMDb
 - [x] Portaria (câmera / código)
 - [x] MySQL + concorrência (`FOR UPDATE`)
-- [x] Deploy documentado (Vercel + Render)
+- [x] Deploy documentado (Vercel + Render + Aiven)
 - [ ] Vídeo de demonstração no README
 - [x] Screenshots (home, login, validar)
-- [ ] Preencher URLs de produção na seção Hospedagem
+- [x] Preencher URLs de produção na seção Hospedagem
 
 **Fora de escopo / limitações**
 
