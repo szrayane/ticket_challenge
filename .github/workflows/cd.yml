@@ -1,0 +1,60 @@
+name: CD
+
+# Deploy contínuo: Vercel (front) e Render (API) já fazem deploy automático
+# a cada push em main via integração Git. Este workflow valida o ar depois
+# do merge e, se existir o secret RENDER_DEPLOY_HOOK, dispara redeploy.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+jobs:
+  verify-production:
+    name: Verificar produção
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aguardar deploy (Vercel/Render)
+        run: sleep 45
+
+      - name: Health check API (Render)
+        run: |
+          set -e
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 60 \
+              https://cinerar-api.onrender.com/health || true)
+            echo "attempt=$i http=$code body=$(cat /tmp/health.json 2>/dev/null || true)"
+            if [ "$code" = "200" ] && grep -q '"status":"ok"' /tmp/health.json; then
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "API health check falhou"
+          exit 1
+
+      - name: Front no ar (Vercel)
+        run: |
+          set -e
+          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 60 \
+            https://ticket-challenge-qpel.vercel.app/)
+          echo "front http=$code"
+          test "$code" = "200"
+
+  render-redeploy:
+    name: Redeploy Render (opcional)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "Secret RENDER_DEPLOY_HOOK não configurado — pulando (ok)."
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK"
+          echo "Render deploy hook disparado"
