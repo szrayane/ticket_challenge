@@ -128,7 +128,7 @@ export function AccountPage() {
             </div>
             <p className="text-body-md text-on-surface-variant">
               Pedidos agrupados por compra. Baixe ou compartilhe o QR e cancele
-              antes do início da sessão (pagamento demo — sem estorno real).
+              antes do início da sessão.
             </p>
 
             {upcomingOrders.length === 0 ? (

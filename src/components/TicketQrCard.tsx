@@ -392,8 +392,7 @@ export function TicketQrCard({
           <div className="mt-1 space-y-2 rounded-lg border border-white/10 bg-white/5 p-3">
             <p className="text-caption text-on-surface-variant">
               Cancelar o assento <strong>{ticket.seatLabel}</strong>? O QR deixa
-              de valer e o lugar volta a ficar disponível. O pagamento é demo —
-              não há estorno real.
+              de valer e o lugar volta a ficar disponível.
             </p>
             <div className="flex flex-wrap gap-2">
               <button

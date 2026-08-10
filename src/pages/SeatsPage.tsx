@@ -215,22 +215,16 @@ export function SeatsPage() {
   useEffect(() => {
     if (!selectedSessionId || selectedSeats.length === 0) return
 
-    const seatIds = selectedSeats.map((seat) => seat.id)
+    const intervalId = window.setInterval(() => {
+      const seatIds = selectedSeats.map((seat) => seat.id)
+      if (seatIds.length === 0) return
+      void refreshSeatHolds({
+        sessionId: selectedSessionId,
+        seatIds,
+        holderKey: holderKeyRef.current,
+      }).catch(() => undefined)
+    }, 60_000)
 
-    async function renew() {
-      try {
-        const result = await refreshSeatHolds({
-          sessionId: selectedSessionId,
-          seatIds,
-          holderKey: holderKeyRef.current,
-        })
-        if (result.expiresAt) setHoldExpiresAt(result.expiresAt)
-      } catch {
-      }
-    }
-
-    void renew()
-    const intervalId = window.setInterval(renew, 60_000)
     return () => window.clearInterval(intervalId)
   }, [selectedSessionId, selectedSeats])
 
@@ -246,6 +240,20 @@ export function SeatsPage() {
       const left = new Date(holdExpiresAt!).getTime() - Date.now()
       setHoldMsLeft(left)
       if (left <= 0) {
+        const sessionId = selectedSessionId
+        const seats = selectedSeats
+        const holderKey = holderKeyRef.current
+        if (sessionId && seats.length > 0) {
+          void Promise.allSettled(
+            seats.map((seat) =>
+              releaseSeatHold({
+                sessionId,
+                seatId: seat.id,
+                holderKey,
+              }),
+            ),
+          )
+        }
         clearSeats()
         setHoldExpiresAt(null)
         setError('O tempo de reserva dos assentos expirou. Selecione novamente.')
@@ -255,7 +263,7 @@ export function SeatsPage() {
     tick()
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
-  }, [holdExpiresAt, selectedSeats.length, clearSeats])
+  }, [holdExpiresAt, selectedSeats, selectedSessionId, clearSeats])
 
   useEffect(() => {
     if (selectedSeats.length === 0 || occupiedSeatIds.length === 0) return
@@ -305,7 +313,7 @@ export function SeatsPage() {
           seatId: seat.id,
           holderKey,
         })
-        setHoldExpiresAt(held.expiresAt)
+        setHoldExpiresAt((prev) => prev ?? held.expiresAt)
         toggleSeat(seat)
         void fetchOccupiedSeatIds(selectedSessionId, holderKey).then(
           setOccupiedSeatIds,
@@ -541,32 +549,36 @@ export function SeatsPage() {
             )}
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6 rounded-xl border border-white/5 bg-surface-container/30 p-4">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-xl border border-white/5 bg-surface-container/30 px-4 py-4 text-left">
             <div className="flex items-center gap-2">
-              <div className="h-5 w-5 rounded-t-md rounded-b-sm bg-primary-container" />
-              <span className="text-caption text-on-surface-variant">Selecionado</span>
+              <div className="h-5 w-5 shrink-0 rounded-t-md rounded-b-sm bg-primary-container" />
+              <span className="text-caption leading-none text-on-surface-variant">
+                Selecionado
+              </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex h-5 w-5 items-center justify-center rounded-t-md rounded-b-sm bg-surface-variant opacity-50">
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-t-md rounded-b-sm bg-surface-variant opacity-50">
                 <Icon name="close" className="text-[10px]" />
               </div>
-              <span className="text-caption text-on-surface-variant">Indisponível</span>
+              <span className="text-caption leading-none text-on-surface-variant">
+                Indisponível
+              </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-5 w-5 rounded-t-md rounded-b-sm border border-white/20 bg-surface-container" />
-              <span className="text-caption text-on-surface-variant">
+              <div className="h-5 w-5 shrink-0 rounded-t-md rounded-b-sm border border-white/20 bg-surface-container" />
+              <span className="text-caption leading-none text-on-surface-variant">
                 {TICKET_LABELS.basic} ({formatMoney(TICKET_PRICES.basic)})
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-5 w-5 rounded-t-md rounded-b-sm border border-primary/50 bg-primary/15" />
-              <span className="text-caption text-primary">
+              <div className="h-5 w-5 shrink-0 rounded-t-md rounded-b-sm border border-primary/50 bg-primary/15" />
+              <span className="text-caption leading-none text-primary">
                 {TICKET_LABELS.premium} ({formatMoney(TICKET_PRICES.premium)})
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-5 w-5 rounded-t-md rounded-b-sm border border-secondary bg-secondary/20" />
-              <span className="text-caption text-secondary">
+              <div className="h-5 w-5 shrink-0 rounded-t-md rounded-b-sm border border-secondary bg-secondary/20" />
+              <span className="text-caption leading-none text-secondary">
                 {TICKET_LABELS.vip} ({formatMoney(TICKET_PRICES.vip)})
               </span>
             </div>
@@ -593,7 +605,7 @@ export function SeatsPage() {
                   Assentos selecionados ({selectedSeats.length})
                 </h3>
                 {selectedSeats.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-white/10 p-4 text-caption text-on-surface-variant">
+                  <p className="rounded-lg border border-dashed border-white/10 px-4 py-4 text-left text-caption leading-relaxed text-on-surface-variant">
                     Selecione assentos no mapa para continuar.
                   </p>
                 ) : (

@@ -33,8 +33,8 @@ export function LoginForm({
   submitting = false,
 }: LoginFormProps) {
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('cliente1@cineray.com')
+  const [password, setPassword] = useState('cli1234')
   const [staffSignup, setStaffSignup] = useState(false)
   const [staffRole, setStaffRole] = useState<StaffRole>('portaria')
   const [inviteCode, setInviteCode] = useState('')

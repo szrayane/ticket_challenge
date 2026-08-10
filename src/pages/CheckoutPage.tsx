@@ -286,8 +286,8 @@ export function CheckoutPage() {
       paymentMethod === 'wallet'
         ? selectedWallet?.label
         : paymentMethod === 'credit_card'
-          ? 'operadora fictícia'
-          : 'confirmação Pix fictícia',
+          ? 'cartão de crédito'
+          : 'Pix',
     )
 
     try {
@@ -408,7 +408,7 @@ export function CheckoutPage() {
 
         <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-caption text-on-surface">
           <Icon name="verified_user" className="text-primary" />
-          Conta: {user.email} — QR do ingresso só após aprovação fictícia
+          Conta: {user.email}
         </div>
 
         <div className="glass-card flex flex-col gap-6 rounded-xl p-card-padding">
@@ -514,9 +514,9 @@ export function CheckoutPage() {
           </div>
 
           <p className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-caption text-on-surface-variant">
-            Demo: validamos o formulário e simulamos a aprovação. Cartão teste{' '}
+            Cartão de teste:{' '}
             <span className="text-on-surface">4111 1111 1111 1111</span> — recusado:{' '}
-            <span className="text-on-surface">4000 0000 0000 0002</span>. CPF exemplo:{' '}
+            <span className="text-on-surface">4000 0000 0000 0002</span>. CPF:{' '}
             <span className="text-on-surface">{DEMO_PAYMENT.cpf}</span>.
           </p>
 
@@ -699,9 +699,9 @@ export function CheckoutPage() {
           {paymentMethod === 'wallet' && (
             <div className="mt-2 animate-fade-in space-y-4">
               <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-body-md text-on-surface-variant">
-                Escolha a carteira. Vamos simular a aprovação de{' '}
-                <span className="font-semibold text-primary">{formatMoney(total)}</span> e só então
-                gerar o QR do ingresso.
+                Escolha a carteira para pagar{' '}
+                <span className="font-semibold text-primary">{formatMoney(total)}</span>. Depois
+                geramos o QR do ingresso.
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -752,8 +752,7 @@ export function CheckoutPage() {
                 <>
                   <Icon name="lock" className="text-[40px] text-on-surface-variant" />
                   <p className="text-center text-body-md text-on-surface-variant">
-                    Confirme CPF e nome para liberar o QR Pix. Depois confirme o pagamento
-                    fictício para gerar o ingresso em{' '}
+                    Confirme CPF e nome para liberar o QR Pix. O ingresso será gerado para{' '}
                     <span className="text-primary">{user.email}</span>.
                   </p>
                   <button
@@ -779,7 +778,7 @@ export function CheckoutPage() {
                     />
                   </div>
                   <p className="text-center text-body-md text-on-surface-variant">
-                    Escaneie (demo) ou confirme abaixo o pagamento de{' '}
+                    Escaneie o QR ou confirme abaixo o pagamento de{' '}
                     <span className="font-semibold text-primary">{formatMoney(total)}</span>.
                   </p>
                   <div className="flex w-full flex-col gap-2">
@@ -807,7 +806,7 @@ export function CheckoutPage() {
 
           <div className="mt-auto flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="min-w-0 break-words text-caption text-on-surface-variant sm:max-w-[240px]">
-              O QR do ingresso só é gerado depois da aprovação fictícia do pagamento.
+              O QR do ingresso é gerado depois da aprovação do pagamento.
             </p>
             <button
               type="submit"

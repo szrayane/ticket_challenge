@@ -43,7 +43,7 @@ export async function simulateFictionalPayment(
     if (digits === onlyDigits(DEMO_PAYMENT.declinedCardNumber)) {
       return {
         ok: false,
-        reason: 'Cartão recusado pela operadora (demo). Use 4111 1111 1111 1111.',
+        reason: 'Cartão recusado pela operadora. Tente outro cartão.',
       }
     }
   }

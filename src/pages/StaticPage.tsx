@@ -9,37 +9,37 @@ const PAGES: Record<
     title: 'Sobre nós',
     paragraphs: [
       'A CineRay é um cinema digital: escolha o filme, reserve o assento e entre com QR na porta.',
-      'Demo do Desafio Elite Dev 2026 — pagamento simulado, hold de 10 min e validação na portaria.',
+      'Assentos ficam reservados por 10 minutos durante a compra. Na entrada, o QR é validado pela portaria.',
     ],
   },
   suporte: {
     title: 'Suporte',
     paragraphs: [
-      'Dúvidas sobre compra ou conta: use Minha conta para ver QR Codes, cancelar antes da sessão e atualizar dados.',
-      'Problemas técnicos: confira o README do repositório e se a API está no ar.',
+      'Dúvidas sobre compra ou conta: em Minha conta você vê os QR Codes, cancela antes da sessão e atualiza seus dados.',
+      'Se algo não carregar, atualize a página e tente de novo em alguns segundos.',
     ],
   },
   termos: {
     title: 'Termos de uso',
     paragraphs: [
-      'A CineRay é só para demonstração e estudo.',
-      'Pagamentos são fictícios: nenhum valor real é cobrado.',
-      'Assentos em hold expiram se a compra não for concluída.',
+      'Ao usar a CineRay, você concorda em concluir a compra dentro do tempo de reserva do assento.',
+      'Assentos não pagos voltam ao mapa quando o hold expira.',
+      'Cancelamentos antes do início da sessão liberam o lugar para outras pessoas.',
     ],
   },
   privacidade: {
     title: 'Política de privacidade',
     paragraphs: [
-      'Nome, e-mail, CPF e senha (hash) ficam no MySQL do projeto.',
-      'Não enviamos dados para marketing. O token de sessão fica no navegador.',
+      'Guardamos nome, e-mail, CPF e senha (com hash) para operar a conta e os ingressos.',
+      'Não enviamos dados para marketing. O token de sessão fica no seu navegador.',
       'Você pode sair da conta a qualquer momento.',
     ],
   },
   corporativo: {
     title: 'Reservas corporativas',
     paragraphs: [
-      'Reservas de sala inteira e eventos em grupo ainda não estão neste app.',
-      'Hoje o fluxo é compra individual com mapa de assentos e QR na entrada.',
+      'Reservas de sala inteira e eventos em grupo ainda não estão disponíveis.',
+      'Por enquanto o fluxo é compra individual com mapa de assentos e QR na entrada.',
     ],
   },
 }

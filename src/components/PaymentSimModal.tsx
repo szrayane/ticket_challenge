@@ -51,7 +51,7 @@ export function PaymentSimModal({
               <Icon name={icon} className="text-headline-md" />
             </span>
             <div>
-              <p className="text-label-md text-on-surface-variant">Pagamento demo</p>
+              <p className="text-label-md text-on-surface-variant">Pagamento</p>
               <h2 className="text-body-lg font-semibold text-on-surface">{title}</h2>
             </div>
           </div>
@@ -74,9 +74,9 @@ export function PaymentSimModal({
               <div className="space-y-2">
                 <p className="text-headline-md text-on-surface">Validando pagamento…</p>
                 <p className="text-body-md text-on-surface-variant">
-                  Simulando aprovação de{' '}
+                  Processando{' '}
                   <span className="font-semibold text-primary">{formatMoney(amount)}</span>
-                  {detail ? ` (${detail})` : ''}.
+                  {detail ? ` · ${detail}` : ''}.
                 </p>
                 <p className="text-caption text-on-surface-variant/80">
                   Sem gateway real — só após aprovar geramos o QR do ingresso.
@@ -105,7 +105,7 @@ export function PaymentSimModal({
               <div className="space-y-2">
                 <p className="text-headline-md text-on-surface">Pagamento recusado</p>
                 <p className="text-body-md text-on-surface-variant">
-                  {detail || 'A simulação não aprovou este pagamento.'}
+                  {detail || 'Não foi possível aprovar este pagamento.'}
                 </p>
               </div>
               <div className="mt-2 flex gap-3">

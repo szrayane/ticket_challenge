@@ -11,11 +11,6 @@ const exploreLinks = [
   { to: '/conta', label: 'Minha conta' },
 ]
 
-const legalLinks = [
-  { to: '/termos', label: 'Termos de uso' },
-  { to: '/privacidade', label: 'Privacidade' },
-]
-
 export function Footer({ compact = false }: FooterProps) {
   return (
     <footer className="mt-auto w-full border-t border-white/8 bg-surface-container-lowest">
@@ -23,7 +18,7 @@ export function Footer({ compact = false }: FooterProps) {
         className={`mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-8 px-5 py-10 md:px-container-margin ${
           compact
             ? 'md:grid-cols-[1fr_auto] md:items-center'
-            : 'md:grid-cols-[minmax(0,1.2fr)_minmax(0,2fr)] md:gap-12 md:py-14'
+            : 'md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-12 md:py-14'
         }`}
       >
         <div className="flex flex-col gap-3">
@@ -43,7 +38,7 @@ export function Footer({ compact = false }: FooterProps) {
 
         {compact ? (
           <nav className="flex flex-wrap gap-x-6 gap-y-3 md:justify-end">
-            {[...exploreLinks, ...legalLinks].map((item) => (
+            {exploreLinks.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -54,11 +49,9 @@ export function Footer({ compact = false }: FooterProps) {
             ))}
           </nav>
         ) : (
-          <div className="grid grid-cols-2 gap-8 sm:justify-items-start md:justify-items-end md:gap-16">
-            <div className="flex flex-col gap-3 md:items-start">
-              <h4 className="text-body-md font-semibold text-on-surface">
-                Explorar
-              </h4>
+          <div className="flex flex-col gap-3 md:items-end">
+            <h4 className="text-body-md font-semibold text-on-surface">Explorar</h4>
+            <nav className="flex flex-col gap-3 md:items-end">
               {exploreLinks.map((item) => (
                 <Link
                   key={item.to}
@@ -68,21 +61,7 @@ export function Footer({ compact = false }: FooterProps) {
                   {item.label}
                 </Link>
               ))}
-            </div>
-            <div className="flex flex-col gap-3 md:items-start">
-              <h4 className="text-body-md font-semibold text-on-surface">
-                Jurídico
-              </h4>
-              {legalLinks.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className="text-caption text-on-surface-variant transition-colors hover:text-on-surface"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
+            </nav>
           </div>
         )}
       </div>

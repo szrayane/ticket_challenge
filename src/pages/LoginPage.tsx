@@ -147,9 +147,9 @@ export function LoginPage() {
           submitting={submitting}
         />
 
-        <details className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left">
+        <details open className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left">
           <summary className="cursor-pointer text-caption text-on-surface-variant hover:text-on-surface">
-            Contas de teste
+            Outras contas
           </summary>
           <div className="mt-3 space-y-1 text-caption text-on-surface-variant">
             <p>

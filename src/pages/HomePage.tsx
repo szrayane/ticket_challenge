@@ -305,8 +305,17 @@ export function HomePage() {
             </div>
           </div>
 
-          {filtersOpen && (
-            <div className="space-y-4 border-t border-white/8 px-4 py-4">
+          <div
+            className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+              filtersOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+            }`}
+          >
+            <div className="overflow-hidden">
+              <div
+                className={`space-y-4 border-t border-white/8 px-4 py-4 transition-opacity duration-300 ease-out ${
+                  filtersOpen ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
               <div className="space-y-2">
                 <p className="text-caption uppercase tracking-wider text-on-surface-variant">
                   Gênero
@@ -387,27 +396,28 @@ export function HomePage() {
                   <span className="toggle-thumb" />
                 </span>
               </button>
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
         {displayMovies.length > 0 ? (
           <div
             id="catalog"
+            key={`${genreFilter}|${maxPriceFilter}|${onlyEvents}|${searchQuery}`}
             className="grid grid-cols-1 gap-gutter sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
           >
-            {displayMovies.map((movie, index) => (
+            {displayMovies.map((movie) => (
               <div
                 key={movie.id}
-                className="animate-fade-up"
-                style={{ animationDelay: `${index * 80}ms` }}
+                className="animate-fade-in"
               >
                 <MovieCard movie={movie} />
               </div>
             ))}
           </div>
         ) : (
-          <div className="py-12 text-center">
+          <div className="py-12 text-center transition-opacity duration-300">
             <p className="text-body-lg text-on-surface-variant">
               Nenhum filme encontrado com os filtros atuais.
             </p>
