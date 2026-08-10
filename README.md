@@ -110,9 +110,23 @@ Health check: [https://cinerar-api.onrender.com/health](https://cinerar-api.onre
 
 ### Tecnologias
 
-**Front:** React 19 · TypeScript · Vite · Tailwind  
-**Back:** Node 22 · Express · MySQL 8 · Docker  
-**Extras:** TMDb · QR AES-256-GCM · Google Wallet (opcional)
+**Frontend**
+
+- ![React](https://img.shields.io/badge/React_19-20232a?style=for-the-badge&logo=react&logoColor=61DAFB)
+- ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+- ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+- ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+
+**Backend**
+
+- ![NodeJS](https://img.shields.io/badge/Node.js_22+-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
+- ![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
+- ![MySQL](https://img.shields.io/badge/MySQL_8-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+- ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+
+**Extras**
+
+- TMDb API · QR AES-256-GCM · Google Wallet (opcional)
 
 MySQL com `SELECT … FOR UPDATE` no hold/checkout e índice único em `active_slot` pra não vender o mesmo assento duas vezes.
 
@@ -343,7 +357,7 @@ ticket_challenge/
 
 <div id="licença"></div>
 
-Projeto pro Desafio Elite Dev 2026. Veja o repositório / edital do desafio.
+Projeto pro Desafio Elite Dev 2026.
 
 ## Contato
 
