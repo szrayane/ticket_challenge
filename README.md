@@ -75,15 +75,13 @@ Optei por **mapa de assentos** (não pista) porque faz mais sentido pra cinema e
 | Camada | Onde | URL |
 |--------|------|-----|
 | Frontend | [Vercel](https://vercel.com) | [ticket-challenge-qpel.vercel.app](https://ticket-challenge-qpel.vercel.app) |
-| API | [Render](https://render.com) | [cinerar-api.onrender.com](https://cinerar-api.onrender.com) |
+| API | [Render](https://render.com) | [cineray-api.onrender.com](https://cineray-api.onrender.com) |
 | Banco | [Aiven](https://aiven.io) MySQL | — |
-
-> O host da API ficou `cinerar-api` (typo antigo no Render) — não é outro produto.
 
 > [!IMPORTANT]
 > Em plano gratuito, a API no Render pode “acordar” lentamente. Se falhar no primeiro request, espere ~30s e tente de novo.
 
-Health check: [https://cinerar-api.onrender.com/health](https://cinerar-api.onrender.com/health)
+Health check: [https://cineray-api.onrender.com/health](https://cineray-api.onrender.com/health)
 
 <div id="funcionalidades"></div>
 
@@ -125,7 +123,7 @@ MySQL com `SELECT … FOR UPDATE` no hold/checkout e índice único em `active_s
 Você pode rodar tudo localmente ou acessar o deploy:
 
 - Front: [https://ticket-challenge-qpel.vercel.app](https://ticket-challenge-qpel.vercel.app)
-- API: [https://cinerar-api.onrender.com](https://cinerar-api.onrender.com)
+- API: [https://cineray-api.onrender.com](https://cineray-api.onrender.com)
 
 Passo a passo de deploy: [`DEPLOY.md`](./DEPLOY.md).
 
