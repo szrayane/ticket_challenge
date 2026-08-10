@@ -28,7 +28,7 @@ import { useAuth } from '../context/AuthContext'
 import { connectRealtime } from '../lib/realtime'
 import type { Movie, Session } from '../types'
 
-type TabId = 'publicar' | 'filmes' | 'sessoes' | 'relatorios'
+type TabId = 'dashboard' | 'publicar' | 'filmes' | 'sessoes'
 
 const emptyMovie: LocalMovieInput = {
   title: '',
@@ -54,13 +54,20 @@ function fieldError(form: LocalMovieInput) {
   return null
 }
 
+function sessionSortKey(session: { date: string; time: string }) {
+  const match = String(session.date || '').match(/(\d{2})\/(\d{2})\/(\d{4})/)
+  if (!match) return `${session.date} ${session.time}`
+  const [, day, month, year] = match
+  return `${year}-${month}-${day}T${session.time || '00:00'}`
+}
+
 function money(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function OrganizerDashboard() {
   const { user, logout } = useAuth()
-  const [tab, setTab] = useState<TabId>('publicar')
+  const [tab, setTab] = useState<TabId>('dashboard')
   const [movies, setMovies] = useState<Movie[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
@@ -148,7 +155,7 @@ function OrganizerDashboard() {
   }, [selectedId])
 
   useEffect(() => {
-    if (tab !== 'relatorios') return
+    if (tab !== 'dashboard') return
     let active = true
 
     async function refresh() {
@@ -280,7 +287,7 @@ function OrganizerDashboard() {
       setSessionTime('20:00')
       setRoom('Sala 1')
       await reloadSessions(selectedId)
-      if (tab === 'relatorios') await reloadReport()
+      if (tab === 'dashboard') await reloadReport()
     } catch (err) {
       setError(err instanceof AppApiError ? err.message : 'Falha ao salvar sessão.')
     }
@@ -341,10 +348,10 @@ function OrganizerDashboard() {
   }
 
   const tabs: Array<{ id: TabId; label: string }> = [
+    { id: 'dashboard', label: 'Dashboard' },
     { id: 'publicar', label: 'Publicar (TMDb)' },
     { id: 'filmes', label: 'Filmes' },
     { id: 'sessoes', label: 'Sessões' },
-    { id: 'relatorios', label: 'Relatórios' },
   ]
 
   async function handleSearchTmdb(e?: FormEvent) {
@@ -405,7 +412,7 @@ function OrganizerDashboard() {
             Painel do organizador
           </p>
           <h1 className="text-headline-lg-mobile text-on-surface md:text-headline-lg">
-            Operação local
+            Dashboard
           </h1>
           <p className="text-body-md text-on-surface-variant">{user?.email}</p>
         </div>
@@ -1010,13 +1017,13 @@ function OrganizerDashboard() {
         </div>
       )}
 
-      {tab === 'relatorios' && (
+      {tab === 'dashboard' && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-headline-md text-on-surface">Dashboard ao vivo</h2>
+              <h2 className="text-headline-md text-on-surface">Dashboard</h2>
               <p className="text-body-md text-on-surface-variant">
-                Ocupação, check-ins e receita atualizam em tempo real.
+                Visão geral do cinema: eventos, vendas e próximas sessões.
               </p>
             </div>
             <div
@@ -1031,124 +1038,111 @@ function OrganizerDashboard() {
                   reportLive ? 'bg-emerald-400' : 'bg-on-surface-variant'
                 }`}
               />
-              {reportLive ? 'WebSocket conectado' : 'Polling'}
+              {reportLive ? 'Ao vivo' : 'Atualizando…'}
             </div>
           </div>
 
           {!report ? (
-            <p className="text-body-md text-on-surface-variant">Carregando relatório…</p>
+            <p className="text-body-md text-on-surface-variant">Carregando dashboard…</p>
           ) : (
             <>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
+                  ['Eventos', String(report.activeMovies || report.movies)],
                   ['Ingressos vendidos', String(report.ticketsSold)],
-                  ['Check-ins', String(report.checkIns ?? 0)],
                   ['Receita', money(report.revenue)],
-                  ['Sessões', String(report.showtimes)],
+                  [
+                    'Ocupação média',
+                    `${
+                      report.sessions.length > 0
+                        ? Math.round(
+                            report.sessions.reduce(
+                              (sum, s) => sum + (s.occupancyPct ?? 0),
+                              0,
+                            ) / report.sessions.length,
+                          )
+                        : 0
+                    }%`,
+                  ],
                 ].map(([label, value]) => (
                   <div
                     key={label}
-                    className="rounded-xl border border-white/10 bg-surface-container p-5"
+                    className="min-w-0 rounded-xl border border-white/10 bg-surface-container p-5"
                   >
                     <p className="text-caption uppercase tracking-wider text-on-surface-variant">
                       {label}
                     </p>
-                    <p className="mt-2 text-4xl font-semibold tracking-tight text-on-surface">
+                    <p className="mt-2 break-words text-3xl font-semibold tracking-tight text-on-surface sm:text-4xl">
                       {value}
                     </p>
                   </div>
                 ))}
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-surface-container p-5">
-                <h3 className="mb-4 text-label-md uppercase tracking-wider text-on-surface-variant">
-                  Ocupação por sessão
-                </h3>
-                <ul className="space-y-4">
-                  {report.sessions.slice(0, 8).map((session) => {
-                    const pct = session.occupancyPct ?? 0
-                    return (
-                      <li key={session.id} className="space-y-2">
-                        <div className="flex flex-wrap items-end justify-between gap-2">
-                          <div>
-                            <p className="text-label-md text-on-surface">
-                              {session.movieTitle}
-                            </p>
-                            <p className="text-caption text-on-surface-variant">
-                              {session.date} {session.time} · {session.room}
-                              {session.held > 0 ? ` · ${session.held} em hold` : ''}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-label-md text-on-surface">
-                              {session.sold}/{session.totalSeats} · {pct}%
-                            </p>
-                            <p className="text-caption text-on-surface-variant">
-                              {session.checkedIn ?? 0} check-ins · {money(session.revenue)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className="h-full rounded-full bg-neon transition-all duration-500"
-                            style={{ width: `${Math.min(100, pct)}%` }}
-                          />
-                        </div>
-                      </li>
-                    )
-                  })}
-                  {report.sessions.length === 0 && (
-                    <li className="text-body-md text-on-surface-variant">
-                      Sem sessões ainda.
-                    </li>
-                  )}
-                </ul>
-              </div>
-
               <div className="overflow-x-auto rounded-xl border border-white/10">
+                <div className="border-b border-white/10 px-4 py-4">
+                  <h3 className="text-label-md uppercase tracking-wider text-on-surface-variant">
+                    Próximas sessões
+                  </h3>
+                </div>
                 <table className="min-w-full text-left text-body-md">
                   <thead className="bg-white/5 text-caption text-on-surface-variant">
                     <tr>
                       <th className="px-4 py-3 font-medium">Filme</th>
-                      <th className="px-4 py-3 font-medium">Sessão</th>
+                      <th className="px-4 py-3 font-medium">Sala</th>
+                      <th className="px-4 py-3 font-medium">Horário</th>
                       <th className="px-4 py-3 font-medium">Ocupação</th>
-                      <th className="px-4 py-3 font-medium">Check-ins</th>
-                      <th className="px-4 py-3 font-medium">Receita</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {report.sessions.map((session) => (
-                      <tr key={session.id} className="border-t border-white/10">
-                        <td className="px-4 py-3 text-on-surface">
-                          {session.movieTitle}
-                          {!session.movieActive && (
-                            <span className="ml-2 text-caption text-on-surface-variant">
-                              (inativo)
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-on-surface-variant">
-                          {session.date} {session.time} · {session.room}
-                        </td>
-                        <td className="px-4 py-3 text-on-surface-variant">
-                          {session.sold}/{session.totalSeats}
-                          {session.held > 0 ? ` (+${session.held} hold)` : ''}
-                        </td>
-                        <td className="px-4 py-3 text-on-surface-variant">
-                          {session.checkedIn ?? 0}
-                        </td>
-                        <td className="px-4 py-3 text-on-surface">
-                          {money(session.revenue)}
-                        </td>
-                      </tr>
-                    ))}
+                    {[...report.sessions]
+                      .sort((a, b) =>
+                        sessionSortKey(a).localeCompare(sessionSortKey(b)),
+                      )
+                      .slice(0, 10)
+                      .map((session) => {
+                        const pct = session.occupancyPct ?? 0
+                        const roomLabel = String(session.room || '—').replace(
+                          /^Sala\s+/i,
+                          '',
+                        )
+                        return (
+                          <tr key={session.id} className="border-t border-white/10">
+                            <td className="max-w-[220px] truncate px-4 py-3 text-on-surface">
+                              {session.movieTitle}
+                            </td>
+                            <td className="px-4 py-3 text-on-surface-variant">
+                              {roomLabel}
+                            </td>
+                            <td className="px-4 py-3 text-on-surface-variant">
+                              {session.time}
+                              <span className="ml-2 text-caption text-on-surface-variant/70">
+                                {session.date}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex min-w-[120px] items-center gap-3">
+                                <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
+                                  <div
+                                    className="h-full rounded-full bg-neon transition-all duration-500"
+                                    style={{ width: `${Math.min(100, pct)}%` }}
+                                  />
+                                </div>
+                                <span className="w-10 shrink-0 text-right text-label-md text-on-surface">
+                                  {pct}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     {report.sessions.length === 0 && (
                       <tr>
                         <td
-                          colSpan={5}
+                          colSpan={4}
                           className="px-4 py-6 text-center text-on-surface-variant"
                         >
-                          Sem sessões ainda.
+                          Sem sessões ainda. Publique um evento ou crie uma sessão.
                         </td>
                       </tr>
                     )}
