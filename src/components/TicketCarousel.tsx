@@ -57,7 +57,7 @@ export function TicketCarousel({ tickets, onCancel }: TicketCarouselProps) {
           {tickets.map((ticket, i) => (
             <div
               key={ticket.id}
-              className="w-[min(100%,420px)] shrink-0 snap-center"
+              className="w-[min(100%,420px)] min-w-0 shrink-0 snap-center"
               aria-hidden={i !== index}
             >
               <TicketQrCard ticket={ticket} compact onCancel={onCancel} />

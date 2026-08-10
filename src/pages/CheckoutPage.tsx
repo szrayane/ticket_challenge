@@ -408,9 +408,11 @@ export function CheckoutPage() {
                 alt={movie.title}
               />
             </div>
-            <div className="flex flex-col justify-center">
-              <h2 className="mb-1 text-headline-md text-primary-fixed">{movie.title}</h2>
-              <p className="mb-2 text-body-md text-on-surface-variant">
+            <div className="flex min-w-0 flex-col justify-center">
+              <h2 className="mb-1 break-words text-headline-md text-primary-fixed [overflow-wrap:anywhere]">
+                {movie.title}
+              </h2>
+              <p className="mb-2 break-words text-body-md text-on-surface-variant">
                 {movie.genre} • {movie.runtime}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -433,7 +435,7 @@ export function CheckoutPage() {
               <p className="mb-1 text-caption tracking-wider text-on-surface-variant uppercase">
                 Data
               </p>
-              <p className="text-body-lg text-on-surface">{session.dateLabel}</p>
+              <p className="break-words text-body-lg text-on-surface">{session.dateLabel}</p>
             </div>
             <div>
               <p className="mb-1 text-caption tracking-wider text-on-surface-variant uppercase">
@@ -791,8 +793,8 @@ export function CheckoutPage() {
             </div>
           )}
 
-          <div className="mt-auto flex items-center justify-between gap-4 pt-6">
-            <p className="max-w-[220px] text-caption text-on-surface-variant">
+          <div className="mt-auto flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="min-w-0 break-words text-caption text-on-surface-variant sm:max-w-[240px]">
               O QR do ingresso só é gerado depois da aprovação fictícia do pagamento.
             </p>
             <button
@@ -803,7 +805,7 @@ export function CheckoutPage() {
                 payStatus === 'approved' ||
                 (paymentMethod === 'pix' && !pixUnlocked)
               }
-              className="primary-flex items-center gap-2 rounded-lg bg-neon px-8 py-4 text-label-md text-white transition-all duration-300 disabled:opacity-50"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-neon px-6 py-3.5 text-label-md text-white transition-all duration-300 disabled:opacity-50 sm:px-8 sm:py-4"
             >
               {submitted
                 ? 'Validando…'

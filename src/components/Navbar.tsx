@@ -38,9 +38,9 @@ export function Navbar({ compact = false }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1440px] items-center justify-between px-5 py-4 md:px-container-margin">
-        <div className="flex items-center gap-8 lg:gap-12">
-          <Link to="/" className="brand-mark text-headline-md">
+      <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3 px-4 py-4 sm:px-5 md:px-container-margin">
+        <div className="flex min-w-0 items-center gap-4 lg:gap-12">
+          <Link to="/" className="brand-mark shrink-0 text-headline-md">
             Cine<span>Ray</span>
           </Link>
 

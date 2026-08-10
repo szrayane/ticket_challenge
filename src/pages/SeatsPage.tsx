@@ -387,9 +387,9 @@ export function SeatsPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-[1440px] flex-grow flex-col gap-12 px-5 py-8 md:px-container-margin md:py-12">
-      <header className="relative z-10 flex flex-col justify-between gap-6 border-b border-white/5 pb-8 md:flex-row md:items-end">
-        <div className="flex flex-col gap-2">
+    <main className="mx-auto flex w-full max-w-[1440px] flex-grow flex-col gap-8 overflow-x-hidden px-4 py-8 sm:gap-12 sm:px-5 md:px-container-margin md:py-12">
+      <header className="relative z-10 flex min-w-0 flex-col justify-between gap-6 border-b border-white/5 pb-8 md:flex-row md:items-end">
+        <div className="flex min-w-0 flex-col gap-2">
           <Link
             to={`/filme/${displayMovie.id}`}
             className="mb-2 inline-flex items-center gap-2 text-label-md text-primary transition-colors hover:text-primary-container"
@@ -397,10 +397,10 @@ export function SeatsPage() {
             <Icon name="arrow_back" className="text-[20px]" />
             Voltar ao filme
           </Link>
-          <h1 className="text-headline-lg-mobile text-on-background md:text-headline-lg">
+          <h1 className="break-words text-headline-lg-mobile text-on-background [overflow-wrap:anywhere] md:text-headline-lg">
             {displayMovie.title}
           </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-4 text-body-md text-on-surface-variant">
+          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-body-md text-on-surface-variant sm:gap-4">
             <div
               className={`flex items-center gap-1.5 rounded-full border px-3 py-1 ${
                 liveConnected
@@ -419,20 +419,20 @@ export function SeatsPage() {
                 />
               </span>
               <span className="text-caption">
-                {liveConnected ? 'Ao vivo (WebSocket)' : 'Atualizando…'}
+                {liveConnected ? 'Ao vivo' : 'Atualizando…'}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 rounded-full border border-white/5 bg-surface-container px-3 py-1">
-              <Icon name="calendar_month" className="text-[18px]" />
-              <span>{displaySession.dateLabel}</span>
+            <div className="flex max-w-full items-center gap-1.5 rounded-full border border-white/5 bg-surface-container px-3 py-1">
+              <Icon name="calendar_month" className="shrink-0 text-[18px]" />
+              <span className="truncate">{displaySession.dateLabel}</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-full border border-white/5 bg-surface-container px-3 py-1">
-              <Icon name="schedule" className="text-[18px]" />
+              <Icon name="schedule" className="shrink-0 text-[18px]" />
               <span>{displaySession.time}</span>
             </div>
-            <div className="flex items-center gap-1.5 rounded-full border border-white/5 bg-surface-container px-3 py-1">
-              <Icon name="theaters" className="text-[18px]" />
-              <span>
+            <div className="flex max-w-full items-center gap-1.5 rounded-full border border-white/5 bg-surface-container px-3 py-1">
+              <Icon name="theaters" className="shrink-0 text-[18px]" />
+              <span className="truncate">
                 {displaySession.cinema} • {displaySession.room}
               </span>
             </div>
@@ -479,8 +479,8 @@ export function SeatsPage() {
 
       <div className="relative z-10 grid grid-cols-1 gap-gutter lg:grid-cols-12">
         <div className="flex flex-col gap-8 lg:col-span-8">
-          <div className="relative flex flex-col items-center overflow-hidden rounded-2xl border border-white/8 bg-surface-container-low p-4 md:p-8">
-            <div className="relative mb-12 flex w-3/4 max-w-lg flex-col items-center md:mb-16">
+          <div className="relative flex flex-col items-center overflow-x-auto rounded-2xl border border-white/8 bg-surface-container-low p-3 sm:p-4 md:overflow-hidden md:p-8">
+            <div className="relative mb-8 flex w-3/4 max-w-lg flex-col items-center md:mb-16">
               <div className="h-8 w-full rounded-[100%] border-t-4 border-primary/35" />
               <span className="mt-4 text-label-md tracking-[0.2em] text-on-surface-variant uppercase">
                 Tela
@@ -490,17 +490,17 @@ export function SeatsPage() {
             {seatsLoading ? (
               <p className="py-16 text-body-md text-on-surface-variant">Carregando assentos…</p>
             ) : (
-              <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-3 overflow-x-auto">
+              <div className="mx-auto flex w-max max-w-none flex-col items-center gap-2 sm:gap-3">
                 {seatsByRow.map(({ row, seats }) => (
-                  <div key={row} className="flex items-center gap-2 md:gap-4">
-                    <span className="w-4 text-center text-label-md text-on-surface-variant">
+                  <div key={row} className="flex items-center gap-1.5 sm:gap-2 md:gap-4">
+                    <span className="w-3 shrink-0 text-center text-caption text-on-surface-variant sm:w-4 sm:text-label-md">
                       {row}
                     </span>
-                    <div className="flex justify-center gap-1.5 md:gap-2">
+                    <div className="flex justify-center gap-1 sm:gap-1.5 md:gap-2">
                       {seats.map((seat, index) => (
                         <div key={seat.id} className="contents">
                           {(index === 2 || index === 8) && (
-                            <div className="w-2 md:w-4" aria-hidden />
+                            <div className="w-1.5 sm:w-2 md:w-4" aria-hidden />
                           )}
                           <button
                             type="button"
@@ -509,7 +509,7 @@ export function SeatsPage() {
                               holdingSeatId === seat.id
                             }
                             onClick={() => void handleSeatClick(seat)}
-                            className={`seat flex h-7 w-7 items-center justify-center rounded-t-lg rounded-b-sm md:h-8 md:w-8 ${seatClass(seat)}${
+                            className={`seat flex h-6 w-6 items-center justify-center rounded-t-lg rounded-b-sm sm:h-7 sm:w-7 md:h-8 md:w-8 ${seatClass(seat)}${
                               flashSeatIds.includes(String(seat.id))
                                 ? ' flash-taken'
                                 : ''
@@ -518,10 +518,10 @@ export function SeatsPage() {
                             aria-pressed={selectedIds.has(seat.id)}
                           >
                             {seat.status === 'unavailable' ? (
-                              <Icon name="close" className="text-[14px]" />
+                              <Icon name="close" className="text-[12px] sm:text-[14px]" />
                             ) : (
                               <span
-                                className={`text-[10px] ${
+                                className={`text-[9px] sm:text-[10px] ${
                                   selectedIds.has(seat.id) ? 'font-bold' : 'text-white/50'
                                 }`}
                               >
@@ -532,7 +532,7 @@ export function SeatsPage() {
                         </div>
                       ))}
                     </div>
-                    <span className="w-4 text-center text-label-md text-on-surface-variant">
+                    <span className="w-3 shrink-0 text-center text-caption text-on-surface-variant sm:w-4 sm:text-label-md">
                       {row}
                     </span>
                   </div>

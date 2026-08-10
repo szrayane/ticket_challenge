@@ -180,7 +180,7 @@ export function TicketQrCard({
 
   return (
     <article
-      className={`glass-card flex flex-col gap-4 rounded-xl border border-white/10 p-5 ${
+      className={`glass-card flex w-full min-w-0 flex-col gap-4 overflow-hidden rounded-xl border border-white/10 p-4 sm:p-5 ${
         compact ? '' : 'sm:flex-row sm:items-center'
       } ${!active ? 'opacity-75' : ''}`}
     >
@@ -231,7 +231,7 @@ export function TicketQrCard({
           )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-headline-md text-primary-fixed">
+              <h3 className="max-w-full break-words text-headline-md text-primary-fixed [overflow-wrap:anywhere]">
                 {ticket.movieTitle}
               </h3>
               {!active && (
@@ -250,18 +250,18 @@ export function TicketQrCard({
                 </span>
               )}
             </div>
-            <p className="text-body-md text-on-surface-variant">
+            <p className="break-words text-body-md text-on-surface-variant">
               {ticket.sessionDate} • {ticket.sessionTime}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-2 text-body-md">
-          <p className="text-on-surface-variant">
+          <p className="min-w-0 text-on-surface-variant">
             Assento{' '}
             <span className="font-semibold text-on-surface">{ticket.seatLabel}</span>
           </p>
-          <p className="text-on-surface-variant">
+          <p className="min-w-0 truncate text-on-surface-variant">
             Sala <span className="font-semibold text-on-surface">{ticket.room}</span>
           </p>
           <p className="col-span-2 truncate text-on-surface-variant">
@@ -270,32 +270,32 @@ export function TicketQrCard({
         </div>
 
         {ticket.orderId && (
-          <p className="text-caption text-on-surface-variant">
+          <p className="truncate text-caption text-on-surface-variant">
             Pedido {ticket.orderId}
           </p>
         )}
 
-        <p className="flex items-center gap-1 text-caption text-on-surface-variant">
-          <Icon name="verified_user" className="text-[16px] text-primary" />
-          Vinculado a {ticket.userEmail}
+        <p className="flex min-w-0 items-start gap-1 text-caption text-on-surface-variant">
+          <Icon name="verified_user" className="mt-0.5 shrink-0 text-[16px] text-primary" />
+          <span className="min-w-0 break-all">Vinculado a {ticket.userEmail}</span>
         </p>
-        <p className="text-caption text-on-surface-variant">
+        <p className="break-words text-caption text-on-surface-variant">
           {formatMoney(ticket.totalPaid)} •{' '}
           {new Date(ticket.purchasedAt).toLocaleString('pt-BR')}
         </p>
         {!active && ticket.cancelledAt && (
-          <p className="text-caption text-on-surface-variant">
+          <p className="break-words text-caption text-on-surface-variant">
             Cancelado em {new Date(ticket.cancelledAt).toLocaleString('pt-BR')}
           </p>
         )}
 
         {error && (
-          <p className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-caption text-primary">
+          <p className="break-words rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-caption text-primary">
             {error}
           </p>
         )}
         {shareHint && (
-          <p className="text-caption text-emerald-300">{shareHint}</p>
+          <p className="break-words text-caption text-emerald-300">{shareHint}</p>
         )}
 
         {showQr && (

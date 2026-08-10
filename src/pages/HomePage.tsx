@@ -176,7 +176,7 @@ export function HomePage() {
                 </span>
               </div>
 
-              <h1 className="text-headline-lg-mobile font-extrabold text-on-surface drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] md:text-display-lg">
+              <h1 className="break-words text-headline-lg-mobile font-extrabold text-on-surface drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] [overflow-wrap:anywhere] md:text-display-lg">
                 {activeFeatured.title}
                 {activeFeatured.highlight ? (
                   <>

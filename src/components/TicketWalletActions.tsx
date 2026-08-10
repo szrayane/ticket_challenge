@@ -108,31 +108,33 @@ export function TicketWalletActions({
   }
 
   return (
-    <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3">
-      <p className="text-caption text-on-surface-variant">
+    <div className="min-w-0 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3">
+      <p className="text-caption leading-snug text-on-surface-variant">
         No Android use a Google Wallet. No iPhone, envie o link do ingresso
         (QR no Safari).
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <button
           type="button"
           disabled={addingGoogle || googleConfigured === false}
           onClick={() => {
             void handleAddGoogleWallet()
           }}
-          className="inline-flex items-center gap-1 rounded-lg bg-[#1a73e8] px-4 py-2 text-caption text-white transition-all hover:brightness-110 disabled:opacity-50"
+          className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg bg-[#1a73e8] px-3 py-2.5 text-caption leading-tight text-white transition-all hover:brightness-110 disabled:opacity-50"
           title={
             googleConfigured === false
               ? 'Configure GOOGLE_WALLET_* no backend'
               : 'Salvar QR na Google Wallet'
           }
         >
-          <Icon name="account_balance_wallet" className="text-[16px]" />
-          {addingGoogle
-            ? 'Gerando…'
-            : googleConfigured === false
-              ? 'Google Wallet (configurar)'
-              : 'Adicionar à Google Wallet'}
+          <Icon name="account_balance_wallet" className="shrink-0 text-[16px]" />
+          <span className="min-w-0 text-left">
+            {addingGoogle
+              ? 'Gerando…'
+              : googleConfigured === false
+                ? 'Wallet (configurar)'
+                : 'Google Wallet'}
+          </span>
         </button>
         <button
           type="button"
@@ -140,10 +142,10 @@ export function TicketWalletActions({
           onClick={() => {
             void handleSendToIphone()
           }}
-          className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+          className="inline-flex min-w-0 items-center justify-center gap-1 rounded-lg border border-white/15 px-3 py-2.5 text-caption leading-tight text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
         >
-          <Icon name="phone_iphone" className="text-[16px]" />
-          {sendingIphone ? 'Abrindo…' : 'Enviar para iPhone'}
+          <Icon name="phone_iphone" className="shrink-0 text-[16px]" />
+          <span className="min-w-0">{sendingIphone ? 'Abrindo…' : 'Enviar p/ iPhone'}</span>
         </button>
       </div>
       {googleConfigured === false && (

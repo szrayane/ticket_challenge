@@ -13,26 +13,28 @@ export function TicketOrderCard({ order, onCancel }: TicketOrderCardProps) {
   const seats = order.tickets.map((t) => t.seatLabel).join(', ')
 
   return (
-    <section className="glass-card space-y-4 rounded-xl border border-white/10 p-5">
+    <section className="glass-card min-w-0 space-y-4 overflow-hidden rounded-xl border border-white/10 p-4 sm:p-5">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex gap-3">
+        <div className="flex min-w-0 gap-3">
           <img
             src={order.moviePoster}
             alt=""
-            className="h-24 w-16 rounded-md object-cover"
+            className="h-24 w-16 shrink-0 rounded-md object-cover"
           />
           <div className="min-w-0 space-y-1">
-            <p className="text-caption tracking-wider text-on-surface-variant uppercase">
+            <p className="truncate text-caption tracking-wider text-on-surface-variant uppercase">
               Pedido {order.orderId}
             </p>
-            <h3 className="text-headline-md text-on-surface">{order.movieTitle}</h3>
-            <p className="text-body-md text-on-surface-variant">
+            <h3 className="break-words text-headline-md text-on-surface [overflow-wrap:anywhere]">
+              {order.movieTitle}
+            </h3>
+            <p className="break-words text-body-md text-on-surface-variant">
               {order.sessionDate} • {order.sessionTime}
             </p>
-            <p className="text-caption text-on-surface-variant">
+            <p className="truncate text-caption text-on-surface-variant">
               {order.cinema} • {order.room}
             </p>
-            <p className="text-caption text-on-surface-variant">
+            <p className="break-words text-caption text-on-surface-variant">
               Assentos: {seats}
             </p>
           </div>

@@ -178,11 +178,11 @@ export function MoviePage() {
                 {movie.badge}
               </span>
             )}
-            <h1 className="text-headline-lg-mobile text-on-background md:text-headline-lg">
+            <h1 className="break-words text-headline-lg-mobile text-on-background [overflow-wrap:anywhere] md:text-headline-lg">
               {movie.title}
             </h1>
             <div className="flex flex-wrap items-center gap-3 text-body-md text-on-surface-variant">
-              <span>{movie.genre}</span>
+              <span className="break-words">{movie.genre}</span>
               <span className="h-1 w-1 rounded-full bg-surface-variant" />
               <span>{movie.runtime}</span>
               <span className="h-1 w-1 rounded-full bg-surface-variant" />
@@ -198,13 +198,13 @@ export function MoviePage() {
               )}
             </div>
             {nextSession && (
-              <div className="inline-flex flex-wrap items-center gap-3 rounded-xl border border-neon/30 bg-neon/10 px-4 py-3">
-                <Icon name="timer" className="text-neon" />
-                <div>
+              <div className="inline-flex max-w-full flex-wrap items-center gap-3 rounded-xl border border-neon/30 bg-neon/10 px-4 py-3">
+                <Icon name="timer" className="shrink-0 text-neon" />
+                <div className="min-w-0">
                   <p className="text-caption uppercase tracking-wider text-on-surface-variant">
                     Próxima sessão
                   </p>
-                  <p className="text-label-md text-on-surface">
+                  <p className="break-words text-label-md text-on-surface">
                     {nextSession.session.dateLabel} · {nextSession.session.time} ·{' '}
                     <span className="text-neon">
                       {formatCountdown(nextSession.at!.getTime() - now)}
