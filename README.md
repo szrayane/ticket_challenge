@@ -78,9 +78,6 @@ Optei por **mapa de assentos** (não pista) porque faz mais sentido pra cinema e
 | API | [Render](https://render.com) | [cinerar-api.onrender.com](https://cinerar-api.onrender.com) |
 | Banco | [Aiven](https://aiven.io) MySQL | — |
 
-> [!NOTE]
-> O serviço no Render se chama `cineray-api`; a URL pública ficou `cinerar-api` (slug gerado na criação — o Render não deixa alterar depois).
-
 > [!IMPORTANT]
 > Em plano gratuito, a API no Render pode “acordar” lentamente. Se falhar no primeiro request, espere ~30s e tente de novo.
 
