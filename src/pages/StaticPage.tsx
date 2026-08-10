@@ -52,7 +52,7 @@ export function StaticPage() {
 
   if (!page) {
     return (
-      <main className="mx-auto flex min-h-[50vh] max-w-[840px] flex-col items-center justify-center gap-4 px-5">
+      <main className="mx-auto flex min-h-0 w-full max-w-[840px] flex-1 flex-col items-center justify-center gap-4 px-5">
         <p className="text-body-lg text-primary">Página não encontrada.</p>
         <Link to="/" className="text-label-md underline">
           Voltar
@@ -62,7 +62,7 @@ export function StaticPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[840px] px-5 py-section-gap md:px-container-margin">
+    <main className="mx-auto w-full max-w-[840px] flex-1 px-5 py-section-gap md:px-container-margin">
       <Link
         to="/"
         className="mb-6 inline-flex items-center gap-2 text-label-md text-primary"
@@ -73,9 +73,9 @@ export function StaticPage() {
       <h1 className="mb-6 text-headline-lg-mobile text-on-surface md:text-headline-lg">
         {page.title}
       </h1>
-      <div className="glass-card space-y-4 rounded-xl p-card-padding">
+      <div className="space-y-4 rounded-xl border border-white/8 bg-surface-container/60 p-card-padding">
         {page.paragraphs.map((text) => (
-          <p key={text} className="text-body-lg text-on-surface-variant">
+          <p key={text} className="text-body-lg leading-relaxed text-on-surface-variant">
             {text}
           </p>
         ))}

@@ -18,7 +18,9 @@ export function Layout({
   return (
     <div className="flex min-h-screen flex-col">
       {!hideNav && <Navbar compact={compactNav} />}
-      <Outlet />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Outlet />
+      </div>
       {!hideFooter && <Footer compact={compactFooter} />}
     </div>
   )
