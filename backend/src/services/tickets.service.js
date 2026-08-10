@@ -50,7 +50,6 @@ function mapTicket(row) {
   }
 }
 
-/** Parses "Segunda-feira, 09/08/2026" or "09/08/2026" + "20:30". */
 export function parseTicketSessionAt(sessionDate, sessionTime) {
   const dateMatch = String(sessionDate || '').match(/(\d{2})\/(\d{2})\/(\d{4})/)
   if (!dateMatch) return null

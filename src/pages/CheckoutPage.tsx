@@ -3,7 +3,6 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AppApiError } from '../api/appClient'
 import { checkSeatsAvailable } from '../api/auth'
-import { bookSeats } from '../api/cinema'
 import { Icon } from '../components/Icon'
 import { PaymentSimModal } from '../components/PaymentSimModal'
 import { useAuth } from '../context/AuthContext'
@@ -91,7 +90,6 @@ export function CheckoutPage() {
   }, [isAuthenticated, navigate])
 
   useEffect(() => {
-    // Evita bounce para "/" quando resetBooking limpa o estado após sucesso.
     if (completingRef.current) return
     if (!movie || !session || selectedSeats.length === 0) {
       if (isAuthenticated) navigate('/', { replace: true })
@@ -201,7 +199,6 @@ export function CheckoutPage() {
     const orderId = createOrderId()
 
     return selectedSeats.map((seat, index) => {
-      // ID curto: VARCHAR(64) no MySQL — concatenar user+seat estoura o limite.
       const ticketId =
         typeof crypto !== 'undefined' && 'randomUUID' in crypto
           ? `tkt_${crypto.randomUUID().replace(/-/g, '').slice(0, 20)}`
@@ -227,7 +224,6 @@ export function CheckoutPage() {
         totalPaid: perSeatShare,
         status: 'active' as const,
         orderId,
-        // Backend sobrescreve com QR opaco assinado (CR1.<id>.<sig>).
         qrPayload: buildTicketQrPayload(ticketId),
       }
     })
@@ -245,7 +241,6 @@ export function CheckoutPage() {
       throw new Error('Nenhum ingresso para emitir')
     }
 
-    // Fonte da verdade: QR opaco vem do backend (não do payload do cliente).
     let savedTickets = tickets
     try {
       savedTickets = await addTickets(tickets, { holderKey: getHoldClientId() })
@@ -253,17 +248,6 @@ export function CheckoutPage() {
       completingRef.current = false
       console.warn('[CineRay] Falha ao reservar assentos no banco.', error)
       throw error
-    }
-
-    // Best-effort na mock Cineflex (compartilhada; não bloqueia o ingresso local).
-    try {
-      await bookSeats({
-        ids: selectedSeats.map((seat) => Number(seat.id)).filter((id) => Number.isFinite(id)),
-        name: cardName.trim(),
-        cpf: onlyDigits(cpf),
-      })
-    } catch (error) {
-      console.warn('[CineRay] Reserva remota Cineflex falhou.', error)
     }
 
     updateProfile({
@@ -301,8 +285,6 @@ export function CheckoutPage() {
         getHoldClientId(),
       )
     } catch (error) {
-      // 409 = assento já vendido. Outros erros (rede/rota) não bloqueiam:
-      // a trava definitiva é o POST /tickets com índice único.
       if (error instanceof AppApiError && error.status === 409) {
         setPayStatus('declined')
         setPayDetail(error.message)
@@ -356,7 +338,6 @@ export function CheckoutPage() {
         error instanceof AppApiError
           ? error.message
           : 'Não foi possível reservar os assentos. Tente novamente.'
-      // Pagamento demo já passou — o erro é na emissão do ingresso.
       setPayStatus('declined')
       setPayDetail(message)
       setSubmitted(false)

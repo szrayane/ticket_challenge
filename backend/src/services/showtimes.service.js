@@ -106,14 +106,34 @@ function mapShowtime(row) {
   }
 }
 
-export async function listShowtimesForMovie(movieId) {
+export async function showtimeHasAvailableSeats(showtime) {
+  const session =
+    typeof showtime === 'string' || typeof showtime === 'number'
+      ? await getShowtime(showtime)
+      : showtime
+  if (!session) return false
+  const unavailable = (await listUnavailableSeatIds(session.id)).length
+  return unavailable < session.capacity
+}
+
+export async function listShowtimesForMovie(
+  movieId,
+  { onlyWithAvailability = false } = {},
+) {
   const rows = await query(
     `SELECT * FROM showtimes
      WHERE movie_id = ?
      ORDER BY session_date ASC, session_time ASC`,
     [String(movieId)],
   )
-  return rows.map(mapShowtime)
+  const sessions = rows.map(mapShowtime)
+  if (!onlyWithAvailability) return sessions
+
+  const open = []
+  for (const session of sessions) {
+    if (await showtimeHasAvailableSeats(session)) open.push(session)
+  }
+  return open
 }
 
 export async function listAllShowtimes() {

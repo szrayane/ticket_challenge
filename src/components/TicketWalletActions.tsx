@@ -45,13 +45,20 @@ export function TicketWalletActions({
   async function handleAddGoogleWallet() {
     setAddingGoogle(true)
     onError?.('')
+    // Abre a aba já no clique (antes do await) — senão o Android bloqueia o popup.
+    const popup = window.open('about:blank', '_blank')
     try {
       const data = await fetchGoogleWalletSaveUrl(ticket.id)
-      window.open(data.saveUrl, '_blank', 'noopener,noreferrer')
+      if (popup && !popup.closed) {
+        popup.location.href = data.saveUrl
+      } else {
+        window.location.assign(data.saveUrl)
+      }
       onHint?.(
-        'Salvo na Google Wallet. Para o iPhone: use “Enviar para iPhone”.',
+        'Abrindo Google Wallet… Se a aba não abrir, permita pop-ups neste site.',
       )
     } catch (err) {
+      popup?.close()
       const message =
         err instanceof AppApiError
           ? err.message

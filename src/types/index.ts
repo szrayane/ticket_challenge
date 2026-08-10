@@ -1,6 +1,5 @@
 export type TicketType = 'basic' | 'premium' | 'vip'
 
-/** `unavailable` = occupied; other values are selectable ticket tiers. */
 export type SeatStatus = 'unavailable' | TicketType
 
 export interface Seat {
@@ -28,7 +27,7 @@ export interface Movie {
   hero?: string
   backdrop?: string
   trailerUrl?: string
-  source?: 'cineflex' | 'local' | 'tmdb'
+  source?: 'local' | 'tmdb'
   tmdbId?: number
   nextSession?: {
     date: string

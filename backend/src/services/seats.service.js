@@ -14,10 +14,6 @@ export async function purgeExpiredHolds(conn = null) {
   await execute(`DELETE FROM seat_holds WHERE expires_at <= ?`, [nowIso()], conn)
 }
 
-/**
- * SELECT … FOR UPDATE nas linhas de tickets/holds do assento.
- * Deve rodar dentro de withTransaction (conn obrigatório para lock real).
- */
 export async function lockSeatsForUpdate(sessionId, seatIds, conn) {
   const session = String(sessionId || '').trim()
   const seats = [...new Set((seatIds || []).map((id) => String(id)).filter(Boolean))]
@@ -95,7 +91,6 @@ export async function listUnavailableSeatIds(sessionId, { excludeHolderKey } = {
   return [...new Set([...sold, ...held])]
 }
 
-/** @deprecated use listUnavailableSeatIds */
 export async function listOccupiedSeatIds(sessionId) {
   return listUnavailableSeatIds(sessionId)
 }

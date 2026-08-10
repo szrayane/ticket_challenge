@@ -1,6 +1,5 @@
 import type { CustomerTicket, TicketOrderGroup } from '../types'
 
-/** Parses "Segunda-feira, 09/08/2026" or "09/08/2026" + "20:30". */
 export function parseTicketSessionAt(
   sessionDate: string,
   sessionTime: string,

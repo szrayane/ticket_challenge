@@ -166,7 +166,6 @@ async function seedPublishedEvent(organizerId) {
     [movieId, 693134],
   )
   if (existing) {
-    // Seed antigo gravava trailer_url como NULL ou poster errado — corrige sem recriar.
     const dunePoster =
       'https://image.tmdb.org/t/p/w500/rrjoeR5m98ptkGUJ2Z7G4t2lXMg.jpg'
     const duneBackdrop =
@@ -263,7 +262,6 @@ async function ensureTicketTransferColumns(pool) {
       `ALTER TABLE tickets ADD UNIQUE KEY uk_tickets_transfer_token (transfer_token)`,
     )
   } catch {
-    /* index already exists */
   }
 }
 
@@ -318,7 +316,6 @@ export async function initDb() {
   return pool
 }
 
-// Re-export helpers for services
 export {
   execute,
   getPool,

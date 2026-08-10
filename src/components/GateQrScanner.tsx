@@ -38,7 +38,6 @@ export function GateQrScanner({ onScan, enabled }: GateQrScannerProps) {
             if (value) onScanRef.current(value)
           },
           () => {
-            /* ignore frame miss */
           },
         )
         if (!cancelled) setReady(true)
@@ -60,7 +59,6 @@ export function GateQrScanner({ onScan, enabled }: GateQrScannerProps) {
         .stop()
         .then(() => scanner.clear())
         .catch(() => {
-          /* already stopped */
         })
     }
   }, [enabled])

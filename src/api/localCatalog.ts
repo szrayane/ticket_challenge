@@ -96,14 +96,12 @@ export function isLocalShowtimeId(id: string) {
   return String(id).startsWith('st_')
 }
 
-/** HTML date (YYYY-MM-DD) → DD/MM/AAAA */
 export function toBrDate(isoDate: string) {
   const m = String(isoDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!m) return isoDate
   return `${m[3]}/${m[2]}/${m[1]}`
 }
 
-/** DD/MM/AAAA → HTML date (YYYY-MM-DD) */
 export function toIsoDate(brDate: string) {
   const m = String(brDate || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
   if (!m) return ''
@@ -294,7 +292,6 @@ export type MovieCastMember = {
   order: number
 }
 
-/** Busca elenco na TMDb pelo título ou tmdbId (público). */
 export async function fetchMovieCast(options: {
   title?: string
   tmdbId?: number

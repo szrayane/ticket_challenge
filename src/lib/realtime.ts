@@ -14,9 +14,6 @@ function wsUrl() {
   return `${proto}//${window.location.host}/ws`
 }
 
-/**
- * Cliente WebSocket leve com salas (subscribe/unsubscribe) e reconnect.
- */
 export function connectRealtime() {
   let socket: WebSocket | null = null
   let closed = false
@@ -58,7 +55,6 @@ export function connectRealtime() {
         const payload = JSON.parse(String(event.data)) as Record<string, unknown>
         emit(payload)
       } catch {
-        /* ignore */
       }
     })
 

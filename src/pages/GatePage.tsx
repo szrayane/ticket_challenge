@@ -64,7 +64,6 @@ function GateDashboard() {
 
   useEffect(() => {
     void reloadMeta({ preferAutoSelect: true }).catch(() => {
-      /* keep empty lists */
     })
     const timer = window.setInterval(() => {
       void reloadMeta({ preferAutoSelect: false }).catch(() => undefined)

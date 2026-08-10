@@ -10,9 +10,7 @@ import {
 const SECRET = () =>
   String(process.env.TICKET_QR_SECRET || 'cineray-qr-dev-secret').trim()
 
-/** QR cifrado: CR2.<base64url(iv‖tag‖ciphertext)> */
 const ENC_PREFIX = 'CR2'
-/** Formato anterior (HMAC opaco): CR1.<ticketId>.<sig> */
 const OPAQUE_PREFIX = 'CR1'
 
 const IV_LEN = 12
@@ -23,14 +21,9 @@ export function createShareToken() {
 }
 
 function aesKey() {
-  // Deriva 256 bits a partir do segredo (AES-256-GCM).
   return createHash('sha256').update(SECRET()).digest()
 }
 
-/**
- * Gera QR com AES-256-GCM. Conteúdo ilegível sem TICKET_QR_SECRET.
- * Formato: CR2.<base64url>
- */
 export function buildSignedQrPayload(fields) {
   const ticketId = String(fields.ticketId || '').trim()
   if (!ticketId) throw new Error('ticketId é obrigatório para o QR.')

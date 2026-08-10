@@ -32,7 +32,6 @@ export function setAuthToken(token: string | null) {
     if (token) localStorage.setItem(TOKEN_KEY, token)
     else localStorage.removeItem(TOKEN_KEY)
   } catch {
-    // ignore quota / private mode
   }
 }
 
@@ -78,7 +77,6 @@ export async function appRequest<T>(
       if (data.ticket) ticket = data.ticket
       if (data.code) code = data.code
     } catch {
-      // ignore
     }
     throw new AppApiError(message, response.status, ticket, code)
   }

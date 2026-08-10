@@ -27,7 +27,6 @@ function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
-
 export async function simulateFictionalPayment(
   input: SimulatePaymentInput,
 ): Promise<SimulatePaymentResult> {

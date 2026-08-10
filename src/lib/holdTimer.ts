@@ -1,4 +1,3 @@
-/** Keep in sync with backend HOLD_TTL_MS (10 minutes). */
 export const HOLD_TTL_MS = 10 * 60 * 1000
 
 export function formatHoldCountdown(msLeft: number) {

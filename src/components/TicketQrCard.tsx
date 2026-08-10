@@ -140,7 +140,6 @@ export function TicketQrCard({
         })
         return
       } catch {
-        /* fall through */
       }
     }
 

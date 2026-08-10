@@ -91,7 +91,10 @@ export async function getMovieShowtimes(req, res, next) {
     if (!movie) {
       return res.status(404).json({ message: 'Filme não encontrado.' })
     }
-    const sessions = await listShowtimesForMovie(movie.id)
+    const sessions = await listShowtimesForMovie(movie.id, {
+      // Cliente não vê sessão lotada; organizador precisa ver todas.
+      onlyWithAvailability: !asOrganizer,
+    })
     res.json({ movie, sessions })
   } catch (error) {
     next(error)

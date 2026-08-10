@@ -50,7 +50,6 @@ export function SeatsPage() {
 
   const [resolvedMovie, setResolvedMovie] = useState<Movie | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
-  const [scheduleStart, setScheduleStart] = useState<string | undefined>()
   const [selectedSessionId, setSelectedSessionId] = useState('')
   const [baseSeatMap, setBaseSeatMap] = useState<Seat[]>([])
   const [occupiedSeatIds, setOccupiedSeatIds] = useState<string[]>([])
@@ -84,7 +83,6 @@ export function SeatsPage() {
 
         setResolvedMovie(data.movie)
         setSessions(data.sessions)
-        setScheduleStart(data.scheduleStart)
         const preferred =
           sessionFromUrl &&
           data.sessions.some((item) => item.id === sessionFromUrl)
@@ -109,13 +107,8 @@ export function SeatsPage() {
     const previousSelected = selectedSeats
 
     async function loadSeats() {
-      if (!selectedSessionId || !scheduleStart) {
-        // Sessões locais não dependem do scheduleStart da Cineflex.
-        if (!selectedSessionId) return
-        if (!scheduleStart && !String(selectedSessionId).startsWith('st_')) return
-      }
+      if (!selectedSessionId) return
 
-      // Libera holds da sessão anterior ao trocar.
       if (previousSelected.length > 0 && session?.id && session.id !== selectedSessionId) {
         const holderKey = holderKeyRef.current
         await Promise.allSettled(
@@ -132,11 +125,7 @@ export function SeatsPage() {
       try {
         setSeatsLoading(true)
         setError(null)
-        const data = await getShowtimeSeats(
-          selectedSessionId,
-          scheduleStart,
-          movieId,
-        )
+        const data = await getShowtimeSeats(selectedSessionId)
         if (!active) return
 
         let occupiedIds: string[] = []
@@ -146,7 +135,6 @@ export function SeatsPage() {
             holderKeyRef.current,
           )
         } catch {
-          // Local API offline — still show Cineflex map.
         }
         if (!active) return
 
@@ -164,10 +152,8 @@ export function SeatsPage() {
     return () => {
       active = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reload on session/movie change
-  }, [selectedSessionId, scheduleStart, startBooking, movieId, resolvedMovie])
+  }, [selectedSessionId, startBooking, movieId, resolvedMovie])
 
-  // Atualiza ocupação via WebSocket (instantâneo) + polling de fallback.
   useEffect(() => {
     if (!selectedSessionId) return
 
@@ -192,7 +178,6 @@ export function SeatsPage() {
         occupiedRef.current = occupiedIds
         setOccupiedSeatIds(occupiedIds)
       } catch {
-        // ignore
       }
     }
 
@@ -227,7 +212,6 @@ export function SeatsPage() {
     }
   }, [selectedSessionId])
 
-  // Renova o hold dos assentos selecionados para não expirar no checkout.
   useEffect(() => {
     if (!selectedSessionId || selectedSeats.length === 0) return
 
@@ -242,7 +226,6 @@ export function SeatsPage() {
         })
         if (result.expiresAt) setHoldExpiresAt(result.expiresAt)
       } catch {
-        // ignore — checkout ainda valida
       }
     }
 
@@ -274,7 +257,6 @@ export function SeatsPage() {
     return () => window.clearInterval(id)
   }, [holdExpiresAt, selectedSeats.length, clearSeats])
 
-  // Se o assento selecionado foi vendido/holdado por outro, remove da seleção.
   useEffect(() => {
     if (selectedSeats.length === 0 || occupiedSeatIds.length === 0) return
     const occupied = new Set(occupiedSeatIds.map(String))
@@ -310,7 +292,6 @@ export function SeatsPage() {
             holderKey,
           })
         } catch {
-          // still deselect locally
         }
         toggleSeat(seat)
         if (selectedSeats.length <= 1) setHoldExpiresAt(null)
@@ -326,7 +307,6 @@ export function SeatsPage() {
         })
         setHoldExpiresAt(held.expiresAt)
         toggleSeat(seat)
-        // Refresh so other tabs see this seat as taken soon.
         void fetchOccupiedSeatIds(selectedSessionId, holderKey).then(
           setOccupiedSeatIds,
         )
@@ -344,7 +324,6 @@ export function SeatsPage() {
         )
         setOccupiedSeatIds(occupiedIds)
       } catch {
-        // ignore
       }
     } finally {
       setHoldingSeatId(null)

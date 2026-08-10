@@ -1,4 +1,3 @@
-/** Beep curto via Web Audio (sem asset externo). */
 export function playGateTone(kind: 'ok' | 'error' | 'warn') {
   try {
     const Ctx =
@@ -41,7 +40,6 @@ export function playGateTone(kind: 'ok' | 'error' | 'warn') {
 
     window.setTimeout(() => void ctx.close().catch(() => undefined), 600)
   } catch {
-    /* ignore autoplay / unsupported */
   }
 }
 

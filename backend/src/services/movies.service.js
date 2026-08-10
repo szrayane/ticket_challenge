@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { execute, query, queryOne } from '../db/index.js'
+import { listUnavailableSeatIds } from './seats.service.js'
 
 function nowIso() {
   return new Date().toISOString()
@@ -41,23 +42,26 @@ export async function listLocalMovies({ includeInactive = false } = {}) {
   const movies = []
   for (const row of rows) {
     const movie = mapMovie(row)
-    const next = await queryOne(
-      `SELECT session_date, session_time, cinema, room, price, capacity
+    const showtimes = await query(
+      `SELECT id, session_date, session_time, cinema, room, price, capacity
        FROM showtimes
        WHERE movie_id = ?
-       ORDER BY session_date ASC, session_time ASC
-       LIMIT 1`,
+       ORDER BY session_date ASC, session_time ASC`,
       [row.id],
     )
-    if (next) {
+    for (const next of showtimes) {
+      const capacity = Number(next.capacity) || 50
+      const unavailable = (await listUnavailableSeatIds(next.id)).length
+      if (unavailable >= capacity) continue
       movie.nextSession = {
         date: next.session_date,
         time: next.session_time,
         cinema: next.cinema,
         room: next.room,
         price: Number(next.price) || 28,
-        capacity: Number(next.capacity) || 50,
+        capacity,
       }
+      break
     }
     movies.push(movie)
   }

@@ -1,6 +1,5 @@
 import { WebSocketServer } from 'ws'
 
-/** @type {Map<string, Set<import('ws').WebSocket>>} */
 const rooms = new Map()
 
 function joinRoom(ws, room) {
@@ -68,7 +67,6 @@ export function publishGateCheckIn(extra = {}) {
   publishOrganizerStats(extra)
 }
 
-/** Anexa WebSocket em /ws no mesmo HTTP server do Express. */
 export function attachRealtime(server) {
   const wss = new WebSocketServer({ server, path: '/ws' })
 
@@ -82,7 +80,6 @@ export function attachRealtime(server) {
         if (msg.type === 'subscribe' && msg.room) joinRoom(ws, msg.room)
         if (msg.type === 'unsubscribe' && msg.room) leaveRoom(ws, msg.room)
       } catch {
-        /* ignore bad frames */
       }
     })
 

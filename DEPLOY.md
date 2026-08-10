@@ -35,7 +35,6 @@ Teste: `https://SUA-API/health` → `{"status":"ok"}`
 3. Root: `.` (raiz do monorepo)
 4. Env:
    - `VITE_APP_API_URL=https://SUA-API.onrender.com/api` (URL absoluta em produção)
-   - `VITE_CINEMA_API_URL=https://mock-api.driven.com.br/api/v8/cineflex`
 5. Deploy
 
 Depois do primeiro deploy, **atualize no Render**:

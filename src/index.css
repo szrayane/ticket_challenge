@@ -1,9 +1,5 @@
 @import "tailwindcss";
 
-/*
-  CineRay palette — short brand set + aliases for existing class names.
-  Accent: muted rose (cinema ops), not neon SaaS pink.
-*/
 @theme {
   --color-background: #121214;
   --color-surface: #121214;
@@ -137,7 +133,6 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  /* Kept as class names so old markup still works — no neon glow. */
   .glow-hover:hover {
     filter: brightness(1.05);
   }
@@ -178,7 +173,6 @@
     color: color-mix(in srgb, var(--color-on-surface-variant) 70%, transparent);
   }
 
-  /* Mata o select nativo “3D” do Safari/Chrome e alinha ao tema. */
   select.glass-input,
   .field-select {
     appearance: none;

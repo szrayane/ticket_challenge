@@ -120,7 +120,6 @@ function OrganizerDashboard() {
         try {
           next[session.id] = await fetchShowtimeOccupancy(session.id)
         } catch {
-          /* ignore single occupancy failure */
         }
       }),
     )
@@ -397,7 +396,6 @@ function OrganizerDashboard() {
       setError(err instanceof AppApiError ? err.message : 'Falha ao publicar evento.')
     }
   }
-
 
   return (
     <main className="mx-auto w-full max-w-[1200px] px-5 py-section-gap md:px-container-margin">

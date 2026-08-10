@@ -215,12 +215,18 @@ export function MoviePage() {
             )}
             <p className="text-body-lg text-on-surface-variant">{movie.synopsis}</p>
             <div className="flex flex-wrap gap-3 pt-2">
-              <Link
-                to={`/seats/${movie.id}`}
-                className="rounded-lg bg-neon px-8 py-4 text-label-md text-white uppercase transition-all hover:brightness-110"
-              >
-                Escolher assentos
-              </Link>
+              {sessions.length > 0 ? (
+                <Link
+                  to={`/seats/${movie.id}`}
+                  className="rounded-lg bg-neon px-8 py-4 text-label-md text-white uppercase transition-all hover:brightness-110"
+                >
+                  Escolher assentos
+                </Link>
+              ) : (
+                <span className="rounded-lg border border-white/15 px-8 py-4 text-label-md text-on-surface-variant uppercase">
+                  Sessões esgotadas
+                </span>
+              )}
               {movie.trailerUrl && (
                 <button
                   type="button"

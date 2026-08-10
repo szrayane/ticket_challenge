@@ -22,7 +22,6 @@ export function createPoolFromEnv() {
     connectionLimit: Number(process.env.MYSQL_POOL || 10),
     namedPlaceholders: false,
     timezone: 'Z',
-    // Aiven e outros MySQL gerenciados pedem SSL (ssl-mode=REQUIRED).
     ...(sslEnabled ? { ssl: { rejectUnauthorized: false } } : {}),
   })
 }
@@ -31,7 +30,6 @@ export function setPool(next) {
   pool = next
 }
 
-/** @param {import('mysql2/promise').Pool|import('mysql2/promise').PoolConnection} runner */
 export async function query(sql, params = [], runner = null) {
   const target = runner || getPool()
   const [rows] = await target.execute(sql, params)
@@ -49,10 +47,6 @@ export async function execute(sql, params = [], runner = null) {
   return result
 }
 
-/**
- * @template T
- * @param {(conn: import('mysql2/promise').PoolConnection) => Promise<T>} fn
- */
 export async function withTransaction(fn) {
   const conn = await getPool().getConnection()
   try {
@@ -64,7 +58,6 @@ export async function withTransaction(fn) {
     try {
       await conn.rollback()
     } catch {
-      // ignore
     }
     throw error
   } finally {

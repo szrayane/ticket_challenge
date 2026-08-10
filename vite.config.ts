@@ -9,7 +9,6 @@ export default defineConfig({
     host: true,
     port: 5173,
     proxy: {
-      // Mesma origem no celular/PC — evita IP fixo quebrando o checkout.
       '/api': {
         target: 'http://127.0.0.1:3333',
         changeOrigin: true,

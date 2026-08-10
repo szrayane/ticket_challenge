@@ -183,7 +183,7 @@ export async function getMyTicketGoogleWallet(req, res, next) {
     }
 
     const originHeader = String(req.headers.origin || '').trim()
-    const result = buildGoogleWalletSaveUrl(ticket, {
+    const result = await buildGoogleWalletSaveUrl(ticket, {
       origins: originHeader ? [originHeader] : [],
     })
     res.json({
@@ -196,6 +196,15 @@ export async function getMyTicketGoogleWallet(req, res, next) {
         message: error.message,
         code: error.code,
         configured: false,
+      })
+    }
+    if (
+      error.code === 'GOOGLE_WALLET_AUTH_FAILED' ||
+      error.code === 'GOOGLE_WALLET_CLASS_ERROR'
+    ) {
+      return res.status(502).json({
+        message: error.message,
+        code: error.code,
       })
     }
     next(error)

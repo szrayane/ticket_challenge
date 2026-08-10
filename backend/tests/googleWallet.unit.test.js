@@ -12,7 +12,7 @@ if (!isGoogleWalletConfigured()) {
     const { buildGoogleWalletSaveUrl } = await import(
       '../src/services/googleWallet.service.js'
     )
-    buildGoogleWalletSaveUrl({
+    await buildGoogleWalletSaveUrl({
       id: 'tkt_test',
       movieTitle: 'Teste',
       qrPayload: 'CR2.test',

@@ -246,7 +246,6 @@ Front (`.env` na raiz):
 
 ```env
 VITE_APP_API_URL=http://localhost:3333/api
-VITE_CINEMA_API_URL=https://mock-api.driven.com.br/api/v8/cineflex
 ```
 
 Não versionar `.env` com secrets reais. Google Wallet (opcional): ver `.env.example` do backend e [`DEPLOY.md`](./DEPLOY.md).

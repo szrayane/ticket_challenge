@@ -101,7 +101,6 @@ async function resolveTmdbId({ tmdbId, title } = {}) {
   return first?.id ? Number(first.id) : null
 }
 
-/** Elenco principal via TMDb (por id ou busca pelo título). */
 export async function getTmdbCast({ tmdbId, title, limit = 12 } = {}) {
   const resolvedId = await resolveTmdbId({ tmdbId, title })
   if (!resolvedId) {

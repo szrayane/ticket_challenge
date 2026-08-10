@@ -87,13 +87,11 @@ export function PaymentSimModal({
 
           {status === 'approved' && (
             <>
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
-                <Icon name="check_circle" className="text-[40px]" filled />
-              </span>
+              <div className="h-12 w-12 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
               <div className="space-y-2">
-                <p className="text-headline-md text-on-surface">Pagamento aprovado</p>
+                <p className="text-headline-md text-on-surface">Gerando ingresso…</p>
                 <p className="text-body-md text-on-surface-variant">
-                  Gerando QR Code vinculado à sua conta…
+                  Preparando o QR Code da sua conta.
                 </p>
               </div>
             </>

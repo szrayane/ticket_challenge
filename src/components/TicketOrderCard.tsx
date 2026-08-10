@@ -2,7 +2,7 @@ import type { TicketOrderGroup } from '../types'
 import { formatMoney } from '../lib/money'
 import { paymentMethodLabel } from '../lib/tickets'
 import { Icon } from './Icon'
-import { TicketQrCard } from './TicketQrCard'
+import { TicketCarousel } from './TicketCarousel'
 
 interface TicketOrderCardProps {
   order: TicketOrderGroup
@@ -51,16 +51,7 @@ export function TicketOrderCard({ order, onCancel }: TicketOrderCardProps) {
         </div>
       </header>
 
-      <div className="grid gap-3">
-        {order.tickets.map((ticket) => (
-          <TicketQrCard
-            key={ticket.id}
-            ticket={ticket}
-            compact
-            onCancel={onCancel}
-          />
-        ))}
-      </div>
+      <TicketCarousel tickets={order.tickets} onCancel={onCancel} />
     </section>
   )
 }
