@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { AppApiError } from '../api/appClient'
 import {
   fetchGateCheckIns,
@@ -422,12 +421,6 @@ function GateDashboard() {
           </ul>
         )}
       </section>
-
-      <p className="mt-8 text-center text-caption text-on-surface-variant">
-        <Link to="/login" className="text-primary underline">
-          Trocar usuário
-        </Link>
-      </p>
     </main>
   )
 }

@@ -10,6 +10,7 @@ import {
   duplicateLocalShowtime,
   fetchAdminLocalMovies,
   fetchLocalMovieShowtimes,
+  fetchLocalShowtimeSeats,
   fetchOrganizerReport,
   fetchShowtimeOccupancy,
   searchTmdbCatalog,
@@ -23,10 +24,46 @@ import {
   type ShowtimeOccupancy,
 } from '../api/localCatalog'
 import { AppApiError } from '../api/appClient'
+import { Icon } from '../components/Icon'
 import { RequireRole } from '../components/RequireRole'
 import { useAuth } from '../context/AuthContext'
 import { connectRealtime } from '../lib/realtime'
 import type { Movie, Session } from '../types'
+
+type SeatMapSeat = {
+  id: string
+  name: string
+  isAvailable: boolean
+  row: string
+  number: number
+  ticketType: 'basic' | 'premium' | 'vip'
+}
+
+type SeatMapView = {
+  sessionId: string
+  movieTitle: string
+  room: string
+  time: string
+  date: string
+  sold: number
+  available: number
+  totalSeats: number
+  occupancyPct: number
+  seats: SeatMapSeat[]
+}
+
+function groupSeatMapByRow(seats: SeatMapSeat[]) {
+  const rows = new Map<string, SeatMapSeat[]>()
+  for (const seat of seats) {
+    const list = rows.get(seat.row) ?? []
+    list.push(seat)
+    rows.set(seat.row, list)
+  }
+  return Array.from(rows.entries()).map(([row, rowSeats]) => ({
+    row,
+    seats: [...rowSeats].sort((a, b) => a.number - b.number),
+  }))
+}
 
 type TabId = 'dashboard' | 'publicar' | 'filmes' | 'sessoes'
 
@@ -106,11 +143,58 @@ function OrganizerDashboard() {
   const [eventCapacity, setEventCapacity] = useState('40')
   const [eventPrice, setEventPrice] = useState('32')
   const [eventCinema, setEventCinema] = useState('CineRay Centro')
+  const [seatMapView, setSeatMapView] = useState<SeatMapView | null>(null)
+  const [seatMapLoading, setSeatMapLoading] = useState(false)
+  const [seatMapError, setSeatMapError] = useState<string | null>(null)
 
   const selectedMovie = useMemo(
     () => movies.find((m) => m.id === selectedId) || null,
     [movies, selectedId],
   )
+
+  const seatMapRows = useMemo(
+    () => (seatMapView ? groupSeatMapByRow(seatMapView.seats) : []),
+    [seatMapView],
+  )
+
+  async function openSeatMap(
+    session: OrganizerReport['sessions'][number],
+  ) {
+    setSeatMapError(null)
+    setSeatMapLoading(true)
+    setSeatMapView({
+      sessionId: session.id,
+      movieTitle: session.movieTitle,
+      room: String(session.room || '—'),
+      time: session.time,
+      date: session.date,
+      sold: session.sold,
+      available: session.available,
+      totalSeats: session.totalSeats,
+      occupancyPct: session.occupancyPct ?? 0,
+      seats: [],
+    })
+    try {
+      const data = await fetchLocalShowtimeSeats(session.id)
+      setSeatMapView((prev) =>
+        prev && prev.sessionId === session.id
+          ? { ...prev, seats: data.seats }
+          : prev,
+      )
+    } catch (err) {
+      setSeatMapError(
+        err instanceof Error ? err.message : 'Falha ao carregar o mapa de assentos.',
+      )
+    } finally {
+      setSeatMapLoading(false)
+    }
+  }
+
+  function closeSeatMap() {
+    setSeatMapView(null)
+    setSeatMapError(null)
+    setSeatMapLoading(false)
+  }
 
   async function reloadMovies() {
     const list = await fetchAdminLocalMovies()
@@ -192,6 +276,21 @@ function OrganizerDashboard() {
       setReportLive(false)
     }
   }, [tab])
+
+  useEffect(() => {
+    if (!seatMapView) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeSeatMap()
+    }
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previous
+      window.removeEventListener('keydown', onKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only lock scroll while a map is open
+  }, [seatMapView?.sessionId])
 
   async function handleSaveMovie(e: FormEvent) {
     e.preventDefault()
@@ -1084,6 +1183,9 @@ function OrganizerDashboard() {
                   <h3 className="text-label-md uppercase tracking-wider text-on-surface-variant">
                     Próximas sessões
                   </h3>
+                  <p className="mt-1 text-caption text-on-surface-variant/80">
+                    Clique numa sessão para ver o mapa de assentos.
+                  </p>
                 </div>
                 <table className="min-w-full text-left text-body-md">
                   <thead className="bg-white/5 text-caption text-on-surface-variant">
@@ -1107,7 +1209,20 @@ function OrganizerDashboard() {
                           '',
                         )
                         return (
-                          <tr key={session.id} className="border-t border-white/10">
+                          <tr
+                            key={session.id}
+                            className="cursor-pointer border-t border-white/10 transition-colors hover:bg-white/5"
+                            onClick={() => void openSeatMap(session)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                void openSeatMap(session)
+                              }
+                            }}
+                            tabIndex={0}
+                            role="button"
+                            aria-label={`Ver mapa de assentos de ${session.movieTitle}`}
+                          >
                             <td className="max-w-[220px] truncate px-4 py-3 text-on-surface">
                               {session.movieTitle}
                             </td>
@@ -1151,6 +1266,154 @@ function OrganizerDashboard() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {seatMapView && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Mapa de assentos — ${seatMapView.movieTitle}`}
+          onClick={closeSeatMap}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-background shadow-[0_20px_60px_rgba(0,0,0,0.6)] animate-fade-up"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-caption uppercase tracking-wider text-on-surface-variant">
+                  Mapa de assentos
+                </p>
+                <h3 className="mt-1 truncate text-title-md text-on-surface">
+                  {seatMapView.movieTitle}
+                </h3>
+                <p className="mt-1 text-body-md text-on-surface-variant">
+                  {seatMapView.room} · {seatMapView.time} · {seatMapView.date}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeSeatMap}
+                className="shrink-0 rounded-lg border border-white/10 p-2 text-on-surface-variant transition-colors hover:bg-white/5 hover:text-on-surface"
+                aria-label="Fechar mapa"
+              >
+                <Icon name="close" className="text-[20px]" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 border-b border-white/10 px-5 py-4 text-center">
+              <div>
+                <p className="text-caption text-on-surface-variant">Ocupação</p>
+                <p className="mt-1 text-title-sm text-on-surface">
+                  {seatMapView.occupancyPct}%
+                </p>
+              </div>
+              <div>
+                <p className="text-caption text-on-surface-variant">Vendidos</p>
+                <p className="mt-1 text-title-sm text-on-surface">
+                  {seatMapView.sold}/{seatMapView.totalSeats}
+                </p>
+              </div>
+              <div>
+                <p className="text-caption text-on-surface-variant">Livres</p>
+                <p className="mt-1 text-title-sm text-on-surface">
+                  {seatMapView.available}
+                </p>
+              </div>
+            </div>
+
+            <div className="px-5 py-6">
+              {seatMapLoading ? (
+                <p className="py-16 text-center text-body-md text-on-surface-variant">
+                  Carregando assentos…
+                </p>
+              ) : seatMapError ? (
+                <p className="py-16 text-center text-body-md text-primary">
+                  {seatMapError}
+                </p>
+              ) : (
+                <>
+                  <div className="relative mb-8 flex flex-col items-center">
+                    <div className="h-8 w-3/4 max-w-lg rounded-[100%] border-t-4 border-primary/35" />
+                    <span className="mt-4 text-label-md tracking-[0.2em] text-on-surface-variant uppercase">
+                      Tela
+                    </span>
+                  </div>
+
+                  <div className="mx-auto flex w-max max-w-full flex-col items-center gap-2 overflow-x-auto sm:gap-3">
+                    {seatMapRows.map(({ row, seats }) => (
+                      <div
+                        key={row}
+                        className="flex items-center gap-1.5 sm:gap-2 md:gap-4"
+                      >
+                        <span className="w-3 shrink-0 text-center text-caption text-on-surface-variant sm:w-4 sm:text-label-md">
+                          {row}
+                        </span>
+                        <div className="flex justify-center gap-1 sm:gap-1.5 md:gap-2">
+                          {seats.map((seat, index) => (
+                            <div key={seat.id} className="contents">
+                              {(index === 2 || index === 8) && (
+                                <div
+                                  className="w-1.5 sm:w-2 md:w-4"
+                                  aria-hidden
+                                />
+                              )}
+                              <div
+                                className={`seat flex h-6 w-6 items-center justify-center rounded-t-lg rounded-b-sm sm:h-7 sm:w-7 md:h-8 md:w-8 ${
+                                  seat.isAvailable
+                                    ? 'border border-white/20 bg-surface-container'
+                                    : 'bg-surface-variant opacity-40'
+                                }`}
+                                title={`${seat.name} — ${
+                                  seat.isAvailable ? 'livre' : 'ocupado'
+                                }`}
+                                aria-label={`Assento ${seat.name}, ${
+                                  seat.isAvailable ? 'livre' : 'ocupado'
+                                }`}
+                              >
+                                {seat.isAvailable ? (
+                                  <span className="text-[9px] text-white/50 sm:text-[10px]">
+                                    {seat.number}
+                                  </span>
+                                ) : (
+                                  <Icon
+                                    name="close"
+                                    className="text-[12px] sm:text-[14px]"
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <span className="w-3 shrink-0 text-center text-caption text-on-surface-variant sm:w-4 sm:text-label-md">
+                          {row}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-8 flex flex-wrap justify-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className="h-5 w-5 rounded-t-md rounded-b-sm border border-white/20 bg-surface-container" />
+                      <span className="text-caption text-on-surface-variant">
+                        Livre
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-t-md rounded-b-sm bg-surface-variant opacity-50">
+                        <Icon name="close" className="text-[10px]" />
+                      </div>
+                      <span className="text-caption text-on-surface-variant">
+                        Ocupado
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </main>
