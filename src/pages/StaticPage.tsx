@@ -8,8 +8,8 @@ const PAGES: Record<
   sobre: {
     title: 'Sobre nós',
     paragraphs: [
-      'A CineRay é uma plataforma de compra de ingressos pensada para uma experiência rápida, visual e segura.',
-      'Este projeto é um challenge de front-end com backend local (Express + MySQL), pagamento demonstrativo e reserva de assentos com controle de concorrência.',
+      'A CineRay nasceu pro Desafio Elite Dev 2026: comprar ingresso, gerar QR e validar na entrada.',
+      'É um demo com Express + MySQL, pagamento fictício e hold de assento pra não vender o mesmo lugar duas vezes.',
     ],
   },
   suporte: {

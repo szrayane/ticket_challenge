@@ -10,9 +10,12 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   frontend:
-    name: Frontend (lint + build)
+    name: Frontend (lint + typecheck + build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +31,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.app.json
 
       - name: Build
         run: npm run build
@@ -58,3 +64,29 @@ jobs:
           NODE_ENV: test
           TICKET_QR_SECRET: ci-test-qr-secret-not-for-production
           STAFF_INVITE_CODE: cineray-staff
+
+  smoke-syntax:
+    name: Backend syntax check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Parse entrypoints
+        run: |
+          node --check src/server.js
+          node --check src/app.js
+          node --check src/services/googleWallet.service.js
+          node --check src/services/seats.service.js
+          node --check src/services/tickets.service.js

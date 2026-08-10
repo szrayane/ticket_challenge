@@ -1,8 +1,8 @@
 name: CD
 
-# Deploy contínuo: Vercel (front) e Render (API) já fazem deploy automático
-# a cada push em main via integração Git. Este workflow valida o ar depois
-# do merge e, se existir o secret RENDER_DEPLOY_HOOK, dispara redeploy.
+# Vercel (front) e Render (API) já fazem deploy no push em main.
+# Este workflow só confere se produção respondeu e, opcionalmente,
+# dispara o Render de novo se RENDER_DEPLOY_HOOK existir.
 
 on:
   push:
@@ -12,6 +12,9 @@ on:
 concurrency:
   group: cd-main
   cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   verify-production:
@@ -24,7 +27,7 @@ jobs:
       - name: Health check API (Render)
         run: |
           set -e
-          for i in 1 2 3 4 5 6; do
+          for i in 1 2 3 4 5 6 7 8; do
             code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 60 \
               https://cinerar-api.onrender.com/health || true)
             echo "attempt=$i http=$code body=$(cat /tmp/health.json 2>/dev/null || true)"
@@ -36,13 +39,29 @@ jobs:
           echo "API health check falhou"
           exit 1
 
+      - name: API catalog + wallet status
+        run: |
+          set -e
+          movies=$(curl -sS -o /tmp/movies.json -w "%{http_code}" --max-time 60 \
+            https://cinerar-api.onrender.com/api/movies)
+          echo "movies http=$movies"
+          test "$movies" = "200"
+          grep -q '"movies"' /tmp/movies.json
+
+          wallet=$(curl -sS -o /tmp/wallet.json -w "%{http_code}" --max-time 60 \
+            https://cinerar-api.onrender.com/api/tickets/wallet/google/status)
+          echo "wallet http=$wallet body=$(cat /tmp/wallet.json)"
+          test "$wallet" = "200"
+          grep -q '"configured"' /tmp/wallet.json
+
       - name: Front no ar (Vercel)
         run: |
           set -e
-          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 60 \
+          code=$(curl -sS -o /tmp/front.html -w "%{http_code}" --max-time 60 \
             https://ticket-challenge-qpel.vercel.app/)
           echo "front http=$code"
           test "$code" = "200"
+          grep -qi 'cineray\|root\|vite' /tmp/front.html
 
   render-redeploy:
     name: Redeploy Render (opcional)
