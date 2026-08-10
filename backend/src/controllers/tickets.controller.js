@@ -200,9 +200,10 @@ export async function getMyTicketGoogleWallet(req, res, next) {
     }
     if (
       error.code === 'GOOGLE_WALLET_AUTH_FAILED' ||
-      error.code === 'GOOGLE_WALLET_CLASS_ERROR'
+      error.code === 'GOOGLE_WALLET_CLASS_ERROR' ||
+      error.code === 'GOOGLE_WALLET_BAD_PRIVATE_KEY'
     ) {
-      return res.status(502).json({
+      return res.status(error.status || 502).json({
         message: error.message,
         code: error.code,
       })

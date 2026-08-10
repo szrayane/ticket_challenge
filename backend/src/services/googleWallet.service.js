@@ -8,10 +8,53 @@ function env(name, fallback = '') {
 }
 
 function normalizePem(value) {
-  return String(value || '')
-    .replace(/\\n/g, '\n')
-    .replace(/\r/g, '')
+  let pem = String(value || '')
     .trim()
+    .replace(/^["']+|["']+$/g, '')
+    .replace(/\r/g, '')
+    // Env vars no Render/Vercel costumam guardar "\n" literal.
+    .replace(/\\n/g, '\n')
+
+  // Se colaram o JSON inteiro da service account, extrai private_key.
+  if (!pem.includes('BEGIN PRIVATE KEY') && /private_key/i.test(pem)) {
+    try {
+      const json = pem.trim().startsWith('{') ? pem : `{"private_key":${pem}}`
+      const parsed = JSON.parse(json)
+      if (parsed?.private_key) return normalizePem(parsed.private_key)
+    } catch {
+      // ignore
+    }
+  }
+
+  // Chave colapsada em uma linha (sem newlines reais) → remonta o PEM.
+  if (pem.includes('BEGIN') && !pem.includes('\n')) {
+    const match = pem.match(
+      /-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=]+)-----END \1-----/,
+    )
+    if (match) {
+      const label = match[1]
+      const body = match[2]
+      const lines = body.match(/.{1,64}/g) || []
+      pem = `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----`
+    }
+  }
+
+  return pem.trim()
+}
+
+function loadPrivateKey(privateKeyPem) {
+  const pem = normalizePem(privateKeyPem)
+  try {
+    return createPrivateKey(pem)
+  } catch (error) {
+    const err = new Error(
+      'GOOGLE_WALLET_SA_PRIVATE_KEY inválida no servidor (DECODER unsupported). No Render, cole a chave com \\n entre aspas, ou em campo multiline começando com -----BEGIN PRIVATE KEY-----.',
+    )
+    err.status = 500
+    err.code = 'GOOGLE_WALLET_BAD_PRIVATE_KEY'
+    err.cause = error
+    throw err
+  }
 }
 
 function base64UrlJson(value) {
@@ -24,9 +67,7 @@ function signRs256Jwt(claims, privateKeyPem) {
   const signer = createSign('RSA-SHA256')
   signer.update(body)
   signer.end()
-  const signature = signer
-    .sign(createPrivateKey(normalizePem(privateKeyPem)))
-    .toString('base64url')
+  const signature = signer.sign(loadPrivateKey(privateKeyPem)).toString('base64url')
   return `${body}.${signature}`
 }
 
