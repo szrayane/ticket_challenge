@@ -22,7 +22,7 @@ Objetivo: front na **Vercel** (+1 do desafio) e API no **Render** (Express + MyS
      - `GOOGLE_WALLET_SA_EMAIL`
      - `GOOGLE_WALLET_SA_PRIVATE_KEY`
      - `GOOGLE_WALLET_ORIGINS=https://seu-app.vercel.app`
-5. Copie a URL pública, ex.: `https://cineray-api.onrender.com`
+5. Copie a URL pública, ex.: `https://cinerar-api.onrender.com`
 
 Teste: `https://SUA-API/health` → `{"status":"ok"}`
 

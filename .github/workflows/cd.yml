@@ -29,7 +29,7 @@ jobs:
           set -e
           for i in 1 2 3 4 5 6 7 8; do
             code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 60 \
-              https://cineray-api.onrender.com/health || true)
+              https://cinerar-api.onrender.com/health || true)
             echo "attempt=$i http=$code body=$(cat /tmp/health.json 2>/dev/null || true)"
             if [ "$code" = "200" ] && grep -q '"status":"ok"' /tmp/health.json; then
               exit 0
@@ -43,13 +43,13 @@ jobs:
         run: |
           set -e
           movies=$(curl -sS -o /tmp/movies.json -w "%{http_code}" --max-time 60 \
-            https://cineray-api.onrender.com/api/movies)
+            https://cinerar-api.onrender.com/api/movies)
           echo "movies http=$movies"
           test "$movies" = "200"
           grep -q '"movies"' /tmp/movies.json
 
           wallet=$(curl -sS -o /tmp/wallet.json -w "%{http_code}" --max-time 60 \
-            https://cineray-api.onrender.com/api/tickets/wallet/google/status)
+            https://cinerar-api.onrender.com/api/tickets/wallet/google/status)
           echo "wallet http=$wallet body=$(cat /tmp/wallet.json)"
           test "$wallet" = "200"
           grep -q '"configured"' /tmp/wallet.json
