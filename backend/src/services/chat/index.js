@@ -2,6 +2,8 @@ import {
   TOOL_DECLARATIONS,
   executeTool,
   ruleBasedReply,
+  isHelpIntent,
+  helpReplyText,
 } from './tools.js'
 import {
   getOrCreateChatSession,
@@ -12,16 +14,21 @@ const SYSTEM_INSTRUCTION = `Você é o assistente do CineRay, cinema online bras
 Ajude o usuário a descobrir filmes no catálogo real (via ferramentas), escolher sessão/assentos, pagar com Pix fictício e cancelar ingressos.
 
 Regras:
-- Sempre use as ferramentas para dados de filmes, sessões, assentos e ingressos. Não invente horários, preços ou IDs.
+- Sempre use as ferramentas para dados de filmes, sessões, assentos e ingressos. Não invente horários, preços, locais ou IDs.
+- Locais oficiais: CineRay Centro, CineRay Norte, CineRay Shopping. Se o usuário falar "centro", "norte" ou "shopping", use search_movies/list_showtimes com cinema correspondente.
+- Também pode filtrar por date (DD/MM/AAAA) e maxPrice.
+- Se o usuário pedir ajuda, comandos ou "o que você faz", explique busca (gênero/local/data/preço), compra Pix e cancelamento, com exemplos curtos.
 - Fale em português do Brasil, curto e amigável (2–4 frases).
 - Fluxo: search_movies → list_showtimes → suggest_seats → prepare_pix_purchase.
 - Depois do Pix, o usuário confirma no botão "Já paguei — confirmar".
-- Para cancelar: list_my_tickets e cancel_ticket.
+- Para cancelar: chame list_my_tickets. A interface mostra cards com botão "Cancelar ingresso".
+- Cancelamento é um ingresso por vez. Se pedirem "cancelar todos", diga isso e mostre a lista — o usuário toca Cancelar em cada card.
+- Só chame cancel_ticket depois que o usuário confirmar qual ingresso (filme + assento) ou tocar no botão.
+- Tool calls: use SOMENTE o formato nativo da API (tool_calls). NUNCA escreva tags como <function=...>, </function>, JSON de ferramenta ou nomes de tool no texto ao usuário.
 - Se needsAuth, peça login como cliente.
 - No chat o pagamento é só Pix fictício.
-- Tool calls: use o formato nativo da API. Nunca escreva JSON no nome da ferramenta.
 - Em search_movies, use genre SEM acento (ex.: "acao", "comedia"). limit/quantity como string.
-- NUNCA mostre ID de filme/sessão (mov_..., st_...).
+- NUNCA mostre ID de filme/sessão/ingresso (mov_..., st_..., tkt_...).
 - NUNCA use tabelas markdown (| colunas |). A interface já mostra cards clicáveis.
 - NÃO use markdown pesado (tabelas, código). Pode usar listas curtas com traço se quiser.`
 
@@ -30,7 +37,7 @@ const GROQ_MODEL_FALLBACKS = [
   'llama-3.3-70b-versatile',
   'openai/gpt-oss-20b',
 ]
-// Histórico curto: tool results grandes estouram o limite do Groq.
+
 const MAX_HISTORY_MESSAGES = 6
 const MAX_USER_CHARS = 800
 const MAX_ASSISTANT_CHARS = 600
@@ -44,7 +51,7 @@ function getGroqKey() {
 
 function getGroqModels() {
   const preferred = String(process.env.GROQ_MODEL || GROQ_DEFAULT).trim()
-  // Nunca usar 8b-instant aqui — TPM/contexto muito baixo p/ tools + histórico.
+
   return [...new Set([preferred, ...GROQ_MODEL_FALLBACKS].filter(Boolean))].filter(
     (m) => !/llama-3\.1-8b/i.test(m),
   )
@@ -118,7 +125,6 @@ function compactToolResultJson(result) {
   return `${json.slice(0, MAX_TOOL_JSON_CHARS - 3)}...`
 }
 
-/** Mantém só falas curtas user/assistant — sem tool_calls nem JSON enorme. */
 function slimHistory(history) {
   const out = []
   for (const msg of history || []) {
@@ -198,12 +204,12 @@ function tryParseJsonObject(text) {
     const parsed = JSON.parse(raw)
     return parsed && typeof parsed === 'object' ? parsed : null
   } catch {
-    // tenta fechar JSON truncado comum no erro do Groq
+
     const start = raw.indexOf('{')
     if (start < 0) return null
     let snippet = raw.slice(start)
     if (!snippet.endsWith('}')) {
-      // fecha aspas/objeto de forma best-effort
+
       const quoteCount = (snippet.match(/"/g) || []).length
       if (quoteCount % 2 === 1) snippet += '"'
       snippet += '}'
@@ -212,7 +218,7 @@ function tryParseJsonObject(text) {
       const parsed = JSON.parse(snippet)
       return parsed && typeof parsed === 'object' ? parsed : null
     } catch {
-      // extrai genre/query soltos
+
       const genre = snippet.match(/"genre"\s*:\s*"([^"]*)"/i)?.[1]
       const query = snippet.match(/"query"\s*:\s*"([^"]*)"/i)?.[1]
       if (genre || query) return { genre: genre || '', query: query || '' }
@@ -221,10 +227,6 @@ function tryParseJsonObject(text) {
   }
 }
 
-/**
- * Recupera tool call quebrado do Groq, ex.:
- * attempted to call tool 'search_movies {"genre": "Aç
- */
 function recoverToolCallsFromError(error) {
   const message = String(error?.message || '')
   const failedGeneration = String(error?.failedGeneration || '')
@@ -239,7 +241,7 @@ function recoverToolCallsFromError(error) {
     const name = jammed[1]
     if (KNOWN_TOOLS.has(name)) {
       const args = tryParseJsonObject(jammed[2]) || {}
-      // se JSON truncou no "Aç", completa gênero comum
+
       if (args.genre && /a[cç]$/i.test(args.genre) && args.genre.length <= 4) {
         args.genre = 'acao'
       }
@@ -359,7 +361,7 @@ function isRetryableGroqError(error) {
 let resolvedModel = null
 
 async function callGroq({ messages, tools, toolChoice = 'auto' }) {
-  // Evita grudar em modelo ruim (ex. 8b) de request anterior
+
   if (resolvedModel && /llama-3\.1-8b/i.test(resolvedModel)) {
     resolvedModel = null
   }
@@ -377,7 +379,7 @@ async function callGroq({ messages, tools, toolChoice = 'auto' }) {
     } catch (error) {
       lastError = error
       if (!isRetryableGroqError(error)) throw error
-      // request too large neste modelo → tenta o próximo
+
       if (/request too large|context_length|payload too large/i.test(error.message || '')) {
         resolvedModel = null
       }
@@ -404,12 +406,25 @@ function summarizeFromToolResults(uiResults) {
   if (pix?.ui) {
     return 'QR Pix gerado. Escaneie e toque em "Já paguei — confirmar".'
   }
+  const cancel = uiResults.find((r) => r?.ui?.type === 'cancel_result')
+  if (cancel?.message) {
+    return cancel.message
+  }
+  const tickets = uiResults.find((r) => r?.ui?.type === 'tickets')
+  if (tickets?.tickets?.length) {
+    const n = tickets.tickets.length
+    return n === 1
+      ? 'Encontrei 1 ingresso ativo. Toque em Cancelar se quiser desistir dele.'
+      : `Encontrei ${n} ingressos ativos. O cancelamento é um por vez — toque em Cancelar no card desejado.`
+  }
+  if (tickets && Array.isArray(tickets.tickets) && tickets.tickets.length === 0) {
+    return 'Você não tem ingressos ativos para cancelar.'
+  }
   const ok = uiResults.find((r) => r?.ok && r?.message)
   if (ok?.message) return ok.message
   return 'Pronto. Como posso continuar?'
 }
 
-/** Extrai filmes de tabela markdown que o modelo às vezes despeja no texto. */
 function parseMoviesFromMarkdownTable(text) {
   const lines = String(text || '').split('\n')
   const movies = []
@@ -437,8 +452,45 @@ function parseMoviesFromMarkdownTable(text) {
   return movies
 }
 
+function parseLeakedToolCalls(text) {
+  const raw = String(text || '')
+  const calls = []
+  const seen = new Set()
+
+  const xmlRe =
+    /<function\s*=\s*([a-z_]+)>\s*(\{[\s\S]*?\})\s*<\/function>/gi
+  let match
+  while ((match = xmlRe.exec(raw))) {
+    const name = match[1]
+    if (!KNOWN_TOOLS.has(name)) continue
+    const args = tryParseJsonObject(match[2]) || {}
+    const key = `${name}:${JSON.stringify(args)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    calls.push({ id: `leaked_${name}_${calls.length}`, name, args })
+  }
+
+  const openRe =
+    /<function\s*=\s*([a-z_]+)>\s*(\{[^<]*\})/gi
+  while ((match = openRe.exec(raw))) {
+    const name = match[1]
+    if (!KNOWN_TOOLS.has(name)) continue
+    const args = tryParseJsonObject(match[2]) || {}
+    const key = `${name}:${JSON.stringify(args)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    calls.push({ id: `leaked_${name}_${calls.length}`, name, args })
+  }
+
+  return calls
+}
+
 function stripUglyAiFormatting(text) {
   return String(text || '')
+    .replace(/<function\s*=\s*[a-z_]+>\s*\{[\s\S]*?\}\s*<\/function>/gi, '')
+    .replace(/<function\s*=\s*[a-z_]+>\s*\{[^<]*\}?/gi, '')
+    .replace(/<\/?function[^>]*>/gi, '')
+    .replace(/\b(tkt_|mov_|st_)[a-z0-9]+\b/gi, '')
     .split('\n')
     .filter((line) => {
       const t = line.trim()
@@ -446,6 +498,7 @@ function stripUglyAiFormatting(text) {
       if (t.includes('|') && (t.match(/\|/g) || []).length >= 2) return false
       if (/^\s*\|?\s*-{3,}/.test(t)) return false
       if (/^mov_[a-z0-9]+$/i.test(t)) return false
+      if (/^(cancel_ticket|list_my_tickets|search_movies)\b/i.test(t)) return false
       return true
     })
     .join('\n')
@@ -454,6 +507,7 @@ function stripUglyAiFormatting(text) {
     .replace(/`+/g, '')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
     .trim()
 }
 
@@ -468,7 +522,18 @@ function formatAssistantOutput(text, uiBlocks = []) {
 
   let clean = stripUglyAiFormatting(text)
   if (!clean || clean.length < 8) {
-    if (blocks.some((b) => b.type === 'movie_picks')) {
+    if (blocks.some((b) => b.type === 'cancel_result')) {
+      clean = 'Ingresso cancelado com sucesso.'
+    } else if (blocks.some((b) => b.type === 'tickets')) {
+      const ticketsBlock = blocks.find((b) => b.type === 'tickets')
+      const n = ticketsBlock?.tickets?.length || 0
+      clean =
+        n > 1
+          ? `Você tem ${n} ingressos ativos. O cancelamento é um por vez — toque em Cancelar no card que quiser.`
+          : n === 1
+            ? 'Encontrei seu ingresso. Toque em Cancelar se quiser desistir dele.'
+            : 'Você não tem ingressos ativos para cancelar.'
+    } else if (blocks.some((b) => b.type === 'movie_picks')) {
       clean = 'Encontrei estas opções. Toque em um filme para ver os horários.'
     } else if (blocks.some((b) => b.type === 'showtimes')) {
       clean = 'Escolha uma sessão abaixo.'
@@ -504,7 +569,7 @@ async function handleWithGroq({ session, message, ctx }) {
       data = await callGroq({ messages: working, tools })
     } catch (firstError) {
       let error = firstError
-      // Request grande demais: tenta de novo só com a mensagem atual
+
       if (/request too large|context_length|payload too large/i.test(error.message || '')) {
         working = [
           { role: 'system', content: SYSTEM_INSTRUCTION },
@@ -561,7 +626,7 @@ async function handleWithGroq({ session, message, ctx }) {
           const text = payload?.choices?.[0]?.message?.content
           if (response.ok && text) finalText = String(text).trim()
         } catch {
-          // keep finalText
+
         }
         break
       }
@@ -571,6 +636,45 @@ async function handleWithGroq({ session, message, ctx }) {
     const toolCalls = choice.tool_calls || []
 
     if (!toolCalls.length) {
+      const leaked = parseLeakedToolCalls(choice.content || '')
+      if (leaked.length) {
+
+        const safeCalls = leaked.map((call) =>
+          call.name === 'cancel_ticket'
+            ? {
+                id: `leaked_list_${call.id || 'tickets'}`,
+                name: 'list_my_tickets',
+                args: { onlyActive: 'true' },
+              }
+            : call,
+        )
+        const { uiResults, openAiToolMessages } = await runToolCalls(
+          safeCalls,
+          ctx,
+        )
+        allToolResults.push(...uiResults)
+        working = [
+          ...working,
+          {
+            role: 'assistant',
+            content: stripUglyAiFormatting(choice.content) || null,
+            tool_calls: safeCalls.map((c) => ({
+              id: c.id,
+              type: 'function',
+              function: {
+                name: c.name,
+                arguments:
+                  typeof c.args === 'string'
+                    ? c.args
+                    : JSON.stringify(c.args || {}),
+              },
+            })),
+          },
+          ...openAiToolMessages,
+        ]
+        continue
+      }
+
       finalText =
         String(choice.content || '').trim() ||
         'Pronto! Como mais posso ajudar?'
@@ -608,7 +712,6 @@ async function handleWithGroq({ session, message, ctx }) {
     collectUi(allToolResults),
   )
 
-  // Persiste só diálogo enxuto (sem tools/JSON)
   const nextHistory = slimHistory([
     ...history,
     { role: 'user', content: userText },
@@ -624,9 +727,6 @@ async function handleWithGroq({ session, message, ctx }) {
   }
 }
 
-/**
- * Processa uma mensagem do usuário no chat (Groq free tier).
- */
 export async function handleChatMessage({
   sessionId,
   message,
@@ -643,6 +743,16 @@ export async function handleChatMessage({
     user,
     holderKey: session.holderKey,
     sessionId: session.id,
+  }
+
+  if (isHelpIntent(message)) {
+    return {
+      sessionId: session.id,
+      reply: helpReplyText(),
+      uiBlocks: [],
+      holderKey: session.holderKey,
+      provider: 'help',
+    }
   }
 
   if (!getGroqKey()) {
@@ -666,7 +776,7 @@ export async function handleChatMessage({
       provider: result.provider,
     }
   } catch (error) {
-    // última chance: se o erro trouxe um tool call quebrado, executa direto
+
     if (isToolValidationError(error)) {
       const recovered = recoverToolCallsFromError(error)
       if (recovered.length) {

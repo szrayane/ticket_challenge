@@ -1,4 +1,3 @@
-/** Payload Pix EMV fictício (mesma lógica do front — só para simulação). */
 
 function tlv(id, value) {
   return `${id}${pad(String(value).length)}${value}`

@@ -3,10 +3,8 @@ import { randomBytes } from 'node:crypto'
 const SESSION_TTL_MS = 60 * 60 * 1000
 const PENDING_TTL_MS = 15 * 60 * 1000
 
-/** @type {Map<string, { id: string, userId: string | null, holderKey: string, history: any[], updatedAt: number }>} */
 const sessions = new Map()
 
-/** @type {Map<string, any>} */
 const pendingPayments = new Map()
 
 function createId(prefix) {

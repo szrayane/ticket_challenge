@@ -23,7 +23,7 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'search_movies',
     description:
-      'Busca filmes ativos no catálogo CineRay por gênero, título ou recomendações gerais. Use sempre que o usuário pedir sugestão, gênero ou nome de filme.',
+      'Busca filmes ativos no catálogo CineRay por gênero, título, cinema/local, data ou preço. Locais: CineRay Centro, CineRay Norte, CineRay Shopping.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -35,6 +35,19 @@ export const TOOL_DECLARATIONS = [
           type: 'STRING',
           description: 'Gênero desejado, ex: Ação, Drama, Comédia (opcional).',
         },
+        cinema: {
+          type: 'STRING',
+          description:
+            'Local/cinema: Centro, Norte, Shopping, ou nome completo CineRay … (opcional).',
+        },
+        date: {
+          type: 'STRING',
+          description: 'Data da sessão no formato DD/MM/AAAA (opcional).',
+        },
+        maxPrice: {
+          type: 'NUMBER',
+          description: 'Preço máximo do ingresso em reais (opcional).',
+        },
         limit: {
           type: 'INTEGER',
           description: 'Máximo de filmes a retornar (padrão 5).',
@@ -45,13 +58,25 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'list_showtimes',
     description:
-      'Lista sessões futuras disponíveis de um filme (horários, cinema, preço).',
+      'Lista sessões futuras disponíveis de um filme (horários, cinema, preço). Pode filtrar por cinema e data.',
     parameters: {
       type: 'OBJECT',
       properties: {
         movieId: {
           type: 'STRING',
           description: 'ID do filme retornado por search_movies.',
+        },
+        cinema: {
+          type: 'STRING',
+          description: 'Filtrar por local/cinema (opcional).',
+        },
+        date: {
+          type: 'STRING',
+          description: 'Filtrar por data DD/MM/AAAA (opcional).',
+        },
+        maxPrice: {
+          type: 'NUMBER',
+          description: 'Preço máximo (opcional).',
         },
       },
       required: ['movieId'],
@@ -173,6 +198,62 @@ function asInt(value, fallback) {
   return Number.isFinite(n) ? n : fallback
 }
 
+function asNumber(value, fallback = NaN) {
+  if (value == null || value === '') return fallback
+  const n = Number(String(value).replace(',', '.').replace(/[^\d.-]/g, ''))
+  return Number.isFinite(n) ? n : fallback
+}
+
+function movieSessions(movie) {
+  if (Array.isArray(movie.availableSessions) && movie.availableSessions.length) {
+    return movie.availableSessions
+  }
+  if (movie.nextSession) {
+    return [
+      {
+        date: movie.nextSession.date,
+        cinema: movie.nextSession.cinema,
+        price: movie.nextSession.price,
+        time: movie.nextSession.time,
+      },
+    ]
+  }
+  return []
+}
+
+function resolveCinemaFilter(raw) {
+  const original = String(raw || '').trim()
+  const p = original
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (!p) return ''
+  if (p.includes('shopping') || p.includes('brooklin') || p.includes('nacoes')) {
+    return 'CineRay Shopping'
+  }
+  if (p.includes('norte') || p.includes('guilherme') || p.includes('santana')) {
+    return 'CineRay Norte'
+  }
+  if (p.includes('centro') || p.includes('republica') || p.includes('sao joao')) {
+    return 'CineRay Centro'
+  }
+  const known = ['CineRay Centro', 'CineRay Norte', 'CineRay Shopping']
+  const exact = known.find((name) => name.toLowerCase() === p)
+  if (exact) return exact
+  return ''
+}
+
+function sessionMatchesFilters(session, { cinema = '', date = '', maxPrice = NaN } = {}) {
+  if (cinema) {
+    const want = cinema.toLowerCase()
+    const got = String(session.cinema || '').toLowerCase()
+    if (got !== want && !got.includes(want) && !want.includes(got)) return false
+  }
+  if (date && String(session.date || '') !== date) return false
+  if (Number.isFinite(maxPrice) && Number(session.price) > maxPrice) return false
+  return true
+}
+
 function normalizeToolArgs(name, raw = {}) {
   const args = raw && typeof raw === 'object' ? { ...raw } : {}
   delete args._
@@ -181,11 +262,23 @@ function normalizeToolArgs(name, raw = {}) {
     return {
       query: asString(args.query),
       genre: asString(args.genre),
+      cinema: resolveCinemaFilter(
+        asString(args.cinema || args.place || args.local || args.location),
+      ),
+      date: asString(args.date || args.sessionDate),
+      maxPrice: asNumber(args.maxPrice ?? args.max_price ?? args.price, NaN),
       limit: asInt(args.limit, 5),
     }
   }
   if (name === 'list_showtimes') {
-    return { movieId: asString(args.movieId || args.movie_id) }
+    return {
+      movieId: asString(args.movieId || args.movie_id),
+      cinema: resolveCinemaFilter(
+        asString(args.cinema || args.place || args.local || args.location),
+      ),
+      date: asString(args.date || args.sessionDate),
+      maxPrice: asNumber(args.maxPrice ?? args.max_price ?? args.price, NaN),
+    }
   }
   if (name === 'suggest_seats') {
     return {
@@ -212,11 +305,20 @@ function normalizeToolArgs(name, raw = {}) {
   return args
 }
 
-async function searchMovies({ query = '', genre = '', limit = 5 } = {}) {
+async function searchMovies({
+  query = '',
+  genre = '',
+  cinema = '',
+  date = '',
+  maxPrice = NaN,
+  limit = 5,
+} = {}) {
   const movies = await listMovies({ includeInactive: false })
   const q = String(query || '').trim().toLowerCase()
   const g = String(genre || '').trim().toLowerCase()
   const max = Math.min(Math.max(Number(limit) || 5, 1), 10)
+  const hasSessionFilter =
+    Boolean(cinema) || Boolean(date) || Number.isFinite(maxPrice)
 
   let filtered = movies.filter((movie) => {
     const genreText = String(movie.genre || '').toLowerCase()
@@ -228,28 +330,61 @@ async function searchMovies({ query = '', genre = '', limit = 5 } = {}) {
       genreText.includes(q) ||
       String(movie.synopsis || '')
         .toLowerCase()
-        .includes(q)
-    return matchGenre && matchQuery
+        .includes(q) ||
+      movieSessions(movie).some((session) =>
+        String(session.cinema || '')
+          .toLowerCase()
+          .includes(q),
+      )
+    if (!matchGenre || !matchQuery) return false
+
+    if (hasSessionFilter) {
+      const sessions = movieSessions(movie)
+      if (!sessions.length) return false
+      return sessions.some((session) =>
+        sessionMatchesFilters(session, { cinema, date, maxPrice }),
+      )
+    }
+    return true
   })
 
-  if (filtered.length === 0 && (q || g)) {
+  if (filtered.length === 0 && (q || g) && !hasSessionFilter) {
     filtered = movies.slice(0, max)
   }
 
-  const picks = filtered.slice(0, max).map((movie) => ({
-    id: movie.id,
-    title: movie.title,
-    genre: movie.genre,
-    rating: movie.rating,
-    runtime: movie.runtime,
-    poster: movie.poster,
-    synopsis: String(movie.synopsis || '').slice(0, 180),
-    nextSession: movie.nextSession || null,
-  }))
+  const picks = filtered.slice(0, max).map((movie) => {
+    const sessions = movieSessions(movie)
+    const matched =
+      sessions.find((session) =>
+        sessionMatchesFilters(session, { cinema, date, maxPrice }),
+      ) || movie.nextSession || null
+    return {
+      id: movie.id,
+      title: movie.title,
+      genre: movie.genre,
+      rating: movie.rating,
+      runtime: movie.runtime,
+      poster: movie.poster,
+      synopsis: String(movie.synopsis || '').slice(0, 180),
+      nextSession: matched
+        ? {
+            date: matched.date,
+            time: matched.time || movie.nextSession?.time || '',
+            cinema: matched.cinema,
+            price: matched.price,
+          }
+        : null,
+    }
+  })
 
   return {
     ok: true,
     count: picks.length,
+    filters: {
+      cinema: cinema || null,
+      date: date || null,
+      maxPrice: Number.isFinite(maxPrice) ? maxPrice : null,
+    },
     movies: picks,
     ui: picks.length
       ? {
@@ -260,7 +395,12 @@ async function searchMovies({ query = '', genre = '', limit = 5 } = {}) {
   }
 }
 
-async function listShowtimes({ movieId }) {
+async function listShowtimes({
+  movieId,
+  cinema = '',
+  date = '',
+  maxPrice = NaN,
+} = {}) {
   const movie = await getMovie(movieId, { includeInactive: false })
   if (!movie || !movie.isActive) {
     return { ok: false, message: 'Filme não encontrado ou inativo.' }
@@ -271,21 +411,34 @@ async function listShowtimes({ movieId }) {
     onlyWithAvailability: true,
   })
 
-  const mapped = sessions.slice(0, 12).map((s) => ({
-    id: s.id,
-    date: s.date,
-    dateLabel: s.dateLabel,
-    time: s.time,
-    cinema: s.cinema,
-    room: s.room,
-    price: s.price,
-    capacity: s.capacity,
-  }))
+  const mapped = sessions
+    .filter((s) =>
+      sessionMatchesFilters(
+        { date: s.date, cinema: s.cinema, price: s.price },
+        { cinema, date, maxPrice },
+      ),
+    )
+    .slice(0, 12)
+    .map((s) => ({
+      id: s.id,
+      date: s.date,
+      dateLabel: s.dateLabel,
+      time: s.time,
+      cinema: s.cinema,
+      room: s.room,
+      price: s.price,
+      capacity: s.capacity,
+    }))
 
   return {
     ok: true,
     movie: { id: movie.id, title: movie.title, poster: movie.poster },
     showtimes: mapped,
+    filters: {
+      cinema: cinema || null,
+      date: date || null,
+      maxPrice: Number.isFinite(maxPrice) ? maxPrice : null,
+    },
     ui: {
       type: 'showtimes',
       movie: { id: movie.id, title: movie.title, poster: movie.poster },
@@ -605,10 +758,39 @@ export async function confirmPendingPixPayment(pendingId, user) {
   }
 }
 
-/** Fallback sem Groq: interpreta intenções simples. */
+export function helpReplyText() {
+  return [
+    'Posso te ajudar no CineRay:',
+    '- Buscar filme por gênero, local (Centro, Norte, Shopping), data ou preço',
+    '- Ver horários e sugerir assentos',
+    '- Comprar com Pix fictício (login como cliente)',
+    '- Listar ou cancelar seus ingressos',
+    '',
+    'Exemplos: "terror no CineRay Norte", "filmes até 32 no shopping", "meus ingressos".',
+  ].join('\n')
+}
+
+export function isHelpIntent(message) {
+  const t = String(message || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (!t) return false
+  if (/^(ajuda|help|socorro|comandos)\??$/.test(t)) return true
+  if (/^(me )?(ajuda|ajude|help)\b/.test(t) && t.length <= 48) return true
+  if (/o que (voce|vc) (faz|pode)/.test(t)) return true
+  if (/como (funciona|usar|comprar)/.test(t) && t.length <= 48) return true
+  return false
+}
+
 export async function ruleBasedReply(message, ctx) {
   const text = String(message || '').toLowerCase()
   const uiBlocks = []
+
+  if (isHelpIntent(message)) {
+    return { text: helpReplyText(), uiBlocks }
+  }
 
   if (/cancel|desistir|reembolso/.test(text)) {
     const idMatch = text.match(/\b(tkt_[a-f0-9]+)\b/i)
@@ -635,7 +817,7 @@ export async function ruleBasedReply(message, ctx) {
       }
     }
     return {
-      text: 'Estes são seus ingressos ativos. Toque em Cancelar no ingresso desejado, ou diga o ID.',
+      text: 'Estes são seus ingressos ativos. O cancelamento é um por vez — toque em Cancelar no card que quiser.',
       uiBlocks,
     }
   }
@@ -684,28 +866,47 @@ export async function ruleBasedReply(message, ctx) {
     }
   }
 
-  const buyIntent = /comprar|ingresso|quero ver|assento|sess[aã]o|hor[aá]rio/.test(
+  const cinema = resolveCinemaFilter(text)
+  const dateMatch = text.match(/\b(\d{2}\/\d{2}\/\d{4})\b/)
+  const date = dateMatch?.[1] || ''
+  const priceMatch = text.match(
+    /(?:at[eé]|m[aá]ximo|max|menos de|abaixo de)\s*r?\$?\s*(\d+(?:[.,]\d+)?)/i,
+  )
+  const maxPrice = priceMatch ? asNumber(priceMatch[1], NaN) : NaN
+
+  const buyIntent = /comprar|ingresso|quero ver|assento|sess[aã]o|hor[aá]rio|cinema|local/.test(
     text,
   )
   const search = await searchMovies({
-    query: genre ? '' : text.replace(/^(oi|olá|ola|hey|bom dia|boa tarde|boa noite)\b/gi, '').trim(),
+    query:
+      genre || cinema
+        ? ''
+        : text
+            .replace(/^(oi|olá|ola|hey|bom dia|boa tarde|boa noite)\b/gi, '')
+            .trim(),
     genre: genre || '',
+    cinema,
+    date,
+    maxPrice,
     limit: 5,
   })
   if (search.ui) uiBlocks.push(search.ui)
 
   if (!search.movies?.length) {
     return {
-      text: 'Não achei filmes no catálogo agora. Tente de novo em instantes.',
+      text: cinema
+        ? `Não achei filmes em ${cinema} com esses critérios. Tente outro local (Centro, Norte ou Shopping) ou outro gênero.`
+        : 'Não achei filmes no catálogo agora. Tente de novo em instantes.',
       uiBlocks,
     }
   }
 
   const titles = search.movies.map((m) => m.title).join(', ')
+  const placeHint = cinema ? ` em ${cinema}` : ''
   return {
     text: buyIntent
-      ? `Encontrei estas opções: ${titles}. Diga o nome do filme e quantos assentos quer (ex.: "2 lugares em ${search.movies[0].title}"). Com GROQ_API_KEY o fluxo fica mais natural.`
-      : `Posso recomendar: ${titles}. Me diga um gênero ou o filme que quer, e quantos assentos.`,
+      ? `Encontrei estas opções${placeHint}: ${titles}. Diga o filme e quantos assentos (ex.: "2 lugares em ${search.movies[0].title}").`
+      : `Posso recomendar${placeHint}: ${titles}. Me diga gênero, local (Centro/Norte/Shopping) ou o filme.`,
     uiBlocks,
   }
 }
