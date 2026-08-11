@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { CustomerTicket } from '../types'
+import { GoogleWalletBadgeButton } from './GoogleWalletBadgeButton'
 import { Icon } from './Icon'
 
 type TicketWalletActionsProps = {
@@ -18,59 +19,71 @@ export function TicketWalletActions({
   onHint,
   onError,
 }: TicketWalletActionsProps) {
-  const [sending, setSending] = useState(false)
+  const [sendingIphone, setSendingIphone] = useState(false)
   const shareUrl = getShareUrl(ticket)
 
-  async function handleShare() {
+  async function handleSendToIphone() {
     if (!shareUrl) {
       onError?.('Este ingresso ainda não tem link de compartilhamento.')
       return
     }
 
-    setSending(true)
+    setSendingIphone(true)
     onError?.('')
     try {
       if (navigator.share) {
         await navigator.share({
           title: `Ingresso ${ticket.movieTitle}`,
-          text: `Ingresso CineRay:\n${ticket.movieTitle} • ${ticket.sessionDate} ${ticket.sessionTime} • Assento ${ticket.seatLabel}`,
+          text: `Seu ingresso CineRay (abre o QR no iPhone):\n${ticket.movieTitle} • ${ticket.sessionDate} ${ticket.sessionTime} • Assento ${ticket.seatLabel}`,
           url: shareUrl,
         })
-        onHint?.('Link enviado. Abra no celular para ver o QR.')
+        onHint?.('Link enviado. No iPhone, abra o link para ver o QR.')
         return
       }
 
       await navigator.clipboard.writeText(shareUrl)
-      onHint?.('Link copiado. Cole no WhatsApp/AirDrop para abrir o QR.')
+      onHint?.(
+        'Link copiado. Cole no WhatsApp/AirDrop e abra no iPhone para ver o QR.',
+      )
     } catch (err) {
       if (err instanceof Error && /abort/i.test(err.message)) return
       try {
         await navigator.clipboard.writeText(shareUrl)
-        onHint?.('Link copiado. Cole no WhatsApp para abrir o QR.')
+        onHint?.(
+          'Link copiado. Cole no WhatsApp e abra no iPhone para ver o QR.',
+        )
       } catch {
         onError?.('Não foi possível compartilhar. Copie o link manualmente.')
       }
     } finally {
-      setSending(false)
+      setSendingIphone(false)
     }
   }
 
   return (
     <div className="min-w-0 space-y-2 rounded-xl border border-white/10 bg-white/5 p-3">
       <p className="text-caption leading-snug text-on-surface-variant">
-        Compartilhe o link do ingresso para abrir o QR em outro aparelho.
+        No Android use a Google Wallet. No iPhone, envie o link do ingresso
+        (QR no Safari).
       </p>
-      <button
-        type="button"
-        disabled={sending || !shareUrl}
-        onClick={() => {
-          void handleShare()
-        }}
-        className="inline-flex w-full min-w-0 items-center justify-center gap-1 rounded-lg border border-white/15 px-3 py-2.5 text-caption leading-tight text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
-      >
-        <Icon name="share" className="shrink-0 text-[16px]" />
-        <span className="min-w-0">{sending ? 'Abrindo…' : 'Compartilhar ingresso'}</span>
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <GoogleWalletBadgeButton
+          ticketId={ticket.id}
+          onHint={onHint}
+          onError={onError}
+        />
+        <button
+          type="button"
+          disabled={sendingIphone || !shareUrl}
+          onClick={() => {
+            void handleSendToIphone()
+          }}
+          className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+        >
+          <Icon name="phone_iphone" className="text-[16px]" />
+          {sendingIphone ? 'Abrindo…' : 'Enviar para iPhone'}
+        </button>
+      </div>
     </div>
   )
 }

@@ -17,6 +17,7 @@ Objetivo: front na **Vercel** (+1 do desafio) e API no **Render** (Express + MyS
    - `STAFF_INVITE_CODE` (não use o valor de exemplo em produção)
    - `NODE_ENV=production`
    - `APP_PUBLIC_URL=https://seu-app.vercel.app` (URL do front)
+   - Opcional Google Wallet: `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SA_EMAIL`, `GOOGLE_WALLET_SA_PRIVATE_KEY`, `GOOGLE_WALLET_ORIGINS` (ver `backend/.env.example`)
 5. Copie a URL pública, ex.: `https://cinerar-api.onrender.com`
 
 Teste: `https://SUA-API/health` → `{"status":"ok"}`
