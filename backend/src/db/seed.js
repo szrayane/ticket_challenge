@@ -5,7 +5,6 @@ async function seedUser({ id, email, name, role, password }) {
   const { salt, hash } = hashPassword(password)
   const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email])
   if (existing) {
-    // Garante senha demo após restore/power-cycle do Aiven.
     await execute(
       `UPDATE users
        SET role = ?, name = ?, password_hash = ?, password_salt = ?
@@ -125,11 +124,6 @@ async function ensureDemoUsers() {
   return organizerId
 }
 
-/**
- * Contas demo + catálogo inicial.
- * Desligue com DISABLE_SEED=1.
- * No boot, se o catálogo seed já existe, só garante usuários (rápido).
- */
 export async function seedDemoData() {
   if (['1', 'true', 'yes'].includes(String(process.env.DISABLE_SEED || '').trim().toLowerCase())) {
     console.log('[seed] desabilitado (DISABLE_SEED)')
@@ -153,7 +147,6 @@ export async function seedDemoData() {
        WHERE id LIKE 'mov_seed_%' AND is_active = 1`,
     )
     const already = Number(row?.total || 0)
-    // Catálogo completo já no banco: não re-sincroniza 20×8 showtimes a cada cold start.
     if (already >= DEMO_CATALOG.length) {
       console.log(
         `[seed] catálogo já presente (${already}) — skip sync (${Date.now() - started}ms)`,

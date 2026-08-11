@@ -3,10 +3,6 @@ import knex from 'knex'
 
 const require = createRequire(import.meta.url)
 
-/**
- * Aplica migrations pendentes (Knex).
- * Idempotente: só roda o que ainda não está em `knex_migrations`.
- */
 export async function runMigrations() {
   const config = require('../../knexfile.cjs')
   const db = knex(config)

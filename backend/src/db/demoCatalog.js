@@ -1,4 +1,3 @@
-/** Catálogo demo — somente lançamentos 2026. */
 export const DEMO_CATALOG = [
   {
     key: "a_boca_do_diabo",

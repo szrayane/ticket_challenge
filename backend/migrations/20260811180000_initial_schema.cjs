@@ -1,10 +1,3 @@
-/**
- * Schema inicial do CineRay.
- * Usa CREATE IF NOT EXISTS para não quebrar bancos locais que já existiam
- * antes das migrations (quando o schema vivia no initDb).
- *
- * @param {import('knex').Knex} knex
- */
 exports.up = async function up(knex) {
   await knex.raw(`
     CREATE TABLE IF NOT EXISTS users (
@@ -134,9 +127,6 @@ exports.up = async function up(knex) {
   `)
 }
 
-/**
- * @param {import('knex').Knex} knex
- */
 exports.down = async function down(knex) {
   await knex.schema.dropTableIfExists('seat_holds')
   await knex.schema.dropTableIfExists('tickets')

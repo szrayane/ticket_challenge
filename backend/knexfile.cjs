@@ -6,7 +6,6 @@ const sslEnabled = ['1', 'true', 'required', 'REQUIRED'].includes(
 
 const connectTimeout = Number(process.env.MYSQL_CONNECT_TIMEOUT || 10_000)
 
-/** @type {import('knex').Knex.Config} */
 module.exports = {
   client: 'mysql2',
   connection: {

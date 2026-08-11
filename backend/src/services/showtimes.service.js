@@ -372,7 +372,6 @@ export async function getShowtimeWithMovie(
 ) {
   const showtime = await getShowtime(showtimeId)
   if (!showtime) return null
-  // Organizador lista sessões de filmes desativados; o mapa precisa carregar mesmo assim.
   const movie = await getMovie(showtime.movieId, { includeInactive })
   if (!movie) return null
   return { movie, session: showtime, seats: await buildSeats(showtimeId) }

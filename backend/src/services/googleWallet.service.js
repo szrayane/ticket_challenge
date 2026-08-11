@@ -12,21 +12,17 @@ function normalizePem(value) {
     .trim()
     .replace(/^["']+|["']+$/g, '')
     .replace(/\r/g, '')
-    // Env vars no Render/Vercel costumam guardar "\n" literal.
     .replace(/\\n/g, '\n')
 
-  // Se colaram o JSON inteiro da service account, extrai private_key.
   if (!pem.includes('BEGIN PRIVATE KEY') && /private_key/i.test(pem)) {
     try {
       const json = pem.trim().startsWith('{') ? pem : `{"private_key":${pem}}`
       const parsed = JSON.parse(json)
       if (parsed?.private_key) return normalizePem(parsed.private_key)
     } catch {
-      // ignore
     }
   }
 
-  // Chave colapsada em uma linha (sem newlines reais) → remonta o PEM.
   if (pem.includes('BEGIN') && !pem.includes('\n')) {
     const match = pem.match(
       /-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=]+)-----END \1-----/,
@@ -215,11 +211,6 @@ function buildEventTicketObject(objectId, classId, ticket, shareUrl) {
   }
 }
 
-/**
- * Garante a Event Ticket Class via REST (evita AlreadyExists no JWT save).
- * Se a API REST ainda não estiver habilitada no GCP, retorna false para
- * o caller incluir a class no JWT (fluxo legado "skinny" com class+object).
- */
 async function ensureEventTicketClass(classId, ticket, accessToken) {
   const getRes = await fetch(
     `${WALLET_API}/eventTicketClass/${encodeURIComponent(classId)}`,
@@ -279,10 +270,6 @@ function friendlyWalletApiError(status, body) {
   return `Falha na Google Wallet API (${status}). ${text.slice(0, 280)}`.trim()
 }
 
-/**
- * Gera URL "Save to Google Wallet" com QR = ticket.qrPayload.
- * Grátis via Google Wallet API (precisa issuer + service account).
- */
 export async function buildGoogleWalletSaveUrl(ticket, { origins = [] } = {}) {
   if (!isGoogleWalletConfigured()) {
     const err = new Error(
@@ -324,7 +311,6 @@ export async function buildGoogleWalletSaveUrl(ticket, { origins = [] } = {}) {
     classReady = await ensureEventTicketClass(classId, ticket, accessToken)
   } catch (error) {
     if (error.code === 'GOOGLE_WALLET_AUTH_FAILED') throw error
-    // Se a REST falhar por outro motivo, ainda tenta o JWT com class+object.
     classReady = false
   }
 
@@ -357,7 +343,6 @@ export async function buildGoogleWalletSaveUrl(ticket, { origins = [] } = {}) {
   }
 }
 
-/** Converte "09/08/2026" + "20:30" em ISO aproximado para o passe. */
 function buildGoogleDateTime(sessionDate, sessionTime) {
   const dateMatch = String(sessionDate || '').match(/(\d{2})\/(\d{2})\/(\d{4})/)
   const [hours = '20', minutes = '00'] = String(sessionTime || '20:00').split(':')

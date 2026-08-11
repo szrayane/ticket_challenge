@@ -64,7 +64,6 @@ async function tmdbFetch(path, query = {}) {
       const body = await response.json()
       detail = String(body?.status_message || '').trim()
     } catch {
-      // ignore body parse errors
     }
 
     const message =

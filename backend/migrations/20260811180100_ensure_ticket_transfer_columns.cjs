@@ -1,9 +1,3 @@
-/**
- * Garante colunas de transferência em bancos criados antes delas
- * entrarem no schema inicial (equivalente ao antigo ensureTicketTransferColumns).
- *
- * @param {import('knex').Knex} knex
- */
 exports.up = async function up(knex) {
   const [cols] = await knex.raw(`
     SELECT COLUMN_NAME AS name
@@ -34,14 +28,9 @@ exports.up = async function up(knex) {
         `ALTER TABLE tickets ADD UNIQUE KEY uk_tickets_transfer_token (transfer_token)`,
       )
     } catch {
-      // índice pode já existir
     }
   }
 }
 
-/**
- * @param {import('knex').Knex} knex
- */
 exports.down = async function down() {
-  // Não remove colunas em down: dados de transferência podem existir.
 }

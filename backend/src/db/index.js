@@ -22,10 +22,6 @@ async function waitForMysql(pool, attempts = 12) {
   throw lastError || new Error('MySQL indisponível')
 }
 
-/**
- * Conecta no MySQL e aplica migrations pendentes.
- * Seed: passe `{ seed: true }` (testes/scripts). No server.js o seed roda em background.
- */
 export async function initDb(options = {}) {
   const pool = createPoolFromEnv()
   setPool(pool)

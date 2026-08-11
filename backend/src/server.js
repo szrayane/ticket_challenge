@@ -10,7 +10,6 @@ assertRequiredSecrets()
 
 const PORT = process.env.PORT || 3333
 
-// Escuta a porta ANTES do MySQL — senão o Render/CD fica em timeout eterno se o DB travar.
 const server = app.listen(PORT, () => {
   console.log(`CineRay API listening on http://localhost:${PORT}`)
 })
