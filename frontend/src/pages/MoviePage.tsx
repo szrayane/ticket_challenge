@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getMovieShowtimes, getMovies } from '../api/cinema'
 import { fetchMovieCast, type MovieCastMember } from '../api/catalog'
+import { CinemaVenueMap } from '../components/CinemaVenueMap'
 import { Icon } from '../components/Icon'
 import { TrailerModal } from '../components/TrailerModal'
+import { resolveCinemaVenue } from '../lib/cinemaVenues'
 import type { Movie, Session } from '../types'
 
 function parseSessionAt(session: Session) {
@@ -125,6 +127,23 @@ export function MoviePage() {
     return upcoming[0] || null
   }, [sessions, now])
 
+  const venues = useMemo(() => {
+    const names = new Set<string>()
+    for (const session of sessions) {
+      const name = String(session.cinema || '').trim()
+      if (name) names.add(name)
+    }
+    if (names.size === 0 && nextSession?.session.cinema) {
+      names.add(nextSession.session.cinema)
+    }
+    return [...names]
+      .map((name) => resolveCinemaVenue(name))
+      .filter(
+        (venue, index, list) =>
+          list.findIndex((item) => item.name === venue.name) === index,
+      )
+  }, [sessions, nextSession])
+
   if (loading) {
     return (
       <main className="mx-auto flex min-h-[50vh] max-w-[1440px] items-center justify-center px-5">
@@ -166,18 +185,20 @@ export function MoviePage() {
             className="hidden h-72 w-48 rounded-xl object-cover shadow-2xl md:block"
           />
           <div className="max-w-2xl space-y-4">
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 text-label-md text-primary"
-            >
-              <Icon name="arrow_back" className="text-[18px]" />
-              Filmes
-            </Link>
-            {movie.badge && (
-              <span className="inline-flex rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-caption text-primary">
-                {movie.badge}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 text-label-md text-primary"
+              >
+                <Icon name="arrow_back" className="text-[18px]" />
+                Filmes
+              </Link>
+              {movie.badge && (
+                <span className="inline-flex items-center rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-caption leading-none text-primary">
+                  {movie.badge}
+                </span>
+              )}
+            </div>
             <h1 className="break-words text-headline-lg-mobile text-on-background [overflow-wrap:anywhere] md:text-headline-lg">
               {movie.title}
             </h1>
@@ -205,7 +226,11 @@ export function MoviePage() {
                     Próxima sessão
                   </p>
                   <p className="break-words text-label-md text-on-surface">
-                    {nextSession.session.dateLabel} · {nextSession.session.time} ·{' '}
+                    {nextSession.session.dateLabel} · {nextSession.session.time}
+                    {nextSession.session.cinema
+                      ? ` · ${nextSession.session.cinema}`
+                      : ''}{' '}
+                    ·{' '}
                     <span className="text-neon">
                       {formatCountdown(nextSession.at!.getTime() - now)}
                     </span>
@@ -303,11 +328,12 @@ export function MoviePage() {
                     <Link
                       key={session.id}
                       to={`/seats/${movie.id}?session=${encodeURIComponent(session.id)}`}
-                      className="rounded-lg border border-white/15 bg-surface-container px-5 py-3 text-label-md text-on-surface transition-colors hover:border-primary/50 hover:text-primary"
+                      className="max-w-full rounded-lg border border-white/15 bg-surface-container px-4 py-3 text-label-md text-on-surface transition-colors hover:border-primary/50 hover:text-primary sm:px-5"
                     >
                       {session.time}
-                      <span className="ml-2 text-caption text-on-surface-variant">
+                      <span className="ml-2 break-words text-caption text-on-surface-variant">
                         {session.room}
+                        {session.cinema ? ` · ${session.cinema}` : ''}
                       </span>
                     </Link>
                   ))}
@@ -317,6 +343,17 @@ export function MoviePage() {
           </div>
         )}
       </section>
+
+      {venues.length > 0 && (
+        <section className="mx-auto w-full max-w-[1440px] px-5 pb-section-gap md:px-container-margin">
+          <h2 className="mb-4 text-headline-md text-on-surface">Onde</h2>
+          <div className="flex flex-wrap gap-3">
+            {venues.map((venue) => (
+              <CinemaVenueMap key={venue.name} venue={venue} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {similar.length > 0 && (
         <section className="mx-auto w-full max-w-[1440px] px-5 py-section-gap md:px-container-margin">
