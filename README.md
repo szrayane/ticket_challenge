@@ -8,8 +8,8 @@
 
   <h3 align="center">Desafio Elite Dev 2026</h3>
 
-> [!IMPORTANT]
-> Se a API estiver em hospedagem gratuita (ex.: Render), o primeiro acesso pode demorar alguns segundos (“cold start”). Se a página não carregar, aguarde e atualize.
+> [!NOTE]
+> Front na **Vercel** (São Paulo / `gru1`) e API + MySQL no **Fly.io** (São Paulo / `gru`).
 
   <p align="center">
     Organizador publica → cliente escolhe assento → pagamento simulado → QR → portaria valida.
@@ -72,16 +72,13 @@ Optei por **mapa de assentos** (não pista) porque faz mais sentido pra cinema e
 
 <div id="hospedagem"></div>
 
-| Camada | Onde | URL |
-|--------|------|-----|
-| Frontend | [Vercel](https://vercel.com) | [ticket-challenge-qpel.vercel.app](https://ticket-challenge-qpel.vercel.app) |
-| API | [Render](https://render.com) | [cinerar-api.onrender.com](https://cinerar-api.onrender.com) |
-| Banco | [Aiven](https://aiven.io) MySQL | — |
+| Camada | Onde | Região | URL |
+|--------|------|--------|-----|
+| Frontend | [Vercel](https://vercel.com) | São Paulo (`gru1`) | [ticket-challenge.vercel.app](https://ticket-challenge.vercel.app) |
+| API | [Fly.io](https://fly.io) | São Paulo (`gru`) | [cineray-api.fly.dev](https://cineray-api.fly.dev) |
+| Banco | [Fly.io](https://fly.io) MySQL (volume) | São Paulo (`gru`) | rede interna `cineray-mysql.internal` |
 
-> [!IMPORTANT]
-> Em plano gratuito, a API no Render pode “acordar” lentamente. Se falhar no primeiro request, espere ~30s e tente de novo.
-
-Health check: [https://cinerar-api.onrender.com/health](https://cinerar-api.onrender.com/health)
+Health check: [https://cineray-api.fly.dev/health](https://cineray-api.fly.dev/health) → `{"status":"ok"}`
 
 <div id="funcionalidades"></div>
 
@@ -135,8 +132,8 @@ MySQL com `SELECT … FOR UPDATE` no hold/checkout e índice único em `active_s
 
 Você pode rodar tudo localmente ou acessar o deploy:
 
-- Front: [https://ticket-challenge-qpel.vercel.app](https://ticket-challenge-qpel.vercel.app)
-- API: [https://cinerar-api.onrender.com](https://cinerar-api.onrender.com)
+- Front: [https://ticket-challenge.vercel.app](https://ticket-challenge.vercel.app)
+- API: [https://cineray-api.fly.dev](https://cineray-api.fly.dev)
 
 Passo a passo de deploy: [`DEPLOY.md`](./DEPLOY.md).
 
@@ -261,12 +258,11 @@ npm run test:e2e:purchase
 
 | Perfil | E-mail | Senha |
 |--------|--------|-------|
+| Cliente | `cliente1@cineray.com` | `cineray` |
 | Organizador | `organizador@cineray.com` | `cineray` |
-| Cliente 1 | `cliente1@cineray.com` | `cineray` |
-| Cliente 2 | `cliente2@cineray.com` | `cineray` |
 | Portaria | `portaria@cineray.com` | `cineray` |
 
-Todas as contas de teste usam a **mesma senha** (`cineray`). No login há um seletor de e-mails.
+Todas as contas de teste usam a **mesma senha** (`cineray`). No login há um seletor com essas 3 contas.
 
 Evento seed: **Duna: Parte Dois**.
 
@@ -345,9 +341,11 @@ ticket_challenge/
 ├── frontend/          # React (Vite) + e2e + Docker do front
 ├── docs/              # screenshots do README
 ├── .github/workflows/ # CI/CD
-├── docker-compose.yml # MySQL + API + front
-├── render.yaml        # blueprint Render (API)
-├── package.json       # atalhos do monorepo
+├── docker-compose.yml     # MySQL + API + front (local)
+├── deploy/fly-mysql/      # fly.toml do MySQL no Fly (gru)
+├── backend/fly.toml       # API no Fly (gru)
+├── vercel.json            # front Vercel (região gru1)
+├── package.json           # atalhos do monorepo
 ├── DEPLOY.md
 ├── AI.md
 └── README.md
@@ -361,7 +359,7 @@ ticket_challenge/
 - [x] Organizador + TMDb
 - [x] Portaria (câmera / código)
 - [x] MySQL + concorrência (`FOR UPDATE`)
-- [x] Deploy (Vercel + Render + Aiven)
+- [x] Deploy (Vercel + Fly.io, região São Paulo)
 - [ ] Vídeo de demonstração no README
 - [x] Screenshots (home, login, validar)
 - [x] URLs de produção

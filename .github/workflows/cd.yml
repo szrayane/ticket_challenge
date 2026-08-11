@@ -1,9 +1,5 @@
 name: CD
 
-# Vercel (front) e Render (API) fazem deploy no push em main.
-# Este workflow dispara redeploy opcional e verifica produção com retries
-# (plano free do Render costuma responder 502/timeout no cold start).
-
 on:
   push:
     branches: [main]
@@ -67,7 +63,6 @@ jobs:
             if [ "$code" = "200" ] && echo "$body" | grep -q '"movies"'; then
               exit 0
             fi
-            # 502/503/timeout são comuns no cold start do Render
             sleep 20
           done
           echo "API catalog check falhou"

@@ -1,60 +1,91 @@
-# Deploy CineRay (Vercel + Render)
+# Deploy CineRay (Vercel + Fly.io)
 
-Objetivo: front na **Vercel** (+1 do desafio) e API no **Render** (Express + MySQL).
+Objetivo: front na **Vercel** (São Paulo / `gru1`) e API + MySQL no **Fly.io** (São Paulo / `gru`).
 
-## 1) API no Render
+URLs de produção:
 
-1. Crie conta em [render.com](https://render.com)
-2. **New → MySQL** (ou banco externo: Aiven, PlanetScale, RDS) e anote host/porta/user/senha/database
-3. **New → Web Service** (ou Blueprint com `render.yaml`):
-   - Root Directory: `backend`
-   - Build: `npm install`
-   - Start: `npm start` (no boot o `initDb` aplica migrations Knex pendentes)
-4. Environment:
-   - `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`
-   - `TMDB_API_KEY`
-   - `TICKET_QR_SECRET` (obrigatório — `openssl rand -hex 32`; sem fallback no código)
-   - `STAFF_INVITE_CODE` (não use o valor de exemplo em produção)
-   - `NODE_ENV=production`
-   - `APP_PUBLIC_URL=https://seu-app.vercel.app` (URL do front)
-   - Opcional Google Wallet: `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_SA_EMAIL`, `GOOGLE_WALLET_SA_PRIVATE_KEY`, `GOOGLE_WALLET_ORIGINS` (ver `backend/.env.example`)
-5. Copie a URL pública, ex.: `https://cinerar-api.onrender.com`
+| Camada | URL |
+|--------|-----|
+| Front | https://ticket-challenge.vercel.app |
+| API | https://cineray-api.fly.dev |
+| Health | https://cineray-api.fly.dev/health |
 
-Teste: `https://SUA-API/health` → `{"status":"ok"}`
+## 1) MySQL no Fly (`cineray-mysql`)
 
-> Não use mais disco persistente para SQLite — o banco é MySQL.
+Região: **`gru`** (São Paulo). Config: `deploy/fly-mysql/fly.toml`.
 
-## 2) Front na Vercel
+```bash
+cd deploy/fly-mysql
+fly apps create cineray-mysql
+fly volumes create mysqldata --size 3 --region gru -a cineray-mysql -y
+
+MYSQL_PASSWORD=$(openssl rand -hex 24)
+MYSQL_ROOT_PASSWORD=$(openssl rand -hex 24)
+# guarde as senhas — o Fly não mostra de novo
+fly secrets set MYSQL_PASSWORD="$MYSQL_PASSWORD" MYSQL_ROOT_PASSWORD="$MYSQL_ROOT_PASSWORD" -a cineray-mysql
+
+fly deploy -a cineray-mysql
+fly status -a cineray-mysql
+```
+
+Host interno para a API: `cineray-mysql.internal` (porta `3306`).
+
+## 2) API no Fly (`cineray-api`)
+
+Região: **`gru`**. Config: `backend/fly.toml` + `backend/Dockerfile`.
+
+```bash
+cd backend
+fly apps create cineray-api
+
+# um secret por comando evita quebrar com \
+fly secrets set MYSQL_PASSWORD='SENHA_DO_MYSQL_ACIMA' -a cineray-api
+fly secrets set TICKET_QR_SECRET="$(openssl rand -hex 32)" -a cineray-api
+fly secrets set STAFF_INVITE_CODE="$(openssl rand -hex 12)" -a cineray-api   # não use cineray-staff em prod
+fly secrets set TMDB_API_KEY='SUA_CHAVE' -a cineray-api
+fly secrets set GROQ_API_KEY='SUA_CHAVE' -a cineray-api   # opcional (chat)
+fly secrets set APP_PUBLIC_URL='https://ticket-challenge.vercel.app' -a cineray-api
+
+fly deploy -a cineray-api
+curl https://cineray-api.fly.dev/health   # → {"status":"ok"}
+```
+
+Variáveis não secretas já estão no `fly.toml`: `MYSQL_HOST=cineray-mysql.internal`, user/db `cineray`, `PORT=3333`, `NODE_ENV=production`.
+
+Opcional Google Wallet: ver `backend/.env.example` e `fly secrets set …`.
+
+## 3) Front na Vercel
 
 1. [vercel.com](https://vercel.com) → Import do GitHub
-2. Framework: Vite
-3. Root Directory: `.` (raiz) **ou** `frontend`
-   - Na raiz, o `vercel.json` já aponta install/build/output para `frontend/`
-   - Se usar Root Directory `frontend`, o build usa o `package.json` do front direto
+2. Framework: Vite; Root Directory: `.` (usa `vercel.json` na raiz)
+3. Região: **São Paulo (`gru1`)** — já em `vercel.json` (`"regions": ["gru1"]`) ou Settings → Functions
 4. Env:
-   - `VITE_APP_API_URL=https://SUA-API.onrender.com/api` (URL absoluta em produção)
-5. Deploy
+   - `VITE_APP_API_URL=https://cineray-api.fly.dev/api`
+5. Deploy (e **Redeploy** depois de mudar `VITE_*`)
 
-Depois do primeiro deploy, **atualize no Render**:
-- `APP_PUBLIC_URL` = URL real da Vercel
+Depois do primeiro deploy, confira no Fly:
 
-No README do formulário Elite Dev, cole:
+```bash
+fly secrets set APP_PUBLIC_URL='https://ticket-challenge.vercel.app' -a cineray-api
+```
 
-- Front: `https://seu-app.vercel.app`
-- API: `https://sua-api.onrender.com`
+No formulário Elite Dev, cole:
+
+- Front: `https://ticket-challenge.vercel.app`
+- API: `https://cineray-api.fly.dev`
 - Como rodar local: ver README
 
-## 3) Local vs produção
+## 4) Local vs produção
 
 | Variável | Local (`backend/.env` / `frontend/.env`) | Produção |
 |----------|------------------------------------------|----------|
-| `APP_PUBLIC_URL` | `http://localhost:5173` | `https://seu-app.vercel.app` |
-| `VITE_APP_API_URL` | `/api` (proxy Vite) | `https://sua-api.onrender.com/api` |
-| `TICKET_QR_SECRET` | qualquer valor longo no `.env` | aleatório forte (obrigatório) |
+| `APP_PUBLIC_URL` | `http://localhost:5173` | `https://ticket-challenge.vercel.app` |
+| `VITE_APP_API_URL` | `/api` (proxy Vite) | `https://cineray-api.fly.dev/api` |
+| `MYSQL_HOST` | `127.0.0.1` | `cineray-mysql.internal` |
+| `TICKET_QR_SECRET` | valor longo no `.env` | aleatório forte (obrigatório) |
+| `STAFF_INVITE_CODE` | `cineray-staff` (dev) | valor forte (não use o default) |
 
-Links de transferir/compartilhar usam `window.location.origin` — no ar já saem com o domínio do front.
-
-## 4) Checklist pós-deploy
+## 5) Checklist pós-deploy
 
 - [ ] Login com `cliente1@cineray.com` / `cineray`
 - [ ] Ver evento seed na home
@@ -63,12 +94,12 @@ Links de transferir/compartilhar usam `window.location.origin` — no ar já sae
 - [ ] Transferir ingresso e reivindicar em outra conta
 - [ ] Login portaria e validar QR
 - [ ] Organizador com `TMDB_API_KEY` busca/publica filme
+- [ ] Network do browser aponta para `cineray-api.fly.dev` (não Render)
 
-## Alternativa tudo-em-um
+## Alternativa tudo-em-um (local)
 
 ```bash
 docker compose up --build
-# ou: docker-compose up --build
 ```
 
 Sobe MySQL + API + front (ver README).

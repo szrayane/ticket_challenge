@@ -1,0 +1,32 @@
+app = 'cineray-api'
+primary_region = 'gru'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '3333'
+  MYSQL_HOST = 'cineray-mysql.internal'
+  MYSQL_PORT = '3306'
+  MYSQL_USER = 'cineray'
+  MYSQL_DATABASE = 'cineray'
+
+[http_service]
+  internal_port = 3333
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '5s'
+    grace_period = '90s'
+    method = 'GET'
+    path = '/health'
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512

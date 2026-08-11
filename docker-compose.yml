@@ -29,14 +29,12 @@ services:
       NODE_ENV: development
       STAFF_INVITE_CODE: cineray-staff
       TICKET_QR_SECRET: cineray-compose-qr-secret-change-in-prod
-      TMDB_API_KEY: ${TMDB_API_KEY:-}
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
       MYSQL_USER: cineray
       MYSQL_PASSWORD: cineray
       MYSQL_DATABASE: cineray
       APP_PUBLIC_URL: http://localhost:8080
-      # GROQ_API_KEY vem do env_file (backend/.env)
     depends_on:
       mysql:
         condition: service_healthy
