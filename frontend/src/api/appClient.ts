@@ -41,10 +41,7 @@ function sleep(ms: number) {
 }
 
 function connectionErrorMessage() {
-  if (/onrender\.com/i.test(APP_API_URL)) {
-    return 'API acordando no Render (plano free). Espere ~30s e tente de novo.'
-  }
-  return 'Não foi possível conectar à API. Confira se o backend está rodando (porta 3333).'
+  return 'Não foi possível conectar à API. Confira se o backend está no ar.'
 }
 
 export async function appRequest<T>(
@@ -81,11 +78,7 @@ export async function appRequest<T>(
       throw new AppApiError(connectionErrorMessage(), 0)
     }
 
-    if (
-      RETRY_STATUSES.has(response.status) &&
-      attempt < maxAttempts &&
-      /onrender\.com/i.test(APP_API_URL)
-    ) {
+    if (RETRY_STATUSES.has(response.status) && attempt < maxAttempts) {
       await sleep(1000 * attempt)
       continue
     }
@@ -97,10 +90,9 @@ export async function appRequest<T>(
   }
 
   if (!response.ok) {
-    let message =
-      RETRY_STATUSES.has(response.status) && /onrender\.com/i.test(APP_API_URL)
-        ? 'API temporariamente indisponível (Render). Atualize em alguns segundos.'
-        : `API error: ${response.status}`
+    let message = RETRY_STATUSES.has(response.status)
+      ? 'API temporariamente indisponível. Atualize em alguns segundos.'
+      : `API error: ${response.status}`
     let ticket: unknown
     let code: string | undefined
     try {

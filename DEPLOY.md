@@ -94,7 +94,7 @@ No formulário Elite Dev, cole:
 - [ ] Transferir ingresso e reivindicar em outra conta
 - [ ] Login portaria e validar QR
 - [ ] Organizador com `TMDB_API_KEY` busca/publica filme
-- [ ] Network do browser aponta para `cineray-api.fly.dev` (não Render)
+- [ ] Network do browser aponta para `cineray-api.fly.dev`
 
 ## Alternativa tudo-em-um (local)
 

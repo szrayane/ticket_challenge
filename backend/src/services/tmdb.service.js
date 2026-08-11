@@ -68,7 +68,7 @@ async function tmdbFetch(path, query = {}) {
 
     const message =
       response.status === 401
-        ? 'TMDB_API_KEY inválida. Confira a chave no .env do backend (ou no Render).'
+        ? 'TMDB_API_KEY inválida. Confira a chave no .env do backend (ou nos secrets do Fly).'
         : detail
           ? `Falha na TMDb (${response.status}): ${detail}`
           : `Falha na TMDb (${response.status}).`

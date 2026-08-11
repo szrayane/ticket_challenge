@@ -44,7 +44,7 @@ function loadPrivateKey(privateKeyPem) {
     return createPrivateKey(pem)
   } catch (error) {
     const err = new Error(
-      'GOOGLE_WALLET_SA_PRIVATE_KEY inválida no servidor (DECODER unsupported). No Render, cole a chave com \\n entre aspas, ou em campo multiline começando com -----BEGIN PRIVATE KEY-----.',
+      'GOOGLE_WALLET_SA_PRIVATE_KEY inválida no servidor (DECODER unsupported). Nos secrets do Fly, cole a chave com \\n entre aspas, ou em campo multiline começando com -----BEGIN PRIVATE KEY-----.',
     )
     err.status = 500
     err.code = 'GOOGLE_WALLET_BAD_PRIVATE_KEY'
