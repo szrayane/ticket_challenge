@@ -20,15 +20,17 @@ async function waitForMysql(pool, attempts = 30) {
 }
 
 /**
- * Conecta no MySQL, aplica migrations pendentes e (opcionalmente) seed demo.
- * Schema versionado em backend/migrations — não recria tabelas a cada boot.
+ * Conecta no MySQL e aplica migrations pendentes.
+ * Seed: passe `{ seed: true }` (testes/scripts). No server.js o seed roda em background.
  */
-export async function initDb() {
+export async function initDb(options = {}) {
   const pool = createPoolFromEnv()
   setPool(pool)
   await waitForMysql(pool)
   await runMigrations()
-  await seedDemoData()
+  if (options.seed === true) {
+    await seedDemoData()
+  }
   return pool
 }
 

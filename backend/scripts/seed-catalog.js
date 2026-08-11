@@ -2,7 +2,7 @@ import 'dotenv/config'
 import { initDb, queryOne } from '../src/db/index.js'
 import { seedDemoCatalog } from '../src/db/seedCatalog.js'
 
-await initDb()
+await initDb({ seed: true })
 
 const organizer = await queryOne(
   `SELECT id FROM users WHERE email = ?`,

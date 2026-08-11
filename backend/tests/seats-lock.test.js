@@ -6,7 +6,7 @@ import { createShowtime, buildSeats } from '../src/services/showtimes.service.js
 import { holdSeat } from '../src/services/seats.service.js'
 import { createTickets } from '../src/services/tickets.service.js'
 
-await initDb()
+await initDb({ seed: true })
 
 const organizer = await queryOne(
   `SELECT id, email, name, role FROM users WHERE email = ?`,

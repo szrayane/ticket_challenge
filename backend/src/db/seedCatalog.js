@@ -58,30 +58,7 @@ async function ensureShowtimes(movieId, itemKey, movieIndex, organizerId, now) {
       showtimeId,
     ])
     if (existing) {
-      // Renova data/horário para o catálogo demo não “envelhecer”
-      await execute(
-        `UPDATE showtimes
-         SET movie_id = ?,
-             session_date = ?,
-             session_time = ?,
-             date_label = ?,
-             cinema = ?,
-             room = ?,
-             capacity = ?,
-             price = ?
-         WHERE id = ?`,
-        [
-          movieId,
-          slot.sessionDate,
-          slot.sessionTime,
-          slot.dateLabel,
-          'CineRay Centro',
-          slot.room,
-          slot.capacity,
-          slot.price,
-          showtimeId,
-        ],
-      )
+      // Não UPDATE a cada boot — isso virava ~160 queries remotas e travava o cold start.
       continue
     }
 
@@ -128,37 +105,6 @@ export async function seedDemoCatalog(organizerId) {
       [movieId, item.tmdbId],
     )
     if (existing) {
-      await execute(
-        `UPDATE movies
-         SET title = ?,
-             synopsis = ?,
-             genre = ?,
-             rating = ?,
-             runtime = ?,
-             poster = ?,
-             hero = ?,
-             backdrop = ?,
-             trailer_url = COALESCE(NULLIF(?, ''), trailer_url),
-             badge = '2026',
-             is_active = 1,
-             source = 'tmdb',
-             updated_at = ?
-         WHERE id = ?`,
-        [
-          item.title,
-          item.synopsis,
-          item.genre,
-          item.rating,
-          item.runtime,
-          demoPoster(item.poster),
-          demoBackdrop(item.backdrop || item.poster),
-          demoBackdrop(item.backdrop || item.poster),
-          item.trailerUrl || '',
-          now,
-          existing.id,
-        ],
-      )
-
       showtimesAdded += await ensureShowtimes(
         existing.id,
         item.key,

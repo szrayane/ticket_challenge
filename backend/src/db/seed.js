@@ -2,18 +2,18 @@ import { randomBytes, scryptSync } from 'node:crypto'
 import { execute, queryOne } from './client.js'
 
 async function seedUser({ id, email, name, role, password }) {
-  const salt = randomBytes(16).toString('hex')
-  const hash = scryptSync(password, salt, 64).toString('hex')
   const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email])
   if (existing) {
-    await execute(
-      `UPDATE users
-       SET role = ?, name = ?, password_hash = ?, password_salt = ?
-       WHERE email = ?`,
-      [role, name, hash, salt, email],
-    )
+    // Não recalcula scrypt no boot — era CPU-pesado no Render free a cada cold start.
+    await execute(`UPDATE users SET role = ?, name = ? WHERE email = ?`, [
+      role,
+      name,
+      email,
+    ])
     return existing.id
   }
+  const salt = randomBytes(16).toString('hex')
+  const hash = scryptSync(password, salt, 64).toString('hex')
   await execute(
     `INSERT INTO users (id, email, name, cpf, password_hash, password_salt, created_at, role)
      VALUES (?, ?, ?, NULL, ?, ?, ?, ?)`,
@@ -93,16 +93,7 @@ async function seedPublishedEvent(organizerId) {
   )
 }
 
-/**
- * Contas demo + catálogo inicial.
- * Desligue com DISABLE_SEED=1.
- */
-export async function seedDemoData() {
-  if (['1', 'true', 'yes'].includes(String(process.env.DISABLE_SEED || '').trim().toLowerCase())) {
-    console.log('[seed] desabilitado (DISABLE_SEED)')
-    return
-  }
-
+async function ensureDemoUsers() {
   const organizerId = await seedUser({
     id: 'usr_organizador_demo',
     email: 'organizador@cineray.com',
@@ -131,6 +122,22 @@ export async function seedDemoData() {
     role: 'portaria',
     password: 'cineray',
   })
+  return organizerId
+}
+
+/**
+ * Contas demo + catálogo inicial.
+ * Desligue com DISABLE_SEED=1.
+ * No boot, se o catálogo seed já existe, só garante usuários (rápido).
+ */
+export async function seedDemoData() {
+  if (['1', 'true', 'yes'].includes(String(process.env.DISABLE_SEED || '').trim().toLowerCase())) {
+    console.log('[seed] desabilitado (DISABLE_SEED)')
+    return
+  }
+
+  const started = Date.now()
+  const organizerId = await ensureDemoUsers()
 
   try {
     await seedPublishedEvent(organizerId)
@@ -139,17 +146,26 @@ export async function seedDemoData() {
   }
 
   try {
+    const { DEMO_CATALOG } = await import('./demoCatalog.js')
+    const row = await queryOne(
+      `SELECT COUNT(*) AS total
+       FROM movies
+       WHERE id LIKE 'mov_seed_%' AND is_active = 1`,
+    )
+    const already = Number(row?.total || 0)
+    // Catálogo completo já no banco: não re-sincroniza 20×8 showtimes a cada cold start.
+    if (already >= DEMO_CATALOG.length) {
+      console.log(
+        `[seed] catálogo já presente (${already}) — skip sync (${Date.now() - started}ms)`,
+      )
+      return
+    }
+
     const { seedDemoCatalog } = await import('./seedCatalog.js')
     const result = await seedDemoCatalog(organizerId)
-    if (
-      result.created > 0 ||
-      result.deactivated > 0 ||
-      (result.showtimesAdded || 0) > 0
-    ) {
-      console.log(
-        `[seed] catálogo 2026: +${result.created}, sync ${result.skipped}, sessões +${result.showtimesAdded || 0}, off ${result.deactivated || 0}`,
-      )
-    }
+    console.log(
+      `[seed] catálogo 2026: +${result.created}, sync ${result.skipped}, sessões +${result.showtimesAdded || 0}, off ${result.deactivated || 0} (${Date.now() - started}ms)`,
+    )
   } catch (error) {
     console.warn('[seed] catálogo demo:', error.message)
   }
