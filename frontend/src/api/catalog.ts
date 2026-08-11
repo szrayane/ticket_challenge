@@ -37,6 +37,21 @@ export type ShowtimeOccupancy = {
   revenue: number
 }
 
+export type SeatHeatmapSeat = {
+  label: string
+  row: string
+  number: number
+  soldCount: number
+  intensity: number
+}
+
+export type SeatHeatmap = {
+  seatsPerRow: number
+  rows: number
+  maxSold: number
+  seats: SeatHeatmapSeat[]
+}
+
 export type OrganizerReport = {
   movies: number
   activeMovies: number
@@ -45,6 +60,7 @@ export type OrganizerReport = {
   checkIns: number
   revenue: number
   liveAt?: string
+  seatHeatmap?: SeatHeatmap
   sessions: Array<
     Session & {
       movieTitle: string

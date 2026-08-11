@@ -114,6 +114,52 @@ function money(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+/** Intensidade 0→1: verde (frio) → amarelo → vermelho (quente). */
+function heatSeatStyle(intensity: number): {
+  backgroundColor: string
+  color: string
+  borderColor: string
+} {
+  const t = Math.max(0, Math.min(1, intensity))
+  let r: number
+  let g: number
+  let b: number
+  if (t <= 0.5) {
+    const u = t / 0.5
+    r = Math.round(34 + (234 - 34) * u)
+    g = Math.round(197 + (179 - 197) * u)
+    b = Math.round(94 + (8 - 94) * u)
+  } else {
+    const u = (t - 0.5) / 0.5
+    r = Math.round(234 + (239 - 234) * u)
+    g = Math.round(179 + (68 - 179) * u)
+    b = Math.round(8 + (68 - 8) * u)
+  }
+  return {
+    backgroundColor: `rgb(${r}, ${g}, ${b})`,
+    color: t > 0.4 ? 'rgba(0,0,0,0.72)' : 'rgba(255,255,255,0.9)',
+    borderColor: 'transparent',
+  }
+}
+
+function groupHeatmapByRow(
+  seats: Array<{ label: string; row: string; number: number; soldCount: number; intensity: number }>,
+) {
+  const rows = new Map<
+    string,
+    Array<{ label: string; row: string; number: number; soldCount: number; intensity: number }>
+  >()
+  for (const seat of seats) {
+    const list = rows.get(seat.row) ?? []
+    list.push(seat)
+    rows.set(seat.row, list)
+  }
+  return Array.from(rows.entries()).map(([row, rowSeats]) => ({
+    row,
+    seats: [...rowSeats].sort((a, b) => a.number - b.number),
+  }))
+}
+
 function OrganizerDashboard() {
   const { user, logout } = useAuth()
   const [tab, setTab] = useState<TabId>('dashboard')
@@ -170,6 +216,22 @@ function OrganizerDashboard() {
     () => (seatMapView ? groupSeatMapByRow(seatMapView.seats) : []),
     [seatMapView],
   )
+
+  const heatmapRows = useMemo(
+    () =>
+      report?.seatHeatmap?.seats
+        ? groupHeatmapByRow(report.seatHeatmap.seats)
+        : [],
+    [report],
+  )
+
+  const heatmapColNumbers = useMemo(() => {
+    const first = heatmapRows[0]?.seats
+    if (!first?.length) {
+      return Array.from({ length: 10 }, (_, i) => i + 1)
+    }
+    return first.map((seat) => seat.number)
+  }, [heatmapRows])
 
   async function openSeatMap(
     session: OrganizerReport['sessions'][number],
@@ -1231,7 +1293,7 @@ function OrganizerDashboard() {
       )}
 
       {tab === 'dashboard' && (
-        <div className="space-y-6">
+        <div className="mx-auto w-full max-w-[820px] space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-headline-md text-on-surface">Visão geral</h2>
@@ -1259,41 +1321,148 @@ function OrganizerDashboard() {
             <p className="text-body-md text-on-surface-variant">Carregando dashboard…</p>
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {[
-                  ['Eventos', String(report.activeMovies || report.movies)],
-                  ['Ingressos vendidos', String(report.ticketsSold)],
-                  ['Receita', money(report.revenue)],
-                  [
-                    'Ocupação média',
-                    `${
-                      report.sessions.length > 0
-                        ? Math.round(
-                            report.sessions.reduce(
-                              (sum, s) => sum + (s.occupancyPct ?? 0),
-                              0,
-                            ) / report.sessions.length,
-                          )
-                        : 0
-                    }%`,
-                  ],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="min-w-0 rounded-xl border border-white/10 bg-surface-container p-5"
-                  >
-                    <p className="text-caption uppercase tracking-wider text-on-surface-variant">
-                      {label}
-                    </p>
-                    <p className="mt-2 break-words text-3xl font-semibold tracking-tight text-on-surface sm:text-4xl">
-                      {value}
-                    </p>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] sm:items-stretch">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ['Eventos', String(report.activeMovies || report.movies)],
+                    ['Ingressos vendidos', String(report.ticketsSold)],
+                    ['Receita', money(report.revenue)],
+                    [
+                      'Ocupação média',
+                      `${
+                        report.sessions.length > 0
+                          ? Math.round(
+                              report.sessions.reduce(
+                                (sum, s) => sum + (s.occupancyPct ?? 0),
+                                0,
+                              ) / report.sessions.length,
+                            )
+                          : 0
+                      }%`,
+                    ],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="flex min-h-[5.5rem] min-w-0 flex-col items-center justify-center rounded-xl border border-white/10 bg-surface-container px-3 py-4 text-center"
+                    >
+                      <p className="text-[10px] uppercase tracking-wider text-on-surface-variant sm:text-caption">
+                        {label}
+                      </p>
+                      <p className="mt-1.5 break-words text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl">
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-surface-container p-3 sm:p-4">
+                  <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                      <h3 className="text-label-md uppercase tracking-wider text-on-surface-variant">
+                        Mapa de calor
+                      </h3>
+                      <p className="mt-0.5 text-caption text-on-surface-variant/80">
+                        Assentos mais vendidos em todas as sessões.
+                      </p>
+                    </div>
+                    {report.seatHeatmap && report.seatHeatmap.maxSold > 0 && (
+                      <p className="text-caption text-on-surface-variant">
+                        Pico: {report.seatHeatmap.maxSold} venda
+                        {report.seatHeatmap.maxSold === 1 ? '' : 's'}
+                      </p>
+                    )}
                   </div>
-                ))}
+
+                  {heatmapRows.length === 0 ? (
+                    <p className="py-8 text-center text-body-md text-on-surface-variant">
+                      Sem dados de assentos ainda.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="relative mb-3 flex flex-col items-center">
+                        <div className="h-4 w-2/3 max-w-[240px] rounded-[100%] border-t-[3px] border-primary/35" />
+                        <span className="mt-2 text-[10px] tracking-[0.2em] text-on-surface-variant uppercase sm:text-caption">
+                          Tela
+                        </span>
+                      </div>
+
+                      <div className="mx-auto flex w-max max-w-full scale-[0.92] flex-col items-center gap-1 overflow-x-auto origin-top sm:scale-100 sm:gap-1.5">
+                        <div className="flex items-center gap-1 sm:gap-1.5">
+                          <span className="w-2.5 shrink-0 sm:w-3" aria-hidden />
+                          <div className="flex justify-center gap-0.5 sm:gap-1">
+                            {heatmapColNumbers.map((n, index) => (
+                              <div key={`col-${n}`} className="contents">
+                                {(index === 2 || index === 8) && (
+                                  <div className="w-1 sm:w-1.5" aria-hidden />
+                                )}
+                                <span className="flex h-4 w-5 items-center justify-center text-[8px] text-on-surface-variant/70 sm:w-5">
+                                  {n}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <span className="w-2.5 shrink-0 sm:w-3" aria-hidden />
+                        </div>
+
+                        {heatmapRows.map(({ row, seats }) => (
+                          <div
+                            key={row}
+                            className="flex items-center gap-1 sm:gap-1.5"
+                          >
+                            <span className="w-2.5 shrink-0 text-center text-[9px] text-on-surface-variant sm:w-3 sm:text-caption">
+                              {row}
+                            </span>
+                            <div className="flex justify-center gap-0.5 sm:gap-1">
+                              {seats.map((seat, index) => {
+                                const style = heatSeatStyle(seat.intensity)
+                                return (
+                                  <div key={seat.label} className="contents">
+                                    {(index === 2 || index === 8) && (
+                                      <div className="w-1 sm:w-1.5" aria-hidden />
+                                    )}
+                                    <div
+                                      className="seat flex h-5 w-5 items-center justify-center rounded-t-md rounded-b-sm text-[8px] font-medium"
+                                      style={style}
+                                      title={`${seat.label}: ${seat.soldCount} venda${
+                                        seat.soldCount === 1 ? '' : 's'
+                                      }`}
+                                      aria-label={`Assento ${seat.label}, ${seat.soldCount} vendas`}
+                                    >
+                                      {seat.number}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                            <span className="w-2.5 shrink-0 text-center text-[9px] text-on-surface-variant sm:w-3 sm:text-caption">
+                              {row}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-3 w-7 rounded-sm"
+                            style={{
+                              background:
+                                'linear-gradient(90deg, rgb(34,197,94), rgb(234,179,8), rgb(239,68,68))',
+                            }}
+                            aria-hidden
+                          />
+                          <span className="text-caption text-on-surface-variant">
+                            Menos vendido → mais vendido
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-white/10">
-                <div className="border-b border-white/10 px-4 py-4">
+                <div className="border-b border-white/10 px-4 py-3">
                   <h3 className="text-label-md uppercase tracking-wider text-on-surface-variant">
                     Próximas sessões
                   </h3>
@@ -1304,10 +1473,10 @@ function OrganizerDashboard() {
                 <table className="min-w-full text-left text-body-md">
                   <thead className="bg-white/5 text-caption text-on-surface-variant">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Filme</th>
-                      <th className="px-4 py-3 font-medium">Sala</th>
-                      <th className="px-4 py-3 font-medium">Horário</th>
-                      <th className="px-4 py-3 font-medium">Ocupação</th>
+                      <th className="px-4 py-2.5 font-medium">Filme</th>
+                      <th className="px-4 py-2.5 font-medium">Sala</th>
+                      <th className="px-4 py-2.5 font-medium">Horário</th>
+                      <th className="px-4 py-2.5 font-medium">Ocupação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1337,19 +1506,19 @@ function OrganizerDashboard() {
                             role="button"
                             aria-label={`Ver mapa de assentos de ${session.movieTitle}`}
                           >
-                            <td className="max-w-[220px] truncate px-4 py-3 text-on-surface">
+                            <td className="max-w-[220px] truncate px-4 py-2.5 text-on-surface">
                               {session.movieTitle}
                             </td>
-                            <td className="px-4 py-3 text-on-surface-variant">
+                            <td className="px-4 py-2.5 text-on-surface-variant">
                               {roomLabel}
                             </td>
-                            <td className="px-4 py-3 text-on-surface-variant">
+                            <td className="px-4 py-2.5 text-on-surface-variant">
                               {session.time}
                               <span className="ml-2 text-caption text-on-surface-variant/70">
                                 {session.date}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-4 py-2.5">
                               <div className="flex min-w-[120px] items-center gap-3">
                                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
                                   <div
