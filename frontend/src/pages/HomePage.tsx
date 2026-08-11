@@ -18,10 +18,33 @@ import type { Movie } from '../types'
 const FEATURED_COUNT = 3
 const FEATURED_ROTATE_MS = 4000
 
+function movieSessions(movie: Movie) {
+  if (movie.availableSessions?.length) return movie.availableSessions
+  if (movie.nextSession) {
+    return [
+      {
+        date: movie.nextSession.date,
+        cinema: movie.nextSession.cinema,
+        price: movie.nextSession.price,
+      },
+    ]
+  }
+  return []
+}
+
+function parseSessionDateKey(date: string) {
+  const match = String(date || '').match(/(\d{2})\/(\d{2})\/(\d{4})/)
+  if (!match) return Number.POSITIVE_INFINITY
+  const [, day, month, year] = match
+  return Number(year) * 10000 + Number(month) * 100 + Number(day)
+}
+
 export function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
   const genreFilter = searchParams.get('genre') || ''
+  const dateFilter = searchParams.get('date') || ''
+  const placeFilter = searchParams.get('place') || ''
   const maxPriceFilter = searchParams.get('maxPrice') || ''
 
   const [movies, setMovies] = useState<Movie[]>([])
@@ -68,6 +91,29 @@ export function HomePage() {
     return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   }, [movies])
 
+  const sessionDates = useMemo(() => {
+    const set = new Set<string>()
+    for (const movie of movies) {
+      for (const session of movieSessions(movie)) {
+        if (session.date) set.add(session.date)
+      }
+    }
+    return [...set].sort(
+      (a, b) => parseSessionDateKey(a) - parseSessionDateKey(b),
+    )
+  }, [movies])
+
+  const places = useMemo(() => {
+    const set = new Set<string>()
+    for (const movie of movies) {
+      for (const session of movieSessions(movie)) {
+        const cinema = String(session.cinema || '').trim()
+        if (cinema) set.add(cinema)
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [movies])
+
   useLayoutEffect(() => {
     const node = filtersPanelRef.current
     if (!node) return
@@ -78,14 +124,22 @@ export function HomePage() {
     const observer = new ResizeObserver(updateHeight)
     observer.observe(node)
     return () => observer.disconnect()
-  }, [genres])
+  }, [genres, sessionDates, places])
 
   const filteredMovies = useMemo(() => {
+    const maxPrice = maxPriceFilter ? Number(maxPriceFilter) : NaN
+
     return movies.filter((movie) => {
       if (searchQuery) {
+        const sessions = movieSessions(movie)
         const hit =
           movie.title.toLowerCase().includes(searchQuery) ||
-          movie.synopsis?.toLowerCase().includes(searchQuery)
+          movie.synopsis?.toLowerCase().includes(searchQuery) ||
+          sessions.some((session) =>
+            String(session.cinema || '')
+              .toLowerCase()
+              .includes(searchQuery),
+          )
         if (!hit) return false
       }
       if (genreFilter) {
@@ -94,17 +148,33 @@ export function HomePage() {
           .map((g) => g.trim().toLowerCase())
         if (!parts.includes(genreFilter.toLowerCase())) return false
       }
-      if (maxPriceFilter) {
-        const max = Number(maxPriceFilter)
-        if (!Number.isFinite(max)) return true
-        const price = movie.nextSession?.price
-        if (price == null || price > max) return false
+
+      const sessions = movieSessions(movie)
+      if (dateFilter || placeFilter || Number.isFinite(maxPrice)) {
+        if (sessions.length === 0) return false
+        const match = sessions.some((session) => {
+          if (dateFilter && session.date !== dateFilter) return false
+          if (
+            placeFilter &&
+            String(session.cinema || '').trim() !== placeFilter
+          ) {
+            return false
+          }
+          if (Number.isFinite(maxPrice) && session.price > maxPrice) {
+            return false
+          }
+          return true
+        })
+        if (!match) return false
       }
+
       return true
     })
-  }, [movies, searchQuery, genreFilter, maxPriceFilter])
+  }, [movies, searchQuery, genreFilter, dateFilter, placeFilter, maxPriceFilter])
 
-  const hasExtraFilters = Boolean(genreFilter || maxPriceFilter)
+  const hasExtraFilters = Boolean(
+    genreFilter || dateFilter || placeFilter || maxPriceFilter,
+  )
   const featured = movies.slice(0, FEATURED_COUNT)
   const activeFeatured = featured[featuredIndex] ?? featured[0]
   const displayMovies =
@@ -223,21 +293,21 @@ export function HomePage() {
                 {activeFeatured.synopsis}
               </p>
 
-              <div className="flex flex-wrap items-center gap-4 pt-4">
+              <div className="flex flex-wrap items-center gap-3 pt-4 sm:gap-4">
                 <button
                   type="button"
                   disabled={!activeFeatured.trailerUrl}
                   onClick={() => {
                     if (activeFeatured.trailerUrl) setTrailerOpen(true)
                   }}
-                  className="flex items-center gap-2 rounded-lg bg-neon px-8 py-4 text-label-md text-white uppercase transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-neon px-6 py-3.5 text-label-md text-white uppercase transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-8 sm:py-4"
                 >
                   <Icon name="play_arrow" className="text-headline-md" filled />
                   Ver trailer
                 </button>
                 <Link
                   to={`/filme/${activeFeatured.id}`}
-                  className="glass-card rounded-lg border border-white/20 px-8 py-4 text-label-md text-on-surface uppercase transition-all duration-300 hover:bg-tertiary-container hover:text-on-tertiary-container"
+                  className="glass-card w-full rounded-lg border border-white/20 px-6 py-3.5 text-center text-label-md text-on-surface uppercase transition-all duration-300 hover:bg-tertiary-container hover:text-on-tertiary-container sm:w-auto sm:px-8 sm:py-4"
                 >
                   Ver filme
                 </Link>
@@ -310,7 +380,11 @@ export function HomePage() {
                 <p className="max-w-[220px] truncate text-caption text-on-surface-variant sm:max-w-none">
                   {[
                     genreFilter || null,
-                    maxPriceFilter ? `até ${formatMoney(Number(maxPriceFilter))}` : null,
+                    dateFilter || null,
+                    placeFilter || null,
+                    maxPriceFilter
+                      ? `até ${formatMoney(Number(maxPriceFilter))}`
+                      : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
@@ -320,7 +394,12 @@ export function HomePage() {
                 <button
                   type="button"
                   onClick={() =>
-                    patchFilters({ genre: null, maxPrice: null })
+                    patchFilters({
+                      genre: null,
+                      date: null,
+                      place: null,
+                      maxPrice: null,
+                    })
                   }
                   className="text-caption text-primary underline-offset-2 hover:underline"
                 >
@@ -342,6 +421,72 @@ export function HomePage() {
               ref={filtersPanelRef}
               className="space-y-4 border-t border-white/8 px-4 py-4"
             >
+              <div className="space-y-2">
+                <p className="text-caption uppercase tracking-wider text-on-surface-variant">
+                  Data
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => patchFilters({ date: null })}
+                    className={`filter-chip rounded-lg px-3 py-1.5 text-caption ${
+                      !dateFilter ? 'is-active' : ''
+                    }`}
+                  >
+                    Qualquer
+                  </button>
+                  {sessionDates.map((date) => (
+                    <button
+                      key={date}
+                      type="button"
+                      onClick={() =>
+                        patchFilters({
+                          date: dateFilter === date ? null : date,
+                        })
+                      }
+                      className={`filter-chip rounded-lg px-3 py-1.5 text-caption ${
+                        dateFilter === date ? 'is-active' : ''
+                      }`}
+                    >
+                      {date}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-caption uppercase tracking-wider text-on-surface-variant">
+                  Local
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => patchFilters({ place: null })}
+                    className={`filter-chip rounded-lg px-3 py-1.5 text-caption ${
+                      !placeFilter ? 'is-active' : ''
+                    }`}
+                  >
+                    Qualquer
+                  </button>
+                  {places.map((place) => (
+                    <button
+                      key={place}
+                      type="button"
+                      onClick={() =>
+                        patchFilters({
+                          place: placeFilter === place ? null : place,
+                        })
+                      }
+                      className={`filter-chip rounded-lg px-3 py-1.5 text-caption ${
+                        placeFilter === place ? 'is-active' : ''
+                      }`}
+                    >
+                      {place}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <p className="text-caption uppercase tracking-wider text-on-surface-variant">
                   Gênero

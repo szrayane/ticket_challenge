@@ -37,6 +37,11 @@ export interface Movie {
     price: number
     capacity: number
   }
+  availableSessions?: Array<{
+    date: string
+    cinema: string
+    price: number
+  }>
 }
 
 export interface Session {

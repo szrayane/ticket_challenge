@@ -3,6 +3,7 @@ import { DEMO_CATALOG, demoBackdrop, demoPoster } from './demoCatalog.js'
 
 const SESSIONS_PER_MOVIE = 8
 const SESSION_TIMES = ['14:00', '16:30', '19:00', '21:30']
+const CINEMAS = ['CineRay Centro', 'CineRay Norte', 'CineRay Shopping']
 
 function pad(n) {
   return String(n).padStart(2, '0')
@@ -18,9 +19,9 @@ function formatDateLabel(date) {
 }
 
 function sessionSlotsForMovie(movieIndex) {
+  const cinema = CINEMAS[movieIndex % CINEMAS.length]
   const slots = []
   for (let i = 0; i < SESSIONS_PER_MOVIE; i += 1) {
-    // 4 dias × 2 horários (espalha opções ao abrir o filme)
     const dayOffset = Math.floor(i / 2)
     const time = SESSION_TIMES[(movieIndex + i) % SESSION_TIMES.length]
     const [hours, minutes] = time.split(':').map(Number)
@@ -29,7 +30,6 @@ function sessionSlotsForMovie(movieIndex) {
     date.setDate(date.getDate() + dayOffset)
     date.setHours(hours, minutes, 0, 0)
 
-    // Keep sessions in the future relative to "now"
     if (date.getTime() <= Date.now()) {
       date.setDate(date.getDate() + 1)
     }
@@ -40,6 +40,7 @@ function sessionSlotsForMovie(movieIndex) {
       sessionDate,
       sessionTime: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
       dateLabel,
+      cinema,
       room: `Sala ${((movieIndex + i) % 6) + 1}`,
       price: 28 + ((movieIndex + i) % 4) * 4,
       capacity: 40 + ((movieIndex + i) % 3) * 10,
@@ -50,6 +51,7 @@ function sessionSlotsForMovie(movieIndex) {
 
 async function ensureShowtimes(movieId, itemKey, movieIndex, organizerId, now) {
   const slots = sessionSlotsForMovie(movieIndex)
+  const cinema = slots[0]?.cinema || CINEMAS[movieIndex % CINEMAS.length]
   let inserted = 0
 
   for (const slot of slots) {
@@ -58,7 +60,16 @@ async function ensureShowtimes(movieId, itemKey, movieIndex, organizerId, now) {
       showtimeId,
     ])
     if (existing) {
-      // Não UPDATE a cada boot — isso virava ~160 queries remotas e travava o cold start.
+      await execute(
+        `UPDATE showtimes SET cinema = ?, session_date = ?, session_time = ?, date_label = ? WHERE id = ?`,
+        [
+          slot.cinema,
+          slot.sessionDate,
+          slot.sessionTime,
+          slot.dateLabel,
+          showtimeId,
+        ],
+      )
       continue
     }
 
@@ -73,7 +84,7 @@ async function ensureShowtimes(movieId, itemKey, movieIndex, organizerId, now) {
         slot.sessionDate,
         slot.sessionTime,
         slot.dateLabel,
-        'CineRay Centro',
+        slot.cinema,
         slot.room,
         slot.capacity,
         slot.price,
@@ -84,7 +95,11 @@ async function ensureShowtimes(movieId, itemKey, movieIndex, organizerId, now) {
     inserted += 1
   }
 
-  // Legacy single-session id from older seeds — keep if present, don't block extras
+  await execute(`UPDATE showtimes SET cinema = ? WHERE movie_id = ?`, [
+    cinema,
+    movieId,
+  ])
+
   return inserted
 }
 

@@ -50,8 +50,8 @@ function parseShowtimeAt(sessionDate, sessionTime) {
 
 const LIST_CACHE_TTL_MS = Number(process.env.MOVIES_LIST_CACHE_MS || 20_000)
 const listCache = {
-  active: /** @type {{ at: number, data: any[] } | null } */ (null),
-  inactive: /** @type {{ at: number, data: any[] } | null } */ (null),
+  active: null,
+  inactive: null,
 }
 
 export function invalidateMoviesListCache() {
@@ -98,8 +98,6 @@ export async function listMovies({ includeInactive = false } = {}) {
     movieIds,
   )
 
-  // Só conta ingressos vendidos (1 query). Holds mudam rápido demais pra valer
-  // round-trip extra no catálogo da home.
   const showtimeIds = showtimes.map((row) => row.id)
   const soldBySession = new Map()
   if (showtimeIds.length > 0) {
@@ -126,16 +124,28 @@ export async function listMovies({ includeInactive = false } = {}) {
   const data = rows.map((row) => {
     const movie = mapMovie(row)
     let best = null
+    const availableSessions = []
     for (const next of showtimesByMovie.get(row.id) || []) {
       const at = parseShowtimeAt(next.session_date, next.session_time)
       if (!at || at.getTime() <= now) continue
       const capacity = Number(next.capacity) || 50
       const sold = soldBySession.get(String(next.id)) || 0
       if (sold >= capacity) continue
+      const price = Number(next.price) || 28
+      availableSessions.push({
+        date: next.session_date,
+        cinema: next.cinema || 'CineRay',
+        price,
+        atMs: at.getTime(),
+      })
       if (!best || at.getTime() < best.at.getTime()) {
         best = { next, at }
       }
     }
+    availableSessions.sort((a, b) => a.atMs - b.atMs)
+    movie.availableSessions = availableSessions.map(
+      ({ date, cinema, price }) => ({ date, cinema, price }),
+    )
     if (best) {
       movie.nextSession = {
         date: best.next.session_date,
