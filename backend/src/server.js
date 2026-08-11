@@ -28,8 +28,10 @@ try {
 } catch (error) {
   markDbFailed(error)
   console.error('[db] falha no boot:', error?.message || error)
-  // Sai para o Render reiniciar o serviço (melhor que ficar 503 pra sempre).
-  setTimeout(() => process.exit(1), 2000)
+  console.error(
+    '[db] processo permanece no ar com /health=starting para diagnóstico (sem crash loop).',
+  )
+  // Não dá exit(1): no Render isso vira 502 em loop. Corriga MYSQL_HOST/SSL/senha e redeploy.
 }
 
 async function shutdown() {
