@@ -1,6 +1,5 @@
 import { randomBytes } from 'node:crypto'
 import { execute, query, queryOne } from '../db/index.js'
-import { listUnavailableSeatIds } from './seats.service.js'
 
 function nowIso() {
   return new Date().toISOString()
@@ -56,25 +55,70 @@ export async function listMovies({ includeInactive = false } = {}) {
         `SELECT * FROM movies WHERE is_active = 1 ORDER BY created_at DESC`,
       )
 
-  const now = Date.now()
-  const movies = []
-  for (const row of rows) {
-    const movie = mapMovie(row)
-    const showtimes = await query(
-      `SELECT id, session_date, session_time, cinema, room, price, capacity
-       FROM showtimes
-       WHERE movie_id = ?
-       ORDER BY session_date ASC, session_time ASC`,
-      [row.id],
-    )
+  if (rows.length === 0) return []
 
+  const now = Date.now()
+  const movieIds = rows.map((row) => row.id)
+  const moviePlaceholders = movieIds.map(() => '?').join(', ')
+  const showtimes = await query(
+    `SELECT id, movie_id, session_date, session_time, cinema, room, price, capacity
+     FROM showtimes
+     WHERE movie_id IN (${moviePlaceholders})
+     ORDER BY session_date ASC, session_time ASC`,
+    movieIds,
+  )
+
+  const showtimeIds = showtimes.map((row) => row.id)
+  const takenBySession = new Map()
+
+  if (showtimeIds.length > 0) {
+    const showPlaceholders = showtimeIds.map(() => '?').join(', ')
+    const soldRows = await query(
+      `SELECT session_id, COUNT(*) AS total
+       FROM tickets
+       WHERE status = 'active' AND session_id IN (${showPlaceholders})
+       GROUP BY session_id`,
+      showtimeIds,
+    )
+    for (const row of soldRows) {
+      takenBySession.set(
+        String(row.session_id),
+        Number(row.total) || 0,
+      )
+    }
+
+    const holdRows = await query(
+      `SELECT session_id, COUNT(*) AS total
+       FROM seat_holds
+       WHERE expires_at > ? AND session_id IN (${showPlaceholders})
+       GROUP BY session_id`,
+      [nowIso(), ...showtimeIds],
+    )
+    for (const row of holdRows) {
+      const key = String(row.session_id)
+      takenBySession.set(
+        key,
+        (takenBySession.get(key) || 0) + (Number(row.total) || 0),
+      )
+    }
+  }
+
+  const showtimesByMovie = new Map()
+  for (const show of showtimes) {
+    const list = showtimesByMovie.get(show.movie_id) || []
+    list.push(show)
+    showtimesByMovie.set(show.movie_id, list)
+  }
+
+  return rows.map((row) => {
+    const movie = mapMovie(row)
     const candidates = []
-    for (const next of showtimes) {
+    for (const next of showtimesByMovie.get(row.id) || []) {
       const at = parseShowtimeAt(next.session_date, next.session_time)
       if (!at || at.getTime() <= now) continue
       const capacity = Number(next.capacity) || 50
-      const unavailable = (await listUnavailableSeatIds(next.id)).length
-      if (unavailable >= capacity) continue
+      const taken = takenBySession.get(String(next.id)) || 0
+      if (taken >= capacity) continue
       candidates.push({ next, at })
     }
     candidates.sort((a, b) => a.at.getTime() - b.at.getTime())
@@ -89,9 +133,8 @@ export async function listMovies({ includeInactive = false } = {}) {
         capacity: Number(soonest.next.capacity) || 50,
       }
     }
-    movies.push(movie)
-  }
-  return movies
+    return movie
+  })
 }
 
 export async function getMovie(id, { includeInactive = true } = {}) {

@@ -1,19 +1,19 @@
-import { randomBytes, scryptSync } from 'node:crypto'
-import { execute, queryOne } from './client.js'
+import { execute, queryOne } from '../db/index.js'
+import { hashPassword } from '../services/auth.service.js'
 
 async function seedUser({ id, email, name, role, password }) {
+  const { salt, hash } = hashPassword(password)
   const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email])
   if (existing) {
-    // Não recalcula scrypt no boot — era CPU-pesado no Render free a cada cold start.
-    await execute(`UPDATE users SET role = ?, name = ? WHERE email = ?`, [
-      role,
-      name,
-      email,
-    ])
+    // Garante senha demo após restore/power-cycle do Aiven.
+    await execute(
+      `UPDATE users
+       SET role = ?, name = ?, password_hash = ?, password_salt = ?
+       WHERE email = ?`,
+      [role, name, hash, salt, email],
+    )
     return existing.id
   }
-  const salt = randomBytes(16).toString('hex')
-  const hash = scryptSync(password, salt, 64).toString('hex')
   await execute(
     `INSERT INTO users (id, email, name, cpf, password_hash, password_salt, created_at, role)
      VALUES (?, ?, ?, NULL, ?, ?, ?, ?)`,
