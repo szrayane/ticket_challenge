@@ -48,14 +48,45 @@ function parseShowtimeAt(sessionDate, sessionTime) {
   return Number.isNaN(at.getTime()) ? null : at
 }
 
+const LIST_CACHE_TTL_MS = Number(process.env.MOVIES_LIST_CACHE_MS || 20_000)
+const listCache = {
+  active: /** @type {{ at: number, data: any[] } | null } */ (null),
+  inactive: /** @type {{ at: number, data: any[] } | null } */ (null),
+}
+
+export function invalidateMoviesListCache() {
+  listCache.active = null
+  listCache.inactive = null
+}
+
 export async function listMovies({ includeInactive = false } = {}) {
+  const cacheKey = includeInactive ? 'inactive' : 'active'
+  const cached = listCache[cacheKey]
+  if (cached && Date.now() - cached.at < LIST_CACHE_TTL_MS) {
+    return cached.data
+  }
+
   const rows = includeInactive
-    ? await query(`SELECT * FROM movies ORDER BY created_at DESC`)
+    ? await query(
+        `SELECT id, title, synopsis, genre, rating, runtime, format, badge,
+                poster, hero, backdrop, trailer_url, source, tmdb_id, is_active,
+                created_at, updated_at
+         FROM movies
+         ORDER BY created_at DESC`,
+      )
     : await query(
-        `SELECT * FROM movies WHERE is_active = 1 ORDER BY created_at DESC`,
+        `SELECT id, title, synopsis, genre, rating, runtime, format, badge,
+                poster, hero, backdrop, trailer_url, source, tmdb_id, is_active,
+                created_at, updated_at
+         FROM movies
+         WHERE is_active = 1
+         ORDER BY created_at DESC`,
       )
 
-  if (rows.length === 0) return []
+  if (rows.length === 0) {
+    listCache[cacheKey] = { at: Date.now(), data: [] }
+    return []
+  }
 
   const now = Date.now()
   const movieIds = rows.map((row) => row.id)
@@ -63,14 +94,14 @@ export async function listMovies({ includeInactive = false } = {}) {
   const showtimes = await query(
     `SELECT id, movie_id, session_date, session_time, cinema, room, price, capacity
      FROM showtimes
-     WHERE movie_id IN (${moviePlaceholders})
-     ORDER BY session_date ASC, session_time ASC`,
+     WHERE movie_id IN (${moviePlaceholders})`,
     movieIds,
   )
 
+  // Só conta ingressos vendidos (1 query). Holds mudam rápido demais pra valer
+  // round-trip extra no catálogo da home.
   const showtimeIds = showtimes.map((row) => row.id)
-  const takenBySession = new Map()
-
+  const soldBySession = new Map()
   if (showtimeIds.length > 0) {
     const showPlaceholders = showtimeIds.map(() => '?').join(', ')
     const soldRows = await query(
@@ -81,25 +112,7 @@ export async function listMovies({ includeInactive = false } = {}) {
       showtimeIds,
     )
     for (const row of soldRows) {
-      takenBySession.set(
-        String(row.session_id),
-        Number(row.total) || 0,
-      )
-    }
-
-    const holdRows = await query(
-      `SELECT session_id, COUNT(*) AS total
-       FROM seat_holds
-       WHERE expires_at > ? AND session_id IN (${showPlaceholders})
-       GROUP BY session_id`,
-      [nowIso(), ...showtimeIds],
-    )
-    for (const row of holdRows) {
-      const key = String(row.session_id)
-      takenBySession.set(
-        key,
-        (takenBySession.get(key) || 0) + (Number(row.total) || 0),
-      )
+      soldBySession.set(String(row.session_id), Number(row.total) || 0)
     }
   }
 
@@ -110,31 +123,34 @@ export async function listMovies({ includeInactive = false } = {}) {
     showtimesByMovie.set(show.movie_id, list)
   }
 
-  return rows.map((row) => {
+  const data = rows.map((row) => {
     const movie = mapMovie(row)
-    const candidates = []
+    let best = null
     for (const next of showtimesByMovie.get(row.id) || []) {
       const at = parseShowtimeAt(next.session_date, next.session_time)
       if (!at || at.getTime() <= now) continue
       const capacity = Number(next.capacity) || 50
-      const taken = takenBySession.get(String(next.id)) || 0
-      if (taken >= capacity) continue
-      candidates.push({ next, at })
+      const sold = soldBySession.get(String(next.id)) || 0
+      if (sold >= capacity) continue
+      if (!best || at.getTime() < best.at.getTime()) {
+        best = { next, at }
+      }
     }
-    candidates.sort((a, b) => a.at.getTime() - b.at.getTime())
-    const soonest = candidates[0]
-    if (soonest) {
+    if (best) {
       movie.nextSession = {
-        date: soonest.next.session_date,
-        time: soonest.next.session_time,
-        cinema: soonest.next.cinema,
-        room: soonest.next.room,
-        price: Number(soonest.next.price) || 28,
-        capacity: Number(soonest.next.capacity) || 50,
+        date: best.next.session_date,
+        time: best.next.session_time,
+        cinema: best.next.cinema,
+        room: best.next.room,
+        price: Number(best.next.price) || 28,
+        capacity: Number(best.next.capacity) || 50,
       }
     }
     return movie
   })
+
+  listCache[cacheKey] = { at: Date.now(), data }
+  return data
 }
 
 export async function getMovie(id, { includeInactive = true } = {}) {
@@ -225,6 +241,7 @@ export async function createMovie(userId, input = {}) {
     ],
   )
 
+  invalidateMoviesListCache()
   return mapMovie(row)
 }
 
@@ -295,6 +312,7 @@ export async function updateMovie(id, input = {}) {
     ],
   )
 
+  invalidateMoviesListCache()
   return mapMovie(next)
 }
 
@@ -318,5 +336,6 @@ export async function deleteMovie(id) {
     err.status = 404
     throw err
   }
+  invalidateMoviesListCache()
   return { deleted: true }
 }

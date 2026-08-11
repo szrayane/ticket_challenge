@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { execute, query, queryOne } from '../db/index.js'
-import { getMovie } from './movies.service.js'
+import { getMovie, invalidateMoviesListCache } from './movies.service.js'
 import {
   listHeldSeatIds,
   listSoldSeatIds,
@@ -258,6 +258,7 @@ export async function createShowtime(userId, movieId, input = {}) {
     ],
   )
 
+  invalidateMoviesListCache()
   return mapShowtime(row)
 }
 
@@ -289,6 +290,7 @@ export async function updateShowtime(id, input = {}) {
     ],
   )
 
+  invalidateMoviesListCache()
   return getShowtime(current.id)
 }
 
@@ -327,6 +329,7 @@ export async function deleteShowtime(id) {
     err.status = 404
     throw err
   }
+  invalidateMoviesListCache()
   return { deleted: true }
 }
 
@@ -363,12 +366,79 @@ export async function buildSeats(showtimeId) {
   return seats
 }
 
-export async function getShowtimeWithMovie(showtimeId) {
+export async function getShowtimeWithMovie(
+  showtimeId,
+  { includeInactive = true } = {},
+) {
   const showtime = await getShowtime(showtimeId)
   if (!showtime) return null
-  const movie = await getMovie(showtime.movieId, { includeInactive: false })
+  // Organizador lista sessões de filmes desativados; o mapa precisa carregar mesmo assim.
+  const movie = await getMovie(showtime.movieId, { includeInactive })
   if (!movie) return null
   return { movie, session: showtime, seats: await buildSeats(showtimeId) }
+}
+
+const HEATMAP_SEATS_PER_ROW = 10
+const HEATMAP_MAX_CAPACITY = 60
+
+export async function getSeatSalesHeatmap() {
+  const capacityRow = await queryOne(
+    `SELECT COALESCE(MAX(capacity), ?) AS maxCapacity FROM showtimes`,
+    [DEFAULT_CAPACITY],
+  )
+  const maxCapacity = Math.min(
+    HEATMAP_MAX_CAPACITY,
+    Math.max(
+      HEATMAP_SEATS_PER_ROW,
+      Number(capacityRow?.maxCapacity) || DEFAULT_CAPACITY,
+    ),
+  )
+  const rowCount = Math.ceil(maxCapacity / HEATMAP_SEATS_PER_ROW)
+
+  const salesRows = await query(
+    `SELECT seat_label AS label, COUNT(*) AS soldCount
+     FROM tickets
+     WHERE status = 'active'
+       AND session_id LIKE 'st_%'
+       AND seat_label IS NOT NULL
+       AND TRIM(seat_label) <> ''
+     GROUP BY seat_label`,
+  )
+
+  const soldByLabel = new Map()
+  let maxSold = 0
+  for (const row of salesRows) {
+    const label = String(row.label || '').trim().toUpperCase()
+    if (!label) continue
+    const soldCount = Number(row.soldCount) || 0
+    soldByLabel.set(label, soldCount)
+    if (soldCount > maxSold) maxSold = soldCount
+  }
+
+  const seats = []
+  for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+    const row = String.fromCharCode(65 + (rowIndex % 26))
+    for (let number = 1; number <= HEATMAP_SEATS_PER_ROW; number += 1) {
+      const index = rowIndex * HEATMAP_SEATS_PER_ROW + (number - 1)
+      if (index >= maxCapacity) break
+      const label = `${row}${number}`
+      const soldCount = soldByLabel.get(label) || 0
+      seats.push({
+        label,
+        row,
+        number,
+        soldCount,
+        intensity: maxSold > 0 ? Math.round((soldCount / maxSold) * 100) / 100 : 0,
+      })
+    }
+  }
+
+  return {
+    seatsPerRow: HEATMAP_SEATS_PER_ROW,
+    rows: rowCount,
+    maxSold,
+    seats,
+  }
 }
 
 export async function getOrganizerReport() {
@@ -417,6 +487,8 @@ export async function getOrganizerReport() {
 
   bySession.sort((a, b) => b.sold - a.sold || b.revenue - a.revenue)
 
+  const seatHeatmap = await getSeatSalesHeatmap()
+
   return {
     movies: Number(movies?.total) || 0,
     activeMovies: Number(activeMovies?.total) || 0,
@@ -426,5 +498,6 @@ export async function getOrganizerReport() {
     revenue: Number(tickets?.revenue) || 0,
     liveAt: new Date().toISOString(),
     sessions: bySession,
+    seatHeatmap,
   }
 }
