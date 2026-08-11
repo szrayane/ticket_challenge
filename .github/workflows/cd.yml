@@ -1,8 +1,8 @@
 name: CD
 
-# Vercel (front) e Render (API) já fazem deploy no push em main.
-# Este workflow só confere se produção respondeu e, opcionalmente,
-# dispara o Render de novo se RENDER_DEPLOY_HOOK existir.
+# Vercel (front) e Render (API) fazem deploy no push em main.
+# Este workflow dispara redeploy opcional e verifica produção com retries
+# (plano free do Render costuma responder 502/timeout no cold start).
 
 on:
   push:
@@ -17,46 +17,6 @@ permissions:
   contents: read
 
 jobs:
-  verify-production:
-    name: Verificar produção
-    runs-on: ubuntu-latest
-    steps:
-      - name: Aguardar deploy (Vercel/Render)
-        run: sleep 45
-
-      - name: Health check API (Render)
-        run: |
-          set -e
-          for i in 1 2 3 4 5 6 7 8; do
-            code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 60 \
-              https://cinerar-api.onrender.com/health || true)
-            echo "attempt=$i http=$code body=$(cat /tmp/health.json 2>/dev/null || true)"
-            if [ "$code" = "200" ] && grep -q '"status":"ok"' /tmp/health.json; then
-              exit 0
-            fi
-            sleep 20
-          done
-          echo "API health check falhou"
-          exit 1
-
-      - name: API catalog
-        run: |
-          set -e
-          movies=$(curl -sS -o /tmp/movies.json -w "%{http_code}" --max-time 60 \
-            https://cinerar-api.onrender.com/api/movies)
-          echo "movies http=$movies"
-          test "$movies" = "200"
-          grep -q '"movies"' /tmp/movies.json
-
-      - name: Front no ar (Vercel)
-        run: |
-          set -e
-          code=$(curl -sS -o /tmp/front.html -w "%{http_code}" --max-time 60 \
-            https://ticket-challenge-qpel.vercel.app/)
-          echo "front http=$code"
-          test "$code" = "200"
-          grep -qi 'cineray\|root\|vite' /tmp/front.html
-
   render-redeploy:
     name: Redeploy Render (opcional)
     runs-on: ubuntu-latest
@@ -71,3 +31,59 @@ jobs:
           fi
           curl -fsS -X POST "$HOOK"
           echo "Render deploy hook disparado"
+
+  verify-production:
+    name: Verificar produção
+    runs-on: ubuntu-latest
+    needs: [render-redeploy]
+    steps:
+      - name: Aguardar deploy (Vercel/Render)
+        run: sleep 60
+
+      - name: Health check API (Render)
+        run: |
+          set -e
+          for i in $(seq 1 12); do
+            code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 90 \
+              https://cinerar-api.onrender.com/health || true)
+            body=$(cat /tmp/health.json 2>/dev/null || true)
+            echo "attempt=$i http=$code body=$body"
+            if [ "$code" = "200" ] && echo "$body" | grep -q '"status":"ok"'; then
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "API health check falhou"
+          exit 1
+
+      - name: API catalog
+        run: |
+          set -e
+          for i in $(seq 1 12); do
+            code=$(curl -sS -o /tmp/movies.json -w "%{http_code}" --max-time 90 \
+              https://cinerar-api.onrender.com/api/movies || true)
+            body=$(cat /tmp/movies.json 2>/dev/null || true)
+            echo "attempt=$i http=$code body=$(echo "$body" | head -c 200)"
+            if [ "$code" = "200" ] && echo "$body" | grep -q '"movies"'; then
+              exit 0
+            fi
+            # 502/503/timeout são comuns no cold start do Render
+            sleep 20
+          done
+          echo "API catalog check falhou"
+          exit 1
+
+      - name: Front no ar (Vercel)
+        run: |
+          set -e
+          for i in $(seq 1 8); do
+            code=$(curl -sS -o /tmp/front.html -w "%{http_code}" --max-time 60 \
+              https://ticket-challenge-qpel.vercel.app/ || true)
+            echo "attempt=$i front http=$code"
+            if [ "$code" = "200" ] && grep -qi 'cineray\|root\|vite' /tmp/front.html; then
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Front check falhou"
+          exit 1
