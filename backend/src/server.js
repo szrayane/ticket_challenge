@@ -18,21 +18,34 @@ attachRealtime(server)
 
 let pool = null
 
-try {
-  pool = await initDb()
-  markDbReady()
-  console.log('[db] pronto')
-  seedDemoData().catch((error) => {
-    console.warn('[seed] background:', error?.message || error)
-  })
-} catch (error) {
-  markDbFailed(error)
-  console.error('[db] falha no boot:', error?.message || error)
-  console.error(
-    '[db] processo permanece no ar com /health=starting para diagnóstico (sem crash loop).',
-  )
-  // Não dá exit(1): no Render isso vira 502 em loop. Corriga MYSQL_HOST/SSL/senha e redeploy.
+async function bootDatabase() {
+  const delayMs = Number(process.env.MYSQL_RETRY_MS || 5000)
+  let attempt = 0
+  for (;;) {
+    attempt += 1
+    try {
+      pool = await initDb()
+      markDbReady()
+      console.log(`[db] pronto (tentativa ${attempt})`)
+      seedDemoData().catch((error) => {
+        console.warn('[seed] background:', error?.message || error)
+      })
+      return
+    } catch (error) {
+      markDbFailed(error)
+      console.error(
+        `[db] falha no boot (tentativa ${attempt}):`,
+        error?.message || error,
+      )
+      console.error(`[db] nova tentativa em ${delayMs}ms…`)
+      await new Promise((r) => setTimeout(r, delayMs))
+    }
+  }
 }
+
+bootDatabase().catch((error) => {
+  console.error('[db] loop encerrou:', error?.message || error)
+})
 
 async function shutdown() {
   server.close()
