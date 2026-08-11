@@ -5,7 +5,7 @@ import {
 import { runMigrations } from './migrate.js'
 import { seedDemoData } from './seed.js'
 
-async function waitForMysql(pool, attempts = 30) {
+async function waitForMysql(pool, attempts = 12) {
   let lastError
   for (let i = 0; i < attempts; i += 1) {
     try {
@@ -13,6 +13,9 @@ async function waitForMysql(pool, attempts = 30) {
       return
     } catch (error) {
       lastError = error
+      console.warn(
+        `[db] MySQL ainda indisponível (tentativa ${i + 1}/${attempts}): ${error.message}`,
+      )
       await new Promise((r) => setTimeout(r, 1000))
     }
   }

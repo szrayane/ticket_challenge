@@ -2,6 +2,8 @@ import mysql from 'mysql2/promise'
 
 let pool = null
 
+const CONNECT_TIMEOUT_MS = Number(process.env.MYSQL_CONNECT_TIMEOUT || 10_000)
+
 export function getPool() {
   if (!pool) throw new Error('Banco ainda não inicializado. Chame initDb() antes.')
   return pool
@@ -20,6 +22,7 @@ export function createPoolFromEnv() {
     database: process.env.MYSQL_DATABASE || 'cineray',
     waitForConnections: true,
     connectionLimit: Number(process.env.MYSQL_POOL || 10),
+    connectTimeout: CONNECT_TIMEOUT_MS,
     namedPlaceholders: false,
     timezone: 'Z',
     ...(sslEnabled ? { ssl: { rejectUnauthorized: false } } : {}),
