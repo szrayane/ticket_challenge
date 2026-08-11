@@ -12,7 +12,7 @@ export async function createEventFromTmdb(userId, input = {}) {
 
   const remote = await getTmdbMovie(tmdbId)
   if (!remote.poster) {
-    const err = new Error('Filme da TMDb sem poster — escolha outro título.')
+    const err = new Error('Filme da TMDb sem poster. Escolha outro título.')
     err.status = 400
     throw err
   }

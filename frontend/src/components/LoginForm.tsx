@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../lib/demoAccounts'
 import { isValidEmail, isValidLoginPassword } from '../lib/validation'
 import type { UserRole } from '../types'
 import { Icon } from './Icon'
@@ -33,8 +34,8 @@ export function LoginForm({
   submitting = false,
 }: LoginFormProps) {
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('cliente1@cineray.com')
-  const [password, setPassword] = useState('cli1234')
+  const [email, setEmail] = useState<string>(DEMO_ACCOUNTS[0].email)
+  const [password, setPassword] = useState(DEMO_PASSWORD)
   const [staffSignup, setStaffSignup] = useState(false)
   const [staffRole, setStaffRole] = useState<StaffRole>('portaria')
   const [inviteCode, setInviteCode] = useState('')
@@ -94,6 +95,8 @@ export function LoginForm({
           onClick={() => {
             onModeChange?.('login')
             setStaffSignup(false)
+            setEmail(DEMO_ACCOUNTS[0].email)
+            setPassword(DEMO_PASSWORD)
           }}
           className={`rounded-full px-3 py-2 text-caption transition-colors ${
             mode === 'login'
@@ -105,7 +108,11 @@ export function LoginForm({
         </button>
         <button
           type="button"
-          onClick={() => onModeChange?.('register')}
+          onClick={() => {
+            onModeChange?.('register')
+            setEmail('')
+            setPassword('')
+          }}
           className={`rounded-full px-3 py-2 text-caption transition-colors ${
             mode === 'register'
               ? 'bg-primary text-white'
@@ -202,29 +209,91 @@ export function LoginForm({
         </>
       )}
 
-      <div className="space-y-1">
-        <label
-          className="ml-1 text-label-md text-on-surface-variant"
-          htmlFor="email"
-        >
-          Email
-        </label>
-        <div className="relative">
-          <Icon
-            name="person"
-            className="absolute top-1/2 left-4 -translate-y-1/2 text-[20px] text-on-surface-variant"
-          />
-          <input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Digite seu email"
-            className="glass-input w-full rounded-lg py-3 pr-4 pl-11 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:text-white"
-            autoComplete="email"
-          />
-        </div>
+      <div className="space-y-2">
+        <p className="ml-1 text-label-md text-on-surface-variant">Conta</p>
+        {mode === 'login' ? (
+          <ul className="grid gap-2" role="listbox" aria-label="Escolher conta">
+            {DEMO_ACCOUNTS.map((account) => {
+              const selected = email === account.email
+              return (
+                <li key={account.email}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => {
+                      setEmail(account.email)
+                      setPassword(DEMO_PASSWORD)
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all ${
+                      selected
+                        ? 'border-primary/50 bg-primary/15 shadow-[0_0_0_1px_rgba(201,137,150,0.25)]'
+                        : 'border-white/10 bg-white/[0.03] hover:border-primary/30 hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                        selected
+                          ? 'bg-primary/25 text-primary'
+                          : 'bg-white/5 text-on-surface-variant'
+                      }`}
+                    >
+                      <Icon name={account.icon} className="text-[20px]" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-label-md text-on-surface">
+                          {account.name}
+                        </span>
+                        <span
+                          className={`rounded-md px-2 py-0.5 text-[10px] uppercase tracking-wider ${
+                            selected
+                              ? 'bg-primary/20 text-primary'
+                              : 'bg-white/5 text-on-surface-variant'
+                          }`}
+                        >
+                          {account.roleLabel}
+                        </span>
+                      </span>
+                      <span className="mt-0.5 block truncate text-caption text-on-surface-variant">
+                        {account.email}
+                      </span>
+                    </span>
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                        selected
+                          ? 'border-primary bg-primary text-on-primary'
+                          : 'border-white/20'
+                      }`}
+                      aria-hidden
+                    >
+                      {selected && (
+                        <Icon name="check" className="text-[14px]" />
+                      )}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <div className="relative">
+            <Icon
+              name="person"
+              className="absolute top-1/2 left-4 -translate-y-1/2 text-[20px] text-on-surface-variant"
+            />
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Digite seu email"
+              className="glass-input w-full rounded-lg py-3 pr-4 pl-11 text-body-md text-on-surface placeholder:text-on-surface-variant/50 focus:text-white"
+              autoComplete="email"
+            />
+          </div>
+        )}
       </div>
 
       <div className="space-y-1">
@@ -250,6 +319,11 @@ export function LoginForm({
             autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
           />
         </div>
+        {mode === 'login' && (
+          <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-caption text-on-surface-variant">
+            A senha já está preenchida e é a mesma para todas as contas ({DEMO_PASSWORD}).
+          </p>
+        )}
       </div>
 
       <button

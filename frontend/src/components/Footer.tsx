@@ -1,17 +1,31 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { isStaffRole, roleHomePath } from './RequireRole'
 
 interface FooterProps {
   compact?: boolean
 }
 
-const exploreLinks = [
-  { to: '/sobre', label: 'Sobre' },
-  { to: '/suporte', label: 'Suporte' },
-  { to: '/corporativo', label: 'Reservas corporativas' },
-  { to: '/conta', label: 'Minha conta' },
-]
-
 export function Footer({ compact = false }: FooterProps) {
+  const { isAuthenticated, user } = useAuth()
+  const staff = isAuthenticated && isStaffRole(user?.role)
+  const homePath = staff ? roleHomePath(user?.role) : '/'
+
+  const exploreLinks = staff
+    ? [
+        { to: '/sobre', label: 'Sobre' },
+        { to: '/suporte', label: 'Suporte' },
+        {
+          to: roleHomePath(user?.role),
+          label: user?.role === 'organizador' ? 'Painel' : 'Portaria',
+        },
+      ]
+    : [
+        { to: '/sobre', label: 'Sobre' },
+        { to: '/suporte', label: 'Suporte' },
+        { to: '/conta', label: 'Minha conta' },
+      ]
+
   return (
     <footer className="mt-auto w-full border-t border-white/8 bg-surface-container-lowest">
       <div
@@ -22,17 +36,20 @@ export function Footer({ compact = false }: FooterProps) {
         }`}
       >
         <div className="flex flex-col gap-3">
-          <Link to="/" className="brand-mark w-fit text-headline-md">
+          <Link to={homePath} className="brand-mark w-fit text-headline-md">
             Cine<span>Ray</span>
           </Link>
           {!compact && (
             <p className="max-w-sm text-caption text-on-surface-variant">
-              Compra de ingresso, mapa de assentos e validação na porta — sem
-              enrolação.
+              {staff
+                ? user?.role === 'organizador'
+                  ? 'Publique sessões, acompanhe ocupação e gerencie o catálogo.'
+                  : 'Valide ingressos na porta com QR ou código.'
+                : 'Compra de ingresso, mapa de assentos e validação na porta, sem enrolação.'}
             </p>
           )}
           <p className="text-caption text-on-surface-variant/70">
-            © 2026 CineRay — ingressos e portaria.
+            © 2026 CineRay. Ingressos e portaria.
           </p>
         </div>
 

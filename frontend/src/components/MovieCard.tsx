@@ -13,7 +13,7 @@ export function MovieCard({ movie }: MovieCardProps) {
   return (
     <Link
       to={`/filme/${movie.id}`}
-      className="glass-card group relative cursor-pointer overflow-hidden rounded-xl transition-transform duration-500 hover:-translate-y-2"
+      className="group relative cursor-pointer overflow-hidden rounded-xl bg-surface-container transition-transform duration-500 hover:-translate-y-2"
     >
       <div className="relative aspect-[2/3] w-full overflow-hidden">
         <div
@@ -36,11 +36,11 @@ export function MovieCard({ movie }: MovieCardProps) {
       </div>
       <div className="p-card-padding">
         <h3 className="mb-1 truncate text-headline-md text-on-surface">{movie.title}</h3>
-        <div className="flex items-center gap-3 text-caption text-on-surface-variant">
-          <span>{movie.genre}</span>
-          <span className="h-1 w-1 rounded-full bg-surface-variant" />
-          <span className="flex items-center text-primary">
-            <Icon name="star" className="mr-1 text-[14px]" filled />
+        <div className="flex min-w-0 items-center gap-3 text-caption text-on-surface-variant">
+          <span className="min-w-0 truncate">{movie.genre}</span>
+          <span className="h-1 w-1 shrink-0 rounded-full bg-surface-variant" />
+          <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-primary">
+            <Icon name="star" className="text-[14px]" filled />
             {movie.rating.toFixed(1)}
           </span>
         </div>

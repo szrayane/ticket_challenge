@@ -93,6 +93,7 @@ export async function getMovieShowtimes(req, res, next) {
     }
     const sessions = await listShowtimesForMovie(movie.id, {
       onlyWithAvailability: !asOrganizer,
+      onlyUpcoming: !asOrganizer,
     })
     res.json({ movie, sessions })
   } catch (error) {

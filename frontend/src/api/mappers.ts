@@ -6,17 +6,26 @@ function parseTime(time: string): [number, number] {
 }
 
 function sessionAbsoluteDate(session: Session) {
-  const [day, month, year] = session.date.split('/').map(Number)
+  const parts = String(session.date || '')
+    .split('/')
+    .map(Number)
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return null
+  const [day, month, year] = parts
   const [hours, minutes] = parseTime(session.time)
-  return new Date(year, month - 1, day, hours, minutes, 0, 0)
+  const at = new Date(year, month - 1, day, hours, minutes, 0, 0)
+  return Number.isNaN(at.getTime()) ? null : at
 }
 
 export function isSessionUpcoming(session: Session) {
-  return sessionAbsoluteDate(session).getTime() > Date.now()
+  const at = sessionAbsoluteDate(session)
+  if (!at) return false
+  return at.getTime() > Date.now()
 }
 
 export function compareSessionsByDateTime(a: Session, b: Session) {
-  return sessionAbsoluteDate(a).getTime() - sessionAbsoluteDate(b).getTime()
+  const aAt = sessionAbsoluteDate(a)?.getTime() ?? Number.POSITIVE_INFINITY
+  const bAt = sessionAbsoluteDate(b)?.getTime() ?? Number.POSITIVE_INFINITY
+  return aAt - bAt
 }
 
 export function groupSeatsByRow(seats: Seat[]) {

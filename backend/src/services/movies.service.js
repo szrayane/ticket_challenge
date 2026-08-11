@@ -32,6 +32,23 @@ function mapMovie(row) {
   }
 }
 
+function parseShowtimeAt(sessionDate, sessionTime) {
+  const match = String(sessionDate || '').match(/(\d{2})\/(\d{2})\/(\d{4})/)
+  if (!match) return null
+  const [, day, month, year] = match
+  const [h = '0', m = '0'] = String(sessionTime || '00:00').split(':')
+  const at = new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(h) || 0,
+    Number(m) || 0,
+    0,
+    0,
+  )
+  return Number.isNaN(at.getTime()) ? null : at
+}
+
 export async function listMovies({ includeInactive = false } = {}) {
   const rows = includeInactive
     ? await query(`SELECT * FROM movies ORDER BY created_at DESC`)
@@ -39,6 +56,7 @@ export async function listMovies({ includeInactive = false } = {}) {
         `SELECT * FROM movies WHERE is_active = 1 ORDER BY created_at DESC`,
       )
 
+  const now = Date.now()
   const movies = []
   for (const row of rows) {
     const movie = mapMovie(row)
@@ -49,19 +67,27 @@ export async function listMovies({ includeInactive = false } = {}) {
        ORDER BY session_date ASC, session_time ASC`,
       [row.id],
     )
+
+    const candidates = []
     for (const next of showtimes) {
+      const at = parseShowtimeAt(next.session_date, next.session_time)
+      if (!at || at.getTime() <= now) continue
       const capacity = Number(next.capacity) || 50
       const unavailable = (await listUnavailableSeatIds(next.id)).length
       if (unavailable >= capacity) continue
+      candidates.push({ next, at })
+    }
+    candidates.sort((a, b) => a.at.getTime() - b.at.getTime())
+    const soonest = candidates[0]
+    if (soonest) {
       movie.nextSession = {
-        date: next.session_date,
-        time: next.session_time,
-        cinema: next.cinema,
-        room: next.room,
-        price: Number(next.price) || 28,
-        capacity,
+        date: soonest.next.session_date,
+        time: soonest.next.session_time,
+        cinema: soonest.next.cinema,
+        room: soonest.next.room,
+        price: Number(soonest.next.price) || 28,
+        capacity: Number(soonest.next.capacity) || 50,
       }
-      break
     }
     movies.push(movie)
   }

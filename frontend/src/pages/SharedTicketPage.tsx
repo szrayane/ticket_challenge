@@ -83,9 +83,6 @@ export function SharedTicketPage() {
           No iPhone, mostre este QR na portaria. No Android, salve na Google
           Wallet pela conta que comprou o ingresso.
         </p>
-        <p className="break-all text-center font-mono text-caption text-on-surface-variant">
-          {ticket.qrPayload}
-        </p>
         {ticket.checkedInAt && (
           <p className="text-caption text-amber-200">
             Já utilizado em{' '}

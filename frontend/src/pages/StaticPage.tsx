@@ -35,13 +35,6 @@ const PAGES: Record<
       'Você pode sair da conta a qualquer momento.',
     ],
   },
-  corporativo: {
-    title: 'Reservas corporativas',
-    paragraphs: [
-      'Reservas de sala inteira e eventos em grupo ainda não estão disponíveis.',
-      'Por enquanto o fluxo é compra individual com mapa de assentos e QR na entrada.',
-    ],
-  },
 }
 
 export function StaticPage() {

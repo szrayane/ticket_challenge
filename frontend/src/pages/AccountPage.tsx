@@ -10,13 +10,23 @@ import {
   splitTicketsByRelevance,
 } from '../lib/tickets'
 
-type AccountTab = 'ingressos' | 'dados'
+type AccountTab = 'ingressos' | 'historico' | 'dados'
+
+const ACCOUNT_TABS: { id: AccountTab; label: string; icon: string }[] = [
+  { id: 'ingressos', label: 'Ingressos', icon: 'qr_code_2' },
+  { id: 'historico', label: 'Histórico', icon: 'history' },
+  { id: 'dados', label: 'Dados', icon: 'manage_accounts' },
+]
+
+function parseAccountTab(value: string | null): AccountTab {
+  if (value === 'dados' || value === 'historico') return value
+  return 'ingressos'
+}
 
 export function AccountPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const tabParam = searchParams.get('tab')
-  const tab: AccountTab = tabParam === 'dados' ? 'dados' : 'ingressos'
+  const tab = parseAccountTab(searchParams.get('tab'))
 
   const {
     isAuthenticated,
@@ -97,12 +107,7 @@ export function AccountPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {(
-          [
-            { id: 'ingressos', label: 'Ingressos', icon: 'qr_code_2' },
-            { id: 'dados', label: 'Dados', icon: 'manage_accounts' },
-          ] as const
-        ).map((item) => (
+        {ACCOUNT_TABS.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -120,63 +125,66 @@ export function AccountPage() {
       </div>
 
       {tab === 'ingressos' && (
-        <>
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Icon name="qr_code_2" className="text-primary" />
-              <h2 className="text-headline-md text-on-surface">Próximos ingressos</h2>
-            </div>
-            <p className="text-body-md text-on-surface-variant">
-              Pedidos agrupados por compra. Baixe ou compartilhe o QR e cancele
-              antes do início da sessão.
-            </p>
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Icon name="qr_code_2" className="text-primary" />
+            <h2 className="text-headline-md text-on-surface">Próximos ingressos</h2>
+          </div>
+          <p className="text-body-md text-on-surface-variant">
+            Pedidos agrupados por compra. Baixe ou compartilhe o QR e cancele
+            antes do início da sessão.
+          </p>
 
-            {upcomingOrders.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/15 bg-white/5 px-6 py-10 text-center">
-                <p className="mb-4 text-body-lg text-on-surface-variant">
-                  Nenhum ingresso próximo.
-                </p>
-                <Link
-                  to="/"
-                  className="inline-flex rounded-lg bg-primary-container px-6 py-3 text-label-md text-white"
-                >
-                  Ver filmes
-                </Link>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {upcomingOrders.map((order) => (
-                  <TicketOrderCard
-                    key={order.orderId}
-                    order={order}
-                    onCancel={cancelTicket}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          {historyOrders.length > 0 ? (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Icon name="history" className="text-primary" />
-                <h2 className="text-headline-md text-on-surface">Histórico</h2>
-              </div>
-              <p className="text-body-md text-on-surface-variant">
-                Sessões encerradas e ingressos cancelados.
+          {upcomingOrders.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/15 bg-white/5 px-6 py-10 text-center">
+              <p className="mb-4 text-body-lg text-on-surface-variant">
+                Nenhum ingresso próximo.
               </p>
-              <div className="grid gap-4">
-                {historyOrders.map((order) => (
-                  <TicketOrderCard key={order.orderId} order={order} />
-                ))}
-              </div>
-            </section>
-          ) : upcomingOrders.length === 0 ? (
-            <p className="text-body-md text-on-surface-variant">
-              Sem histórico ainda.
-            </p>
-          ) : null}
-        </>
+              <Link
+                to="/"
+                className="inline-flex rounded-lg bg-primary-container px-6 py-3 text-label-md text-white"
+              >
+                Ver filmes
+              </Link>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {upcomingOrders.map((order) => (
+                <TicketOrderCard
+                  key={order.orderId}
+                  order={order}
+                  onCancel={cancelTicket}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === 'historico' && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Icon name="history" className="text-primary" />
+            <h2 className="text-headline-md text-on-surface">Histórico</h2>
+          </div>
+          <p className="text-body-md text-on-surface-variant">
+            Sessões encerradas e ingressos cancelados.
+          </p>
+
+          {historyOrders.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/15 bg-white/5 px-6 py-10 text-center">
+              <p className="text-body-lg text-on-surface-variant">
+                Sem histórico ainda.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {historyOrders.map((order) => (
+                <TicketOrderCard key={order.orderId} order={order} />
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {tab === 'dados' && (

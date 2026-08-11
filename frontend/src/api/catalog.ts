@@ -63,28 +63,28 @@ export type OrganizerReport = {
 
 export const POSTER_GALLERY = [
   {
-    label: 'Poster 1',
-    url: 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
+    label: 'A Boca do Diabo',
+    url: 'https://image.tmdb.org/t/p/w500/2CZecxLrTSmzngWqIGganSMg6gK.jpg',
   },
   {
-    label: 'Poster 2',
-    url: 'https://image.tmdb.org/t/p/w500/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg',
+    label: 'A Morte de Robin Hood',
+    url: 'https://image.tmdb.org/t/p/w500/o0QndnepFPWget2kdKpzh26RBYt.jpg',
   },
   {
-    label: 'Poster 3',
-    url: 'https://image.tmdb.org/t/p/w500/qNBAXBIQlnOThruvIas3jnG3Blp.jpg',
+    label: 'A Morte do Demônio',
+    url: 'https://image.tmdb.org/t/p/w500/fteLdvfRnltfLjAEnsl5E3vImnW.jpg',
   },
   {
-    label: 'Poster 4',
-    url: 'https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94SAGUJRV.jpg',
+    label: 'Animal Friends',
+    url: 'https://image.tmdb.org/t/p/w500/muMwJAiMtReEHLKpKMWt2rMkYF7.jpg',
   },
   {
-    label: 'Poster 5',
-    url: 'https://image.tmdb.org/t/p/w500/1E5baAaEse26fej7uHcjOgEE2t2.jpg',
+    label: 'Ballerina',
+    url: 'https://image.tmdb.org/t/p/w500/AqOwuZ4X0Ssi3LIsYqXNw52IIvW.jpg',
   },
   {
-    label: 'Poster 6',
-    url: 'https://image.tmdb.org/t/p/w500/rrjoeR5m98ptkGUJ2Z7G4t2lXMg.jpg',
+    label: 'Toy Story 5',
+    url: 'https://image.tmdb.org/t/p/w500/sssrBhdvDcczgMQYDc8oCoSuFEJ.jpg',
   },
 ]
 

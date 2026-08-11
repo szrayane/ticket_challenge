@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { isStaffRole, roleHomePath } from './RequireRole'
 import { Icon } from './Icon'
 
 const links = [
-  { to: '/', label: 'Filmes', end: true },
+  { to: '/', label: 'Filmes', end: true, catalog: true },
   { to: '/conta', label: 'Meus ingressos', end: false, roles: ['cliente'] },
   { to: '/organizador', label: 'Organizador', end: false, roles: ['organizador'] },
   { to: '/portaria', label: 'Portaria', end: false, roles: ['portaria'] },
@@ -19,6 +20,8 @@ export function Navbar({ compact = false }: NavbarProps) {
   const { isAuthenticated, user } = useAuth()
   const [searchParams] = useSearchParams()
   const queryFromUrl = searchParams.get('search') || ''
+  const staff = isAuthenticated && isStaffRole(user?.role)
+  const homePath = staff ? roleHomePath(user?.role) : '/'
 
   const [searchTerm, setSearchTerm] = useState(queryFromUrl)
 
@@ -30,21 +33,31 @@ export function Navbar({ compact = false }: NavbarProps) {
     setSearchTerm(value)
 
     if (value.trim()) {
-      navigate(`/?search=${encodeURIComponent(value.trim())}`, { replace: true })
+      navigate(`/?search=${encodeURIComponent(value.trim())}`, {
+        replace: true,
+        preventScrollReset: true,
+      })
     } else {
-      navigate('/', { replace: true })
+      navigate('/', { replace: true, preventScrollReset: true })
     }
   }
+
+  const visibleLinks = links.filter((link) => {
+    if (link.catalog) return !staff
+    if (!link.roles) return true
+    if (!isAuthenticated || !user) return false
+    return link.roles.includes(user.role || 'cliente')
+  })
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-3 px-4 py-4 sm:px-5 md:px-container-margin">
         <div className="flex min-w-0 items-center gap-4 lg:gap-12">
-          <Link to="/" className="brand-mark shrink-0 text-headline-md">
+          <Link to={homePath} className="brand-mark shrink-0 text-headline-md">
             Cine<span>Ray</span>
           </Link>
 
-          {!compact && (
+          {!compact && !staff && (
             <div className="hidden w-64 items-center gap-2 rounded-lg border border-white/10 bg-surface-container px-4 py-2 transition-colors focus-within:border-primary lg:flex">
               <Icon name="search" className="text-body-lg text-on-surface-variant" />
               <input
@@ -58,33 +71,27 @@ export function Navbar({ compact = false }: NavbarProps) {
           )}
 
           <nav className="hidden items-center gap-6 md:flex lg:gap-8">
-            {links
-              .filter((link) => {
-                if (!link.roles) return true
-                if (!isAuthenticated || !user) return false
-                return link.roles.includes(user.role || 'cliente')
-              })
-              .map((link) => (
-                <NavLink
-                  key={link.label}
-                  to={link.to}
-                  className={({ isActive }) =>
-                    `text-body-md transition-colors duration-200 ${
-                      isActive
-                        ? 'border-b-2 border-primary pb-1 text-on-surface'
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }`
-                  }
-                  end={link.end}
-                >
-                  {link.label}
-                </NavLink>
-              ))}
+            {visibleLinks.map((link) => (
+              <NavLink
+                key={link.label}
+                to={link.to}
+                className={({ isActive }) =>
+                  `text-body-md transition-colors duration-200 ${
+                    isActive
+                      ? 'border-b-2 border-primary pb-1 text-on-surface'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`
+                }
+                end={link.end}
+              >
+                {link.label}
+              </NavLink>
+            ))}
           </nav>
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
-          {compact && (
+          {compact && !staff && (
             <button
               type="button"
               className="rounded-lg p-2 text-on-surface-variant transition-colors hover:bg-surface-container hover:text-on-surface"
@@ -93,7 +100,7 @@ export function Navbar({ compact = false }: NavbarProps) {
               <Icon name="search" />
             </button>
           )}
-          {compact && <div className="mx-1 hidden h-6 w-px bg-white/10 md:block" />}
+          {compact && !staff && <div className="mx-1 hidden h-6 w-px bg-white/10 md:block" />}
           <a
             href="https://github.com/szrayane/ticket_challenge"
             target="_blank"
@@ -114,11 +121,7 @@ export function Navbar({ compact = false }: NavbarProps) {
             to={
               !isAuthenticated
                 ? '/login'
-                : user?.role === 'organizador'
-                  ? '/organizador'
-                  : user?.role === 'portaria'
-                    ? '/portaria'
-                    : '/conta'
+                : roleHomePath(user?.role)
             }
             className="flex items-center gap-2 text-on-surface-variant transition-colors hover:text-on-surface"
             aria-label={isAuthenticated ? 'Minha área' : 'Entrar'}

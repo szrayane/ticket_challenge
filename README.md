@@ -3,7 +3,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/szrayane/ticket_challenge">
-    <img src="./public/cineray-logo.png" alt="CineRay" width="320">
+    <img src="./frontend/public/cineray-logo.png" alt="CineRay" width="320">
   </a>
 
   <h3 align="center">Desafio Elite Dev 2026</h3>
@@ -192,20 +192,31 @@ cd backend
 npm install
 cp .env.example .env
 # edite TMDB_API_KEY e TICKET_QR_SECRET se quiser
+npm run migrate   # aplica schema (também roda no boot via initDb)
 npm run dev
 ```
 
 API: http://localhost:3333
 
-**3) Frontend** (na raiz do repo)
+Schema versionado em `backend/migrations/` (Knex). O `initDb` só conecta, aplica migrations pendentes e faz seed demo (desligue com `DISABLE_SEED=1`).
+
+**3) Frontend**
 
 ```bash
+cd frontend
 npm install
 cp .env.example .env
 npm run dev
 ```
 
 App: http://localhost:5173
+
+Atalhos na raiz (depois de `npm run install:all`):
+
+```bash
+npm run dev:backend
+npm run dev:frontend
+```
 
 #### Variáveis principais
 
@@ -222,9 +233,10 @@ MYSQL_PORT=3306
 MYSQL_USER=cineray
 MYSQL_PASSWORD=cineray
 MYSQL_DATABASE=cineray
+# DISABLE_SEED=1
 ```
 
-Front (`.env` na raiz):
+Front (`frontend/.env`):
 
 ```env
 VITE_APP_API_URL=http://localhost:3333/api
@@ -239,7 +251,7 @@ cd backend
 npm run test:unit   # unitários (sem DB)
 npm test            # unitários + QR + fluxo de ingressos
 
-# Na raiz (API + Vite no ar):
+# Na raiz ou em frontend/ (API + Vite no ar):
 npm run test:e2e:purchase
 ```
 
@@ -249,10 +261,12 @@ npm run test:e2e:purchase
 
 | Perfil | E-mail | Senha |
 |--------|--------|-------|
-| Organizador | `organizador@cineray.com` | `org1234` |
-| Cliente 1 | `cliente1@cineray.com` | `cli1234` |
-| Cliente 2 | `cliente2@cineray.com` | `cli1234` |
-| Portaria | `portaria@cineray.com` | `porta1234` |
+| Organizador | `organizador@cineray.com` | `cineray` |
+| Cliente 1 | `cliente1@cineray.com` | `cineray` |
+| Cliente 2 | `cliente2@cineray.com` | `cineray` |
+| Portaria | `portaria@cineray.com` | `cineray` |
+
+Todas as contas de teste usam a **mesma senha** (`cineray`). No login há um seletor de e-mails.
 
 Evento seed: **Duna: Parte Dois**.
 
@@ -325,11 +339,15 @@ Prints em `docs/screenshots/`:
 
 ```text
 ticket_challenge/
-├── backend/          # API Express + MySQL + testes
-├── src/              # React (Vite)
-├── public/
-├── docs/             # screenshots do README
-├── docker-compose.yml
+├── backend/           # API Express + MySQL + testes
+│   ├── migrations/    # schema Knex (fonte da verdade das tabelas)
+│   └── src/db/        # conexão, migrate, seed
+├── frontend/          # React (Vite) + e2e + Docker do front
+├── docs/              # screenshots do README
+├── .github/workflows/ # CI/CD
+├── docker-compose.yml # MySQL + API + front
+├── render.yaml        # blueprint Render (API)
+├── package.json       # atalhos do monorepo
 ├── DEPLOY.md
 ├── AI.md
 └── README.md

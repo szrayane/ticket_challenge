@@ -7,8 +7,7 @@ interface IconProps {
 export function Icon({ name, className = '', filled = false }: IconProps) {
   return (
     <span
-      className={`material-symbols-outlined ${className}`}
-      style={filled ? { fontVariationSettings: "'FILL' 1" } : undefined}
+      className={`app-icon leading-none ${filled ? 'is-filled' : ''} ${className}`}
       aria-hidden
     >
       {name}

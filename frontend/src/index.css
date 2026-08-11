@@ -110,7 +110,7 @@
     @apply bg-background text-on-surface font-sans overflow-x-hidden;
     margin: 0;
     min-height: 100vh;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 
   img,
@@ -251,20 +251,28 @@
     transform: translateX(1.25rem);
   }
 
-  .material-symbols-outlined {
-    font-family: "Material Symbols Outlined";
+  .app-icon {
+    font-family: "Material Symbols Outlined", sans-serif;
     font-weight: normal;
     font-style: normal;
-    font-size: 24px;
+    font-size: 1.25rem;
     line-height: 1;
     letter-spacing: normal;
     text-transform: none;
     display: inline-block;
+    flex-shrink: 0;
     white-space: nowrap;
-    word-wrap: normal;
+    overflow-wrap: normal;
+    word-break: keep-all;
     direction: ltr;
     font-feature-settings: "liga";
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
     -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  .app-icon.is-filled {
+    font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
   }
 
   .seat {

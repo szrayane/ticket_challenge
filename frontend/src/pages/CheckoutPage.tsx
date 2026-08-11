@@ -67,17 +67,17 @@ export function CheckoutPage() {
     resetBooking,
   } = useBooking()
 
-  const [cardName, setCardName] = useState('')
-  const [cardNumber, setCardNumber] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvv, setCvv] = useState('')
-  const [cpf, setCpf] = useState('')
+  const [cardName, setCardName] = useState<string>(DEMO_PAYMENT.cardName)
+  const [cardNumber, setCardNumber] = useState<string>(DEMO_PAYMENT.cardNumber)
+  const [expiry, setExpiry] = useState<string>(DEMO_PAYMENT.expiry)
+  const [cvv, setCvv] = useState<string>(DEMO_PAYMENT.cvv)
+  const [cpf, setCpf] = useState<string>(DEMO_PAYMENT.cpf)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [pixCopied, setPixCopied] = useState(false)
   const [pixUnlocked, setPixUnlocked] = useState(false)
-  const [walletId, setWalletId] = useState('')
+  const [walletId, setWalletId] = useState(walletProviders[0]?.id ?? '')
   const [payStatus, setPayStatus] = useState<PaymentSimStatus>('idle')
   const [payDetail, setPayDetail] = useState<string | undefined>()
   const cancelledRef = useRef(false)
@@ -93,8 +93,8 @@ export function CheckoutPage() {
 
   useEffect(() => {
     if (!user) return
-    setCardName((prev) => prev || user.name)
-    if (user.cpf) setCpf(formatCpf(user.cpf))
+    setCardName(user.name?.trim() || DEMO_PAYMENT.cardName)
+    setCpf(user.cpf ? formatCpf(user.cpf) : DEMO_PAYMENT.cpf)
   }, [user])
 
   useEffect(() => {
@@ -140,17 +140,6 @@ export function CheckoutPage() {
 
   if (!isAuthenticated || !user || !movie || !session || selectedSeats.length === 0) {
     return null
-  }
-
-  function fillDemoData() {
-    setCpf(DEMO_PAYMENT.cpf)
-    setCardName(DEMO_PAYMENT.cardName)
-    setCardNumber(DEMO_PAYMENT.cardNumber)
-    setExpiry(DEMO_PAYMENT.expiry)
-    setCvv(DEMO_PAYMENT.cvv)
-    setFieldErrors({})
-    setError(null)
-    setPixUnlocked(false)
   }
 
   function validateForm(): FieldErrors {
@@ -262,12 +251,15 @@ export function CheckoutPage() {
       throw error
     }
 
-    updateProfile({
-      name: cardName.trim(),
-      cpf: onlyDigits(cpf),
-    }).catch((error) => {
-      console.warn('[CineRay] Falha ao atualizar perfil no banco.', error)
-    })
+    // CPF do perfil, se ainda não existir. Não sobrescreve o nome da conta
+    // com o titular do cartão de teste (ex.: MARIA SILVA).
+    if (!user.cpf) {
+      updateProfile({
+        cpf: onlyDigits(cpf),
+      }).catch((error) => {
+        console.warn('[CineRay] Falha ao atualizar CPF no perfil.', error)
+      })
+    }
 
     navigate('/success', {
       state: { tickets: savedTickets, orderId: savedTickets[0]?.orderId },
@@ -502,22 +494,12 @@ export function CheckoutPage() {
           noValidate
           className="glass-card flex flex-grow flex-col gap-6 rounded-xl p-card-padding"
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <h3 className="text-headline-md text-on-surface">Forma de pagamento</h3>
-            <button
-              type="button"
-              onClick={fillDemoData}
-              className="shrink-0 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-caption text-primary transition-colors hover:bg-primary/20"
-            >
-              Preencher dados de teste
-            </button>
-          </div>
+          <h3 className="text-headline-md text-on-surface">Forma de pagamento</h3>
 
           <p className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-caption text-on-surface-variant">
-            Cartão de teste:{' '}
-            <span className="text-on-surface">4111 1111 1111 1111</span> — recusado:{' '}
-            <span className="text-on-surface">4000 0000 0000 0002</span>. CPF:{' '}
-            <span className="text-on-surface">{DEMO_PAYMENT.cpf}</span>.
+            Dados de teste já preenchidos. Cartão aprovado:{' '}
+            <span className="text-on-surface">{DEMO_PAYMENT.cardNumber}</span>. Recusado:{' '}
+            <span className="text-on-surface">{DEMO_PAYMENT.declinedCardNumber}</span>.
           </p>
 
           {error && payStatus !== 'declined' && (
@@ -821,7 +803,7 @@ export function CheckoutPage() {
               {submitted
                 ? 'Validando…'
                 : paymentMethod === 'pix'
-                  ? 'Já paguei — gerar ingresso'
+                  ? 'Já paguei. Gerar ingresso'
                   : paymentMethod === 'wallet'
                     ? 'Pagar com carteira'
                     : 'Pagar e gerar QR'}

@@ -27,7 +27,7 @@ function parseDateTime(sessionDate, sessionTime) {
   if (!match) return null
   const [, day, month, year] = match
   const [h = '0', m = '0'] = String(sessionTime || '00:00').split(':')
-  return new Date(
+  const at = new Date(
     Number(year),
     Number(month) - 1,
     Number(day),
@@ -36,6 +36,19 @@ function parseDateTime(sessionDate, sessionTime) {
     0,
     0,
   )
+  return Number.isNaN(at.getTime()) ? null : at
+}
+
+export function isShowtimeUpcoming(session) {
+  const at = parseDateTime(session?.date, session?.time)
+  if (!at) return false
+  return at.getTime() > Date.now()
+}
+
+function compareShowtimesByDateTime(a, b) {
+  const aAt = parseDateTime(a.date, a.time)?.getTime() ?? Number.POSITIVE_INFINITY
+  const bAt = parseDateTime(b.date, b.time)?.getTime() ?? Number.POSITIVE_INFINITY
+  return aAt - bAt
 }
 
 export function normalizeCapacity(value, fallback = DEFAULT_CAPACITY) {
@@ -118,7 +131,7 @@ export async function showtimeHasAvailableSeats(showtime) {
 
 export async function listShowtimesForMovie(
   movieId,
-  { onlyWithAvailability = false } = {},
+  { onlyWithAvailability = false, onlyUpcoming = false } = {},
 ) {
   const rows = await query(
     `SELECT * FROM showtimes
@@ -126,7 +139,11 @@ export async function listShowtimesForMovie(
      ORDER BY session_date ASC, session_time ASC`,
     [String(movieId)],
   )
-  const sessions = rows.map(mapShowtime)
+  let sessions = rows.map(mapShowtime)
+  if (onlyUpcoming) {
+    sessions = sessions.filter(isShowtimeUpcoming)
+  }
+  sessions.sort(compareShowtimesByDateTime)
   if (!onlyWithAvailability) return sessions
 
   const open = []

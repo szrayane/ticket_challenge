@@ -20,6 +20,17 @@ function mapMovie(item) {
   }
 }
 
+function networkErrorMessage(cause) {
+  const code = String(cause?.cause?.code || cause?.code || '')
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
+    return 'Não foi possível alcançar a TMDb (DNS). Confira a internet e se a API tem saída para a web.'
+  }
+  if (code === 'ECONNREFUSED' || code === 'ETIMEDOUT' || code === 'UND_ERR_CONNECT_TIMEOUT') {
+    return 'Timeout ao conectar na TMDb. Tente de novo em instantes.'
+  }
+  return 'Falha de rede ao consultar a TMDb. Tente de novo.'
+}
+
 async function tmdbFetch(path, query = {}) {
   const key = apiKey()
   if (!key) {
@@ -37,10 +48,34 @@ async function tmdbFetch(path, query = {}) {
     if (v != null && v !== '') url.searchParams.set(k, String(v))
   }
 
-  const response = await fetch(url)
-  if (!response.ok) {
-    const err = new Error(`Falha na TMDb (${response.status}).`)
+  let response
+  try {
+    response = await fetch(url)
+  } catch (cause) {
+    const err = new Error(networkErrorMessage(cause))
     err.status = 502
+    err.cause = cause
+    throw err
+  }
+
+  if (!response.ok) {
+    let detail = ''
+    try {
+      const body = await response.json()
+      detail = String(body?.status_message || '').trim()
+    } catch {
+      // ignore body parse errors
+    }
+
+    const message =
+      response.status === 401
+        ? 'TMDB_API_KEY inválida. Confira a chave no .env do backend (ou no Render).'
+        : detail
+          ? `Falha na TMDb (${response.status}): ${detail}`
+          : `Falha na TMDb (${response.status}).`
+
+    const err = new Error(message)
+    err.status = response.status === 401 ? 503 : 502
     throw err
   }
   return response.json()

@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import {
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { getMovies } from '../api/cinema'
 import { MovieCard } from '../components/MovieCard'
@@ -15,7 +23,6 @@ export function HomePage() {
   const searchQuery = searchParams.get('search')?.toLowerCase().trim() || ''
   const genreFilter = searchParams.get('genre') || ''
   const maxPriceFilter = searchParams.get('maxPrice') || ''
-  const onlyEvents = searchParams.get('events') === '1'
 
   const [movies, setMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,6 +30,9 @@ export function HomePage() {
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [trailerOpen, setTrailerOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const filtersPanelRef = useRef<HTMLDivElement>(null)
+  const [filtersHeight, setFiltersHeight] = useState(0)
+  const [isFilterPending, startFilterTransition] = useTransition()
 
   useEffect(() => {
     let active = true
@@ -58,48 +68,64 @@ export function HomePage() {
     return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   }, [movies])
 
-  const filteredMovies = movies.filter((movie) => {
-    if (searchQuery) {
-      const hit =
-        movie.title.toLowerCase().includes(searchQuery) ||
-        movie.synopsis?.toLowerCase().includes(searchQuery)
-      if (!hit) return false
-    }
-    if (genreFilter) {
-      const parts = String(movie.genre || '')
-        .split(',')
-        .map((g) => g.trim().toLowerCase())
-      if (!parts.includes(genreFilter.toLowerCase())) return false
-    }
-    if (onlyEvents && !movie.nextSession) return false
-    if (maxPriceFilter) {
-      const max = Number(maxPriceFilter)
-      if (!Number.isFinite(max)) return true
-      const price = movie.nextSession?.price
-      if (price == null || price > max) return false
-    }
-    return true
-  })
+  useLayoutEffect(() => {
+    const node = filtersPanelRef.current
+    if (!node) return
 
-  const hasExtraFilters = Boolean(genreFilter || maxPriceFilter || onlyEvents)
+    const updateHeight = () => setFiltersHeight(node.scrollHeight)
+    updateHeight()
+
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [genres])
+
+  const filteredMovies = useMemo(() => {
+    return movies.filter((movie) => {
+      if (searchQuery) {
+        const hit =
+          movie.title.toLowerCase().includes(searchQuery) ||
+          movie.synopsis?.toLowerCase().includes(searchQuery)
+        if (!hit) return false
+      }
+      if (genreFilter) {
+        const parts = String(movie.genre || '')
+          .split(',')
+          .map((g) => g.trim().toLowerCase())
+        if (!parts.includes(genreFilter.toLowerCase())) return false
+      }
+      if (maxPriceFilter) {
+        const max = Number(maxPriceFilter)
+        if (!Number.isFinite(max)) return true
+        const price = movie.nextSession?.price
+        if (price == null || price > max) return false
+      }
+      return true
+    })
+  }, [movies, searchQuery, genreFilter, maxPriceFilter])
+
+  const hasExtraFilters = Boolean(genreFilter || maxPriceFilter)
   const featured = movies.slice(0, FEATURED_COUNT)
   const activeFeatured = featured[featuredIndex] ?? featured[0]
   const displayMovies =
-    searchQuery || hasExtraFilters
-      ? filteredMovies
-      : movies
+    searchQuery || hasExtraFilters ? filteredMovies : movies
+  const deferredMovies = useDeferredValue(displayMovies)
+  const catalogSettling =
+    isFilterPending || deferredMovies !== displayMovies
 
   function patchFilters(patch: Record<string, string | null>) {
-    const next = new URLSearchParams(searchParams)
-    for (const [key, value] of Object.entries(patch)) {
-      if (!value) next.delete(key)
-      else next.set(key, value)
-    }
-    setSearchParams(next, { replace: true })
+    startFilterTransition(() => {
+      const next = new URLSearchParams(searchParams)
+      for (const [key, value] of Object.entries(patch)) {
+        if (!value) next.delete(key)
+        else next.set(key, value)
+      }
+      setSearchParams(next, { replace: true, preventScrollReset: true })
+    })
   }
 
   useEffect(() => {
-    if (featured.length <= 1 || searchQuery || hasExtraFilters || trailerOpen) {
+    if (featured.length <= 1 || searchQuery || trailerOpen) {
       return
     }
 
@@ -108,7 +134,7 @@ export function HomePage() {
     }, FEATURED_ROTATE_MS)
 
     return () => window.clearInterval(timer)
-  }, [featured.length, searchQuery, hasExtraFilters, trailerOpen])
+  }, [featured.length, searchQuery, trailerOpen])
 
   if (loading) {
     return (
@@ -142,7 +168,7 @@ export function HomePage() {
 
   return (
     <main>
-      {!searchQuery && !hasExtraFilters && activeFeatured && (
+      {!searchQuery && activeFeatured && (
         <section className="relative flex min-h-[420px] h-[70vh] max-h-[760px] w-full items-end pt-24 pb-section-gap sm:min-h-[520px] sm:h-[85vh] sm:pt-32">
           <div className="absolute inset-0 z-0 overflow-hidden bg-background">
             {featured.map((movie, index) => {
@@ -176,8 +202,8 @@ export function HomePage() {
                     {activeFeatured.badge}
                   </span>
                 )}
-                <span className="flex items-center text-label-md text-primary">
-                  <Icon name="star" className="mr-1 text-[16px]" filled />
+                <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-label-md text-primary">
+                  <Icon name="star" className="text-[16px]" filled />
                   {activeFeatured.rating.toFixed(1)} Avaliação
                 </span>
               </div>
@@ -285,7 +311,6 @@ export function HomePage() {
                   {[
                     genreFilter || null,
                     maxPriceFilter ? `até ${formatMoney(Number(maxPriceFilter))}` : null,
-                    onlyEvents ? 'com sessão' : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}
@@ -295,7 +320,7 @@ export function HomePage() {
                 <button
                   type="button"
                   onClick={() =>
-                    patchFilters({ genre: null, maxPrice: null, events: null })
+                    patchFilters({ genre: null, maxPrice: null })
                   }
                   className="text-caption text-primary underline-offset-2 hover:underline"
                 >
@@ -306,16 +331,17 @@ export function HomePage() {
           </div>
 
           <div
-            className={`grid transition-[grid-template-rows] duration-300 ease-out ${
-              filtersOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-            }`}
+            className="overflow-hidden transition-[height,opacity] duration-[350ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+            style={{
+              height: filtersOpen ? filtersHeight : 0,
+              opacity: filtersOpen ? 1 : 0,
+            }}
+            aria-hidden={!filtersOpen}
           >
-            <div className="overflow-hidden">
-              <div
-                className={`space-y-4 border-t border-white/8 px-4 py-4 transition-opacity duration-300 ease-out ${
-                  filtersOpen ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
+            <div
+              ref={filtersPanelRef}
+              className="space-y-4 border-t border-white/8 px-4 py-4"
+            >
               <div className="space-y-2">
                 <p className="text-caption uppercase tracking-wider text-on-surface-variant">
                   Gênero
@@ -376,48 +402,25 @@ export function HomePage() {
                   ))}
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  patchFilters({ events: onlyEvents ? null : '1' })
-                }
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/8 bg-surface-container-high/50 px-4 py-3 text-left transition-colors hover:border-white/15 sm:w-auto"
-              >
-                <span className="text-body-md text-on-surface">
-                  Só com sessão publicada
-                </span>
-                <span
-                  className={`toggle-track inline-flex items-center ${
-                    onlyEvents ? 'is-on' : ''
-                  }`}
-                  aria-hidden
-                >
-                  <span className="toggle-thumb" />
-                </span>
-              </button>
-              </div>
             </div>
           </div>
         </div>
 
-        {displayMovies.length > 0 ? (
+        {deferredMovies.length > 0 ? (
           <div
             id="catalog"
-            key={`${genreFilter}|${maxPriceFilter}|${onlyEvents}|${searchQuery}`}
-            className="grid grid-cols-1 gap-gutter sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+            className={`grid grid-cols-1 gap-gutter transition-opacity duration-300 ease-out sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${
+              catalogSettling ? 'opacity-45' : 'opacity-100'
+            }`}
           >
-            {displayMovies.map((movie) => (
-              <div
-                key={movie.id}
-                className="animate-fade-in"
-              >
+            {deferredMovies.map((movie) => (
+              <div key={movie.id}>
                 <MovieCard movie={movie} />
               </div>
             ))}
           </div>
         ) : (
-          <div className="py-12 text-center transition-opacity duration-300">
+          <div className="py-12 text-center transition-opacity duration-300 ease-out">
             <p className="text-body-lg text-on-surface-variant">
               Nenhum filme encontrado com os filtros atuais.
             </p>

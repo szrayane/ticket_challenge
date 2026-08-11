@@ -15,6 +15,7 @@ import {
   createShareToken,
   verifySignedQrPayload,
 } from './qr.service.js'
+import { getShowtime } from './showtimes.service.js'
 
 function createId(prefix) {
   return `${prefix}_${randomBytes(10).toString('hex')}`
@@ -87,6 +88,15 @@ export async function listTicketsForUser(userId) {
 }
 
 export async function createTickets(user, tickets, { holderKey } = {}) {
+  const role = String(user?.role || 'cliente').toLowerCase()
+  if (role !== 'cliente') {
+    const err = new Error(
+      'Contas de organizador e portaria não podem comprar ingressos.',
+    )
+    err.status = 403
+    throw err
+  }
+
   if (!Array.isArray(tickets) || tickets.length === 0) {
     const err = new Error('Envie ao menos um ingresso.')
     err.status = 400
@@ -119,6 +129,19 @@ export async function createTickets(user, tickets, { holderKey } = {}) {
       }
 
       for (const [sessionId, seatIds] of bySession) {
+        const showtime = await getShowtime(sessionId)
+        if (!showtime) {
+          const err = new Error('Sessão não encontrada.')
+          err.status = 404
+          throw err
+        }
+        if (!isTicketSessionUpcoming(showtime.date, showtime.time)) {
+          const err = new Error(
+            'Esta sessão já passou. Escolha outra data ou horário.',
+          )
+          err.status = 400
+          throw err
+        }
         await assertSeatsAvailable(sessionId, seatIds, {
           holderKey: holder,
           forUpdate: true,
@@ -299,7 +322,7 @@ export async function createTicketTransfer(userId, ticketId) {
     throw err
   }
   if (row.checked_in_at) {
-    const err = new Error('Ingresso já utilizado — transferência bloqueada.')
+    const err = new Error('Ingresso já utilizado. Transferência bloqueada.')
     err.status = 409
     throw err
   }
@@ -395,7 +418,7 @@ export async function claimTicketTransfer(user, token) {
     throw err
   }
   if (!isTicketSessionUpcoming(row.session_date, row.session_time)) {
-    const err = new Error('Sessão já iniciou — transferência bloqueada.')
+    const err = new Error('Sessão já iniciou. Transferência bloqueada.')
     err.status = 409
     throw err
   }

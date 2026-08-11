@@ -15,6 +15,6 @@ if (!organizer) {
 
 const result = await seedDemoCatalog(organizer.id)
 console.log(
-  `Catálogo: criados ${result.created}, já existiam ${result.skipped}, total lista ${result.total}`,
+  `Catálogo: criados ${result.created}, já existiam ${result.skipped}, sessões +${result.showtimesAdded}, total lista ${result.total}`,
 )
 process.exit(0)

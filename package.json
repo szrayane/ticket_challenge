@@ -1,0 +1,19 @@
+{
+  "name": "cineray",
+  "private": true,
+  "version": "0.0.0",
+  "description": "CineRay monorepo — frontend (Vite/React) + backend (Express/MySQL)",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "lint": "npm run lint --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
+    "test:e2e": "npm run test:e2e --prefix frontend",
+    "test:e2e:purchase": "npm run test:e2e:purchase --prefix frontend",
+    "test:unit": "npm run test:unit --prefix backend",
+    "migrate": "npm run migrate --prefix backend",
+    "install:all": "npm install --prefix frontend && npm install --prefix backend"
+  }
+}

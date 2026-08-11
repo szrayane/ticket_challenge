@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { CatalogGuard } from './components/RequireRole'
 import { AuthProvider } from './context/AuthContext'
 import { BookingProvider } from './context/BookingContext'
 import { AccountPage } from './pages/AccountPage'
@@ -23,7 +24,10 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route element={<Layout />}>
-              <Route index element={<HomePage />} />
+              <Route element={<CatalogGuard />}>
+                <Route index element={<HomePage />} />
+                <Route path="filme/:movieId" element={<MoviePage />} />
+              </Route>
               <Route path="login" element={<LoginPage />} />
               <Route path="staff/login" element={<StaffLoginPage />} />
               <Route path="i/:shareToken" element={<SharedTicketPage />} />
@@ -31,21 +35,23 @@ export default function App() {
               <Route path="conta" element={<AccountPage />} />
               <Route path="organizador" element={<OrganizerPage />} />
               <Route path="portaria" element={<GatePage />} />
-              <Route path="filme/:movieId" element={<MoviePage />} />
               <Route path="sobre" element={<StaticPage />} />
               <Route path="suporte" element={<StaticPage />} />
               <Route path="termos" element={<StaticPage />} />
               <Route path="privacidade" element={<StaticPage />} />
-              <Route path="corporativo" element={<StaticPage />} />
             </Route>
 
             <Route element={<Layout compactNav compactFooter />}>
-              <Route path="seats/:movieId" element={<SeatsPage />} />
+              <Route element={<CatalogGuard />}>
+                <Route path="seats/:movieId" element={<SeatsPage />} />
+              </Route>
             </Route>
 
             <Route element={<Layout hideNav hideFooter />}>
-              <Route path="checkout" element={<CheckoutPage />} />
-              <Route path="success" element={<SuccessPage />} />
+              <Route element={<CatalogGuard />}>
+                <Route path="checkout" element={<CheckoutPage />} />
+                <Route path="success" element={<SuccessPage />} />
+              </Route>
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

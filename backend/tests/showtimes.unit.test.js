@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import {
   DEFAULT_CAPACITY,
   DEFAULT_PRICE,
+  isShowtimeUpcoming,
   normalizeCapacity,
   normalizePrice,
   normalizeSessionFields,
@@ -65,5 +66,15 @@ try {
   assert.match(error.message, /HH:MM/)
 }
 assert.equal(badTime, true)
+
+assert.equal(
+  isShowtimeUpcoming({ date: '01/01/2020', time: '12:00' }),
+  false,
+)
+assert.equal(
+  isShowtimeUpcoming({ date: '31/12/2099', time: '23:59' }),
+  true,
+)
+assert.equal(isShowtimeUpcoming({ date: 'invalid', time: '20:00' }), false)
 
 console.log('showtimes.unit.test.js ok')

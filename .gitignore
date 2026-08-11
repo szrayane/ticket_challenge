@@ -49,8 +49,9 @@ playwright-report/
 test-results/
 blob-report/
 
-# Backend local data
+# Local data (SQLite leftovers / uploads)
 backend/data/
+frontend/data/
 **/data/
 
 # Docker / local overrides

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import {
   POSTER_GALLERY,
   createEventFromTmdb,
@@ -26,7 +25,9 @@ import {
 import { AppApiError } from '../api/appClient'
 import { Icon } from '../components/Icon'
 import { RequireRole } from '../components/RequireRole'
+import { RoomPicker } from '../components/RoomPicker'
 import { useAuth } from '../context/AuthContext'
+import { CINEMA_NAME, normalizeCinemaRoom } from '../lib/cinemaRooms'
 import { connectRealtime } from '../lib/realtime'
 import type { Movie, Session } from '../types'
 
@@ -82,13 +83,24 @@ const emptyMovie: MovieInput = {
 function fieldError(form: MovieInput) {
   if (!form.title.trim()) return 'Informe o título do filme.'
   if (!form.poster.trim()) return 'Informe a URL do poster ou escolha da galeria.'
-  if (!/^https?:\/\//i.test(form.poster.trim())) {
+  const poster = normalizePosterUrl(form.poster)
+  if (!/^https?:\/\//i.test(poster)) {
     return 'A URL do poster precisa começar com http:// ou https://.'
   }
   if (form.trailerUrl?.trim() && !/^https?:\/\//i.test(form.trailerUrl.trim())) {
     return 'A URL do trailer precisa começar com http:// ou https://.'
   }
   return null
+}
+
+function normalizePosterUrl(raw: string) {
+  const value = String(raw || '').trim()
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  if (value.startsWith('/')) {
+    return `https://image.tmdb.org/t/p/w500${value}`
+  }
+  return value
 }
 
 function sessionSortKey(session: { date: string; time: string }) {
@@ -113,12 +125,13 @@ function OrganizerDashboard() {
   const [reportLive, setReportLive] = useState(false)
   const [form, setForm] = useState<MovieInput>(emptyMovie)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [posterBroken, setPosterBroken] = useState(false)
   const [sessionDateIso, setSessionDateIso] = useState('')
   const [sessionTime, setSessionTime] = useState('20:00')
-  const [room, setRoom] = useState('Sala 1')
+  const [room, setRoom] = useState<string>(normalizeCinemaRoom('Sala 1'))
   const [capacity, setCapacity] = useState('40')
   const [price, setPrice] = useState('32')
-  const [cinema, setCinema] = useState('CineRay Centro')
+  const [cinema, setCinema] = useState(CINEMA_NAME)
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [formHint, setFormHint] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -137,12 +150,13 @@ function OrganizerDashboard() {
   >([])
   const [selectedTmdbId, setSelectedTmdbId] = useState<number | null>(null)
   const [tmdbLoading, setTmdbLoading] = useState(false)
+  const [tmdbHint, setTmdbHint] = useState<string | null>(null)
   const [eventDateIso, setEventDateIso] = useState('')
   const [eventTime, setEventTime] = useState('20:00')
-  const [eventRoom, setEventRoom] = useState('Sala 1')
+  const [eventRoom, setEventRoom] = useState<string>(normalizeCinemaRoom('Sala 1'))
   const [eventCapacity, setEventCapacity] = useState('40')
   const [eventPrice, setEventPrice] = useState('32')
-  const [eventCinema, setEventCinema] = useState('CineRay Centro')
+  const [eventCinema, setEventCinema] = useState(CINEMA_NAME)
   const [seatMapView, setSeatMapView] = useState<SeatMapView | null>(null)
   const [seatMapLoading, setSeatMapLoading] = useState(false)
   const [seatMapError, setSeatMapError] = useState<string | null>(null)
@@ -298,19 +312,32 @@ function OrganizerDashboard() {
     const hint = fieldError(form)
     setFormHint(hint)
     if (hint) return
+    if (posterBroken) {
+      setFormHint(
+        'Poster não carregou. Escolha outro da galeria ou cole uma URL válida.',
+      )
+      return
+    }
 
     try {
+      const payload = {
+        ...form,
+        poster: normalizePosterUrl(form.poster),
+        hero: normalizePosterUrl(form.hero || form.poster),
+        backdrop: normalizePosterUrl(form.backdrop || form.poster),
+      }
       if (editingId) {
-        await updateMovie(editingId, form)
+        await updateMovie(editingId, payload)
         setSuccess('Filme atualizado.')
       } else {
-        const movie = await createMovie(form)
+        const movie = await createMovie(payload)
         setSuccess('Filme criado.')
         setSelectedId(movie.id)
       }
       setForm(emptyMovie)
       setEditingId(null)
       setFormHint(null)
+      setPosterBroken(false)
       await reloadMovies()
     } catch (err) {
       setError(err instanceof AppApiError ? err.message : 'Não foi possível salvar.')
@@ -331,7 +358,7 @@ function OrganizerDashboard() {
   async function handleDeleteMovie(id: string) {
     if (
       !window.confirm(
-        'Excluir este filme? Se houver ingressos ativos, a exclusão será bloqueada — use Desativar.',
+        'Excluir este filme? Se houver ingressos ativos, a exclusão será bloqueada. Use Desativar.',
       )
     ) {
       return
@@ -366,8 +393,8 @@ function OrganizerDashboard() {
     const payload = {
       sessionDate: toBrDate(sessionDateIso),
       sessionTime,
-      room: room.trim() || 'Sala 1',
-      cinema: cinema.trim() || 'CineRay',
+      room: normalizeCinemaRoom(room),
+      cinema: cinema.trim() || CINEMA_NAME,
       capacity: Number(capacity) || 40,
       price: Number(price) || 28,
     }
@@ -383,7 +410,7 @@ function OrganizerDashboard() {
       setEditingSessionId(null)
       setSessionDateIso('')
       setSessionTime('20:00')
-      setRoom('Sala 1')
+      setRoom(normalizeCinemaRoom('Sala 1'))
       await reloadSessions(selectedId)
       if (tab === 'dashboard') await reloadReport()
     } catch (err) {
@@ -420,6 +447,7 @@ function OrganizerDashboard() {
     setEditingId(movie.id)
     setSelectedId(movie.id)
     setFormHint(null)
+    setPosterBroken(false)
     setForm({
       title: movie.title,
       synopsis: movie.synopsis,
@@ -433,14 +461,20 @@ function OrganizerDashboard() {
       backdrop: movie.backdrop,
       trailerUrl: movie.trailerUrl || '',
     })
+    window.requestAnimationFrame(() => {
+      document.getElementById('organizer-movie-form')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
   }
 
   function startEditSession(session: Session) {
     setEditingSessionId(session.id)
     setSessionDateIso(toIsoDate(session.date))
     setSessionTime(session.time)
-    setRoom(session.room || 'Sala 1')
-    setCinema(session.cinema || 'CineRay')
+    setRoom(normalizeCinemaRoom(session.room))
+    setCinema(session.cinema || CINEMA_NAME)
     setCapacity(String(session.capacity || 40))
     setPrice(String(session.price || 28))
   }
@@ -452,23 +486,55 @@ function OrganizerDashboard() {
     { id: 'sessoes', label: 'Sessões' },
   ]
 
-  async function handleSearchTmdb(e?: FormEvent) {
-    e?.preventDefault()
-    setTmdbLoading(true)
-    setError(null)
-    try {
-      const data = await searchTmdbCatalog(tmdbQuery)
-      setTmdbResults(data.results)
-      if (data.results.length === 0) {
-        setSuccess(null)
-        setError('Nenhum filme encontrado na TMDb.')
-      }
-    } catch (err) {
-      setError(err instanceof AppApiError ? err.message : 'Falha ao buscar na TMDb.')
-    } finally {
+  useEffect(() => {
+    if (tab !== 'publicar') return
+
+    const q = tmdbQuery.trim()
+    if (q.length < 2) {
+      setTmdbResults([])
       setTmdbLoading(false)
+      setTmdbHint(q.length === 0 ? null : 'Digite pelo menos 2 letras.')
+      return
     }
-  }
+
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      setTmdbLoading(true)
+      setTmdbHint(null)
+      void searchTmdbCatalog(q)
+        .then((data) => {
+          if (cancelled) return
+          setTmdbResults(data.results)
+          setTmdbHint(
+            data.results.length === 0
+              ? 'Nenhum filme encontrado na TMDb.'
+              : null,
+          )
+        })
+        .catch((err) => {
+          if (cancelled) return
+          setTmdbResults([])
+          setTmdbHint(
+            err instanceof AppApiError
+              ? err.message
+              : 'Falha ao buscar na TMDb.',
+          )
+        })
+        .finally(() => {
+          if (!cancelled) setTmdbLoading(false)
+        })
+    }, 350)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [tab, tmdbQuery])
+
+  const selectedTmdbTitle = useMemo(
+    () => tmdbResults.find((item) => item.tmdbId === selectedTmdbId)?.title,
+    [tmdbResults, selectedTmdbId],
+  )
 
   async function handlePublishEvent(e: FormEvent) {
     e.preventDefault()
@@ -487,8 +553,8 @@ function OrganizerDashboard() {
         tmdbId: selectedTmdbId,
         sessionDate: toBrDate(eventDateIso),
         sessionTime: eventTime,
-        cinema: eventCinema,
-        room: eventRoom,
+        cinema: eventCinema.trim() || CINEMA_NAME,
+        room: normalizeCinemaRoom(eventRoom),
         capacity: Number(eventCapacity) || 40,
         price: Number(eventPrice) || 32,
       })
@@ -512,15 +578,11 @@ function OrganizerDashboard() {
           <h1 className="text-headline-lg-mobile text-on-surface md:text-headline-lg">
             Visão geral
           </h1>
-          <p className="text-body-md text-on-surface-variant">{user?.email}</p>
+          <p className="text-body-md text-on-surface-variant">
+            {user?.name} · {user?.email}
+          </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link
-            to="/"
-            className="rounded-lg border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
-          >
-            Ver catálogo
-          </Link>
           <button
             type="button"
             onClick={() => void logout()}
@@ -564,23 +626,30 @@ function OrganizerDashboard() {
           <section className="glass-card space-y-4 rounded-xl p-card-padding">
             <h2 className="text-headline-md text-on-surface">Catálogo TMDb</h2>
             <p className="text-body-md text-on-surface-variant">
-              Busque um filme na API externa e publique com data, local, capacidade e preço.
+              Digite o nome do filme. A lista atualiza sozinha; escolha um título
+              e preencha data, local, capacidade e preço.
             </p>
-            <form onSubmit={(e) => void handleSearchTmdb(e)} className="flex gap-2">
+            <div className="relative">
               <input
-                className="glass-input flex-1 rounded-lg px-4 py-3 text-body-md"
+                className="glass-input w-full rounded-lg px-4 py-3 pr-12 text-body-md"
                 placeholder="Ex.: Duna, Batman…"
                 value={tmdbQuery}
-                onChange={(e) => setTmdbQuery(e.target.value)}
+                onChange={(e) => {
+                  setTmdbQuery(e.target.value)
+                  setSelectedTmdbId(null)
+                }}
+                autoComplete="off"
+                aria-label="Buscar filme na TMDb"
               />
-              <button
-                type="submit"
-                disabled={tmdbLoading}
-                className="rounded-lg bg-primary-container px-5 py-3 text-label-md text-white disabled:opacity-50"
-              >
-                {tmdbLoading ? 'Buscando…' : 'Buscar'}
-              </button>
-            </form>
+              {tmdbLoading && (
+                <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-caption text-on-surface-variant">
+                  …
+                </span>
+              )}
+            </div>
+            {tmdbHint && (
+              <p className="text-caption text-on-surface-variant">{tmdbHint}</p>
+            )}
             <ul className="max-h-[420px] space-y-2 overflow-y-auto">
               {tmdbResults.map((item) => (
                 <li key={item.tmdbId}>
@@ -600,8 +669,10 @@ function OrganizerDashboard() {
                     )}
                     <div className="min-w-0">
                       <p className="truncate text-body-md text-on-surface">{item.title}</p>
-                      <p className="text-caption text-on-surface-variant">
-                        {item.releaseDate || 's/d'} • ★ {item.rating.toFixed(1)}
+                      <p className="truncate text-caption text-on-surface-variant">
+                        <span className="whitespace-nowrap">
+                          {item.releaseDate || 's/d'} • ★ {item.rating.toFixed(1)}
+                        </span>
                       </p>
                     </div>
                   </button>
@@ -616,7 +687,10 @@ function OrganizerDashboard() {
           >
             <h2 className="text-headline-md text-on-surface">Dados do evento</h2>
             <p className="text-caption text-on-surface-variant">
-              Selecionado: {selectedTmdbId ? `TMDb #${selectedTmdbId}` : 'nenhum'}
+              Selecionado:{' '}
+              {selectedTmdbId
+                ? selectedTmdbTitle || `TMDb #${selectedTmdbId}`
+                : 'nenhum'}
             </p>
             <label className="block space-y-1">
               <span className="text-label-md text-on-surface-variant">Data *</span>
@@ -646,14 +720,7 @@ function OrganizerDashboard() {
                 className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
               />
             </label>
-            <label className="block space-y-1">
-              <span className="text-label-md text-on-surface-variant">Sala</span>
-              <input
-                value={eventRoom}
-                onChange={(e) => setEventRoom(e.target.value)}
-                className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
-              />
-            </label>
+            <RoomPicker value={eventRoom} onChange={setEventRoom} />
             <div className="grid grid-cols-2 gap-3">
               <label className="block space-y-1">
                 <span className="text-label-md text-on-surface-variant">Capacidade</span>
@@ -689,10 +756,11 @@ function OrganizerDashboard() {
       )}
 
       {tab === 'filmes' && (
-        <div className="grid gap-8 lg:grid-cols-2">
+        <div className="grid items-start gap-8 lg:grid-cols-2">
           <form
+            id="organizer-movie-form"
             onSubmit={(e) => void handleSaveMovie(e)}
-            className="glass-card space-y-4 rounded-xl p-card-padding"
+            className="glass-card h-fit space-y-4 rounded-xl p-card-padding"
             noValidate
           >
             <h2 className="text-headline-md text-on-surface">
@@ -738,9 +806,27 @@ function OrganizerDashboard() {
                 value={form.poster}
                 onChange={(e) => {
                   setFormHint(null)
-                  setForm((prev) => ({ ...prev, poster: e.target.value }))
+                  setPosterBroken(false)
+                  const next = e.target.value
+                  setForm((prev) => ({
+                    ...prev,
+                    poster: next,
+                    hero: next,
+                    backdrop: next,
+                  }))
                 }}
-                placeholder="https://..."
+                onBlur={() => {
+                  const normalized = normalizePosterUrl(form.poster)
+                  if (normalized !== form.poster) {
+                    setForm((prev) => ({
+                      ...prev,
+                      poster: normalized,
+                      hero: normalized,
+                      backdrop: normalized,
+                    }))
+                  }
+                }}
+                placeholder="https://image.tmdb.org/t/p/w500/..."
                 required
               />
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -751,6 +837,7 @@ function OrganizerDashboard() {
                     title={item.label}
                     onClick={() => {
                       setFormHint(null)
+                      setPosterBroken(false)
                       setForm((prev) => ({
                         ...prev,
                         poster: item.url,
@@ -764,21 +851,42 @@ function OrganizerDashboard() {
                         : 'border-transparent opacity-80 hover:opacity-100'
                     }`}
                   >
-                    <img src={item.url} alt={item.label} className="aspect-[2/3] w-full object-cover" />
+                    <img
+                      src={item.url}
+                      alt={item.label}
+                      className="aspect-[2/3] w-full bg-white/5 object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        const el = e.currentTarget
+                        el.style.visibility = 'hidden'
+                        el.parentElement?.classList.add('bg-white/10')
+                      }}
+                    />
                   </button>
                 ))}
               </div>
               {form.poster && (
                 <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
-                  <p className="px-3 py-2 text-caption text-on-surface-variant">Pré-visualização</p>
-                  <img
-                    src={form.poster}
-                    alt="Prévia do poster"
-                    className="max-h-72 w-full object-cover"
-                    onError={(e) => {
-                      ;(e.target as HTMLImageElement).style.opacity = '0.3'
-                    }}
-                  />
+                  <p className="px-3 py-2 text-caption text-on-surface-variant">
+                    Pré-visualização
+                  </p>
+                  {posterBroken ? (
+                    <div className="flex min-h-40 flex-col items-center justify-center gap-2 bg-white/5 px-4 py-8 text-center">
+                      <Icon name="broken_image" className="text-[32px] text-on-surface-variant" />
+                      <p className="text-caption text-primary">
+                        Poster não carregou. Escolha outro da galeria ou cole uma URL válida.
+                      </p>
+                    </div>
+                  ) : (
+                    <img
+                      key={form.poster}
+                      src={normalizePosterUrl(form.poster)}
+                      alt="Prévia do poster"
+                      className="max-h-72 w-full object-cover"
+                      onError={() => setPosterBroken(true)}
+                      onLoad={() => setPosterBroken(false)}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -806,6 +914,7 @@ function OrganizerDashboard() {
                     setEditingId(null)
                     setForm(emptyMovie)
                     setFormHint(null)
+                    setPosterBroken(false)
                   }}
                   className="rounded-lg border border-white/15 px-6 py-3 text-label-md text-on-surface-variant"
                 >
@@ -831,69 +940,82 @@ function OrganizerDashboard() {
                     <article
                       key={movie.id}
                       className={`glass-card rounded-xl border p-4 ${
-                        selectedId === movie.id ? 'border-primary/50' : 'border-white/10'
+                        editingId === movie.id
+                          ? 'border-primary/60 bg-primary/5'
+                          : selectedId === movie.id
+                            ? 'border-primary/50'
+                            : 'border-white/10'
                       } ${!active ? 'opacity-70' : ''}`}
                     >
                       <div className="flex gap-3">
                         <img
                           src={movie.poster}
                           alt=""
-                          className="h-20 w-14 rounded object-cover"
+                          className="h-24 w-16 shrink-0 rounded-lg object-cover"
                         />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-body-lg text-on-surface">
-                              {movie.title}
-                            </h3>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-caption ${
-                                active
-                                  ? 'bg-emerald-400/15 text-emerald-300'
-                                  : 'bg-white/10 text-on-surface-variant'
-                              }`}
-                            >
-                              {active ? 'Ativo' : 'Inativo'}
-                            </span>
+                        <div className="min-w-0 flex-1 space-y-3">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="truncate text-body-lg text-on-surface">
+                                {movie.title}
+                              </h3>
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-caption ${
+                                  active
+                                    ? 'bg-emerald-400/15 text-emerald-300'
+                                    : 'bg-white/10 text-on-surface-variant'
+                                }`}
+                              >
+                                {active ? 'Ativo' : 'Inativo'}
+                              </span>
+                              {editingId === movie.id && (
+                                <span className="rounded-full bg-primary/20 px-2 py-0.5 text-caption text-primary">
+                                  Editando
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-caption text-on-surface-variant">
+                              {movie.genre} • {movie.runtime}
+                            </p>
                           </div>
-                          <p className="text-caption text-on-surface-variant">
-                            {movie.genre} • {movie.runtime}
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-2">
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEdit(movie)}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-primary-container px-3 py-2 text-caption text-white transition-colors hover:brightness-110"
+                            >
+                              <Icon name="edit" className="text-[16px]" />
+                              Editar
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
                                 setSelectedId(movie.id)
                                 setTab('sessoes')
                               }}
-                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-caption text-on-surface transition-colors hover:border-primary/40 hover:text-primary"
                             >
+                              <Icon name="schedule" className="text-[16px]" />
                               Sessões
                             </button>
                             <button
                               type="button"
-                              onClick={() => startEdit(movie)}
-                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => void handleToggleActive(movie)}
-                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-caption text-on-surface transition-colors hover:border-primary/40 hover:text-primary"
                             >
+                              <Icon
+                                name={active ? 'visibility_off' : 'visibility'}
+                                className="text-[16px]"
+                              />
                               {active ? 'Desativar' : 'Ativar'}
                             </button>
-                            <Link
-                              to={`/filme/${movie.id}`}
-                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
-                            >
-                              Ver
-                            </Link>
                             <button
                               type="button"
                               onClick={() => void handleDeleteMovie(movie.id)}
-                              className="rounded-lg border border-primary/30 px-3 py-1 text-caption text-primary"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-caption text-primary transition-colors hover:bg-primary/20"
                             >
+                              <Icon name="delete" className="text-[16px]" />
                               Excluir
                             </button>
                           </div>
@@ -968,15 +1090,8 @@ function OrganizerDashboard() {
                       required
                     />
                   </label>
-                  <label className="space-y-1">
-                    <span className="text-label-md text-on-surface-variant">Sala</span>
-                    <input
-                      type="text"
-                      value={room}
-                      onChange={(e) => setRoom(e.target.value)}
-                      className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
-                      placeholder="Sala 1"
-                    />
+                  <label className="space-y-1 sm:col-span-3">
+                    <RoomPicker value={room} onChange={setRoom} />
                   </label>
                   <label className="space-y-1">
                     <span className="text-label-md text-on-surface-variant">Cinema</span>
@@ -1024,7 +1139,7 @@ function OrganizerDashboard() {
                         setEditingSessionId(null)
                         setSessionDateIso('')
                         setSessionTime('20:00')
-                        setRoom('Sala 1')
+                        setRoom(normalizeCinemaRoom('Sala 1'))
                       }}
                       className="rounded-lg border border-white/15 px-4 py-2 text-label-md text-on-surface-variant sm:col-span-4"
                     >
@@ -1273,7 +1388,7 @@ function OrganizerDashboard() {
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-fade-in"
           role="dialog"
           aria-modal="true"
-          aria-label={`Mapa de assentos — ${seatMapView.movieTitle}`}
+          aria-label={`Mapa de assentos: ${seatMapView.movieTitle}`}
           onClick={closeSeatMap}
         >
           <div
@@ -1365,7 +1480,7 @@ function OrganizerDashboard() {
                                     ? 'border border-white/20 bg-surface-container'
                                     : 'bg-surface-variant opacity-40'
                                 }`}
-                                title={`${seat.name} — ${
+                                title={`${seat.name}: ${
                                   seat.isAvailable ? 'livre' : 'ocupado'
                                 }`}
                                 aria-label={`Assento ${seat.name}, ${

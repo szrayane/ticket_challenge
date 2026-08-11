@@ -186,8 +186,8 @@ export function MoviePage() {
               <span className="h-1 w-1 rounded-full bg-surface-variant" />
               <span>{movie.runtime}</span>
               <span className="h-1 w-1 rounded-full bg-surface-variant" />
-              <span className="inline-flex items-center text-primary">
-                <Icon name="star" className="mr-1 text-[16px]" filled />
+              <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-primary">
+                <Icon name="star" className="text-[16px]" filled />
                 {movie.rating.toFixed(1)}
               </span>
               {movie.format && (
@@ -214,16 +214,16 @@ export function MoviePage() {
               </div>
             )}
             <p className="text-body-lg text-on-surface-variant">{movie.synopsis}</p>
-            <div className="flex flex-wrap gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-start gap-3 pt-2">
               {sessions.length > 0 ? (
                 <Link
                   to={`/seats/${movie.id}`}
-                  className="rounded-lg bg-neon px-8 py-4 text-label-md text-white uppercase transition-all hover:brightness-110"
+                  className="rounded-lg bg-neon px-8 py-4 text-center text-label-md text-white uppercase transition-all hover:brightness-110"
                 >
                   Escolher assentos
                 </Link>
               ) : (
-                <span className="rounded-lg border border-white/15 px-8 py-4 text-label-md text-on-surface-variant uppercase">
+                <span className="rounded-lg border border-white/15 px-8 py-4 text-center text-label-md text-on-surface-variant uppercase">
                   Sessões esgotadas
                 </span>
               )}
@@ -231,7 +231,7 @@ export function MoviePage() {
                 <button
                   type="button"
                   onClick={() => setTrailerOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-8 py-4 text-label-md text-on-surface uppercase transition-colors hover:border-primary/40 hover:text-primary"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/20 px-8 py-4 text-label-md text-on-surface uppercase transition-colors hover:border-primary/40 hover:text-primary"
                 >
                   <Icon name="play_circle" />
                   Trailer

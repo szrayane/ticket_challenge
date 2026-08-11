@@ -38,9 +38,9 @@ router.get(
 
 router.use(requireAuth)
 router.get('/', listMyTickets)
-router.post('/', createMyTickets)
-router.post('/transfer/:token/claim', claimTransfer)
-router.post('/:id/transfer', createTransfer)
-router.post('/:id/cancel', cancelMyTicket)
+router.post('/', requireRole('cliente'), createMyTickets)
+router.post('/transfer/:token/claim', requireRole('cliente'), claimTransfer)
+router.post('/:id/transfer', requireRole('cliente'), createTransfer)
+router.post('/:id/cancel', requireRole('cliente'), cancelMyTicket)
 
 export default router

@@ -4,6 +4,7 @@ services:
     runtime: node
     rootDir: backend
     buildCommand: npm install
+    # initDb aplica migrations pendentes no boot; seed demo pode ser desligado com DISABLE_SEED=1
     startCommand: npm start
     envVars:
       - key: NODE_ENV

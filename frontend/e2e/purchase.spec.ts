@@ -3,8 +3,8 @@ import { expect, test } from '@playwright/test'
 test.describe('fluxo de compra', () => {
   test('cliente compra assento com Pix e chega no ingresso', async ({ page }) => {
     await page.goto('/login')
-    await page.getByLabel('Email').fill('cliente1@cineray.com')
-    await page.getByLabel('Senha').fill('cli1234')
+    await page.getByRole('option', { name: /Bruno Cliente/i }).click()
+    await page.getByLabel('Senha').fill('cineray')
     await page.locator('form button[type="submit"]').click()
 
     await expect(page).toHaveURL(/\/conta|\/$/, { timeout: 30_000 })
@@ -32,10 +32,9 @@ test.describe('fluxo de compra', () => {
     await page.getByRole('button', { name: /Ir para o pagamento/i }).click()
     await expect(page).toHaveURL(/\/checkout/)
 
-    await page.getByRole('button', { name: 'Preencher dados de teste' }).click()
     await page.locator('label').filter({ hasText: 'Pix / QR Code' }).click()
     await page.getByRole('button', { name: 'Liberar QR Code Pix' }).click()
-    await page.getByRole('button', { name: /Já paguei — gerar ingresso/i }).click()
+    await page.getByRole('button', { name: /Já paguei\. Gerar ingresso/i }).click()
 
     await expect(page).toHaveURL(/\/success/, { timeout: 60_000 })
     await expect(page.getByText(/ingresso|QR/i).first()).toBeVisible()

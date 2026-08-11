@@ -40,7 +40,7 @@ services:
 
   web:
     build:
-      context: .
+      context: ./frontend
       args:
         VITE_APP_API_URL: /api
     ports:

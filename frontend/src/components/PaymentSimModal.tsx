@@ -79,7 +79,7 @@ export function PaymentSimModal({
                   {detail ? ` · ${detail}` : ''}.
                 </p>
                 <p className="text-caption text-on-surface-variant/80">
-                  Sem gateway real — só após aprovar geramos o QR do ingresso.
+                  Sem gateway real. Só após aprovar geramos o QR do ingresso.
                 </p>
               </div>
             </>

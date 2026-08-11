@@ -9,7 +9,7 @@ Objetivo: front na **Vercel** (+1 do desafio) e API no **Render** (Express + MyS
 3. **New → Web Service** (ou Blueprint com `render.yaml`):
    - Root Directory: `backend`
    - Build: `npm install`
-   - Start: `npm start`
+   - Start: `npm start` (no boot o `initDb` aplica migrations Knex pendentes)
 4. Environment:
    - `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`
    - `TMDB_API_KEY`
@@ -27,7 +27,7 @@ Teste: `https://SUA-API/health` → `{"status":"ok"}`
 
 1. [vercel.com](https://vercel.com) → Import do GitHub
 2. Framework: Vite
-3. Root: `.` (raiz do monorepo)
+3. Root Directory: `frontend`
 4. Env:
    - `VITE_APP_API_URL=https://SUA-API.onrender.com/api` (URL absoluta em produção)
 5. Deploy
@@ -43,8 +43,8 @@ No README do formulário Elite Dev, cole:
 
 ## 3) Local vs produção
 
-| Variável | Local (`backend/.env` / raiz `.env`) | Produção |
-|----------|--------------------------------------|----------|
+| Variável | Local (`backend/.env` / `frontend/.env`) | Produção |
+|----------|------------------------------------------|----------|
 | `APP_PUBLIC_URL` | `http://localhost:5173` | `https://seu-app.vercel.app` |
 | `VITE_APP_API_URL` | `/api` (proxy Vite) | `https://sua-api.onrender.com/api` |
 | `TICKET_QR_SECRET` | qualquer valor longo no `.env` | aleatório forte (obrigatório) |
@@ -53,7 +53,7 @@ Links de transferir/compartilhar usam `window.location.origin` — no ar já sae
 
 ## 4) Checklist pós-deploy
 
-- [ ] Login com `cliente1@cineray.com` / `cli1234`
+- [ ] Login com `cliente1@cineray.com` / `cineray`
 - [ ] Ver evento seed na home
 - [ ] Comprar assento e abrir QR (`CR2.…` cifrado)
 - [ ] Abrir link `/i/...`

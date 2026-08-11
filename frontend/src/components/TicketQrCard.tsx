@@ -77,7 +77,7 @@ export function TicketQrCard({
     try {
       await navigator.clipboard.writeText(ticket.qrPayload)
       setError(null)
-      setShareHint('Código copiado — cole na portaria para validar.')
+      setShareHint('Código copiado. Cole na portaria para validar.')
       window.setTimeout(() => setShareHint(null), 3000)
     } catch {
       setError('Não foi possível copiar. Selecione o código abaixo manualmente.')
@@ -369,9 +369,6 @@ export function TicketQrCard({
                 setError(message)
               }}
             />
-            <p className="break-all rounded-lg border border-white/10 bg-black/20 px-3 py-2 font-mono text-[11px] leading-relaxed text-on-surface-variant">
-              Token cifrado (AES-GCM): {ticket.qrPayload}
-            </p>
           </div>
         )}
 

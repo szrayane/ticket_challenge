@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { LoginForm, type AuthMode, type StaffRole } from '../components/LoginForm'
-import { roleHomePath } from '../components/RequireRole'
+import { staffSafeRedirect } from '../components/RequireRole'
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
@@ -15,8 +15,7 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   function resolveRedirect(role?: string) {
-    if (redirectParam) return redirectParam
-    return roleHomePath(role)
+    return staffSafeRedirect(role, redirectParam)
   }
 
   async function handleLogin({
@@ -110,14 +109,6 @@ export function LoginPage() {
         className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_rgba(143,61,82,0.22),_transparent_55%),linear-gradient(180deg,#121214_0%,#0c0c0d_100%)]"
         aria-hidden
       />
-      <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.07]"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.04) 2px, rgba(255,255,255,0.04) 3px)',
-        }}
-        aria-hidden
-      />
 
       <div className="relative z-10 flex w-full max-w-md animate-fade-up flex-col gap-6 rounded-xl border border-white/10 bg-surface-container p-card-padding">
         <div className="space-y-2 text-center">
@@ -129,7 +120,7 @@ export function LoginPage() {
           </h1>
           <p className="text-body-md text-on-surface-variant">
             {mode === 'register'
-              ? 'Cliente ou equipe — o perfil define para onde você vai.'
+              ? 'Cliente ou equipe: o perfil define para onde você vai.'
               : 'Um login para cliente, organizador e portaria.'}
           </p>
         </div>
@@ -146,30 +137,6 @@ export function LoginPage() {
           error={error}
           submitting={submitting}
         />
-
-        <details open className="rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3 text-left">
-          <summary className="cursor-pointer text-caption text-on-surface-variant hover:text-on-surface">
-            Outras contas
-          </summary>
-          <div className="mt-3 space-y-1 text-caption text-on-surface-variant">
-            <p>
-              <span className="text-on-surface">Organizador</span> —{' '}
-              organizador@cineray.com / org1234
-            </p>
-            <p>
-              <span className="text-on-surface">Cliente</span> — cliente1@cineray.com /
-              cli1234
-            </p>
-            <p>
-              <span className="text-on-surface">Cliente</span> — cliente2@cineray.com /
-              cli1234
-            </p>
-            <p>
-              <span className="text-on-surface">Portaria</span> — portaria@cineray.com /
-              porta1234
-            </p>
-          </div>
-        </details>
       </div>
     </main>
   )

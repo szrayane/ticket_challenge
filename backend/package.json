@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "migrate": "knex migrate:latest --knexfile knexfile.cjs",
+    "migrate:rollback": "knex migrate:rollback --knexfile knexfile.cjs",
+    "migrate:status": "knex migrate:status --knexfile knexfile.cjs",
     "test": "npm run test:unit && node tests/qr.test.js && node tests/tickets-flow.test.js && node tests/seats-lock.test.js",
     "test:unit": "node tests/auth.unit.test.js && node tests/showtimes.unit.test.js && node tests/tickets.unit.test.js && node tests/middleware.unit.test.js && node tests/qr.unit.test.js && node tests/secrets.unit.test.js"
   },
@@ -13,6 +16,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "knex": "^3.3.0",
     "mysql2": "^3.23.2",
     "ws": "^8.21.3"
   }
