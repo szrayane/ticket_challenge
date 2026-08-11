@@ -251,8 +251,6 @@ export function CheckoutPage() {
       throw error
     }
 
-    // CPF do perfil, se ainda não existir. Não sobrescreve o nome da conta
-    // com o titular do cartão de teste (ex.: MARIA SILVA).
     if (!user.cpf) {
       updateProfile({
         cpf: onlyDigits(cpf),
@@ -398,14 +396,14 @@ export function CheckoutPage() {
           Pagamento
         </h1>
 
-        <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-caption text-on-surface">
-          <Icon name="verified_user" className="text-primary" />
-          Conta: {user.email}
+        <div className="mb-2 flex min-w-0 items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-caption text-on-surface">
+          <Icon name="verified_user" className="shrink-0 text-primary" />
+          <span className="min-w-0 break-all">Conta: {user.email}</span>
         </div>
 
-        <div className="glass-card flex flex-col gap-6 rounded-xl p-card-padding">
-          <div className="flex gap-4">
-            <div className="h-36 w-24 shrink-0 overflow-hidden rounded-lg shadow-[0px_0px_10px_rgba(45,0,20,0.5)]">
+        <div className="glass-card flex flex-col gap-6 rounded-xl p-4 sm:p-card-padding">
+          <div className="flex min-w-0 gap-3 sm:gap-4">
+            <div className="h-28 w-20 shrink-0 overflow-hidden rounded-lg shadow-[0px_0px_10px_rgba(45,0,20,0.5)] sm:h-36 sm:w-24">
               <img
                 className="h-full w-full object-cover"
                 src={movie.poster}

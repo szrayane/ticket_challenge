@@ -34,8 +34,8 @@ export function MovieCard({ movie }: MovieCardProps) {
           </div>
         )}
       </div>
-      <div className="p-card-padding">
-        <h3 className="mb-1 truncate text-headline-md text-on-surface">{movie.title}</h3>
+      <div className="p-4 sm:p-card-padding">
+        <h3 className="mb-1 truncate text-lg font-semibold text-on-surface sm:text-headline-md">{movie.title}</h3>
         <div className="flex min-w-0 items-center gap-3 text-caption text-on-surface-variant">
           <span className="min-w-0 truncate">{movie.genre}</span>
           <span className="h-1 w-1 shrink-0 rounded-full bg-surface-variant" />
@@ -45,7 +45,7 @@ export function MovieCard({ movie }: MovieCardProps) {
           </span>
         </div>
         {next && (
-          <p className="mt-2 text-caption text-on-surface-variant">
+          <p className="mt-2 line-clamp-2 text-caption text-on-surface-variant">
             {next.date} • {next.time} • {next.cinema} • {next.room}
           </p>
         )}

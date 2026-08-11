@@ -15,7 +15,7 @@ const PAGES: Record<
   suporte: {
     title: 'Suporte',
     paragraphs: [
-      'Dúvidas sobre compra ou conta: em Minha conta você vê os QR Codes, cancela antes da sessão e atualiza seus dados.',
+      'Dúvidas sobre compra ou conta: em Minha conta você vê os QR Codes e pode cancelar antes da sessão.',
       'Se algo não carregar, atualize a página e tente de novo em alguns segundos.',
     ],
   },

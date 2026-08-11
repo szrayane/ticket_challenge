@@ -81,7 +81,6 @@ export async function appRequest<T>(
       throw new AppApiError(connectionErrorMessage(), 0)
     }
 
-    // Retries só no cold start do Render; 502/503 locais (ex.: TMDb) devem falhar rápido.
     if (
       RETRY_STATUSES.has(response.status) &&
       attempt < maxAttempts &&

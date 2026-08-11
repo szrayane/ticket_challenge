@@ -114,7 +114,6 @@ function money(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-/** Intensidade 0→1: verde (frio) → amarelo → vermelho (quente). */
 function heatSeatStyle(intensity: number): {
   backgroundColor: string
   color: string
@@ -631,7 +630,7 @@ function OrganizerDashboard() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1200px] px-5 py-section-gap md:px-container-margin">
+    <main className="mx-auto w-full min-w-0 max-w-[1200px] overflow-x-clip px-4 py-section-gap sm:px-5 md:px-container-margin">
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-caption uppercase tracking-wider text-on-surface-variant">
@@ -640,7 +639,7 @@ function OrganizerDashboard() {
           <h1 className="text-headline-lg-mobile text-on-surface md:text-headline-lg">
             Visão geral
           </h1>
-          <p className="text-body-md text-on-surface-variant">
+          <p className="break-all text-body-md text-on-surface-variant">
             {user?.name} · {user?.email}
           </p>
         </div>
@@ -655,19 +654,26 @@ function OrganizerDashboard() {
         </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2 rounded-full bg-white/5 p-1">
+      <div className="mb-6 flex gap-2 overflow-x-auto rounded-full bg-white/5 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => setTab(item.id)}
-            className={`rounded-full px-5 py-2.5 text-label-md transition-colors ${
+            className={`shrink-0 rounded-full px-4 py-2.5 text-caption transition-colors sm:px-5 sm:text-label-md ${
               tab === item.id
                 ? 'bg-primary text-white'
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            {item.label}
+            {item.id === 'publicar' ? (
+              <>
+                <span className="sm:hidden">Publicar</span>
+                <span className="hidden sm:inline">{item.label}</span>
+              </>
+            ) : (
+              item.label
+            )}
           </button>
         ))}
       </div>

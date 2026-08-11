@@ -41,7 +41,6 @@ export function staffSafeRedirect(
   return home
 }
 
-/** Bloqueia organizador/portaria no catálogo e fluxo de compra. */
 export function CatalogGuard() {
   const { bootstrapping, isAuthenticated, user } = useAuth()
 

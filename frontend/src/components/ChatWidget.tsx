@@ -24,8 +24,10 @@ const HOLDER_KEY = 'cineray.chat.holderKey'
 const SESSION_KEY = 'cineray.chat.sessionId'
 
 const QUICK_PROMPTS = [
+  'Ajuda',
   'Me recomenda um filme',
   'Quero comédia',
+  'Terror no CineRay Norte',
   'Quero comprar ingresso',
   'Cancelar meu ingresso',
 ]
@@ -175,10 +177,10 @@ export function ChatWidget() {
   }
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6">
+    <div className="pointer-events-none fixed inset-x-3 bottom-3 z-50 flex flex-col items-end gap-3 sm:inset-x-auto sm:bottom-6 sm:right-6">
       {open && (
         <section
-          className="pointer-events-auto flex h-[min(640px,78vh)] w-[min(400px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-outline-variant/40 bg-surface-container-low shadow-[0_20px_50px_rgba(0,0,0,0.45)]"
+          className="pointer-events-auto flex h-[min(640px,72dvh)] w-full max-w-[400px] flex-col overflow-hidden rounded-2xl border border-outline-variant/40 bg-surface-container-low shadow-[0_20px_50px_rgba(0,0,0,0.45)] sm:w-[min(400px,calc(100vw-3rem))]"
           aria-label="Assistente CineRay"
         >
           <header className="flex items-center justify-between gap-3 border-b border-outline-variant/30 bg-surface-container px-4 py-3">
@@ -295,7 +297,7 @@ export function ChatWidget() {
               value={input}
               onChange={(event) => setInput(event.target.value)}
               rows={1}
-              placeholder="Ex.: quero terror, 2 assentos…"
+              placeholder="Ex.: terror no CineRay Norte…"
               className="max-h-24 min-h-[40px] flex-1 resize-none rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:border-primary focus:outline-none"
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && !event.shiftKey) {
@@ -329,13 +331,19 @@ export function ChatWidget() {
 }
 
 function cleanChatText(content: string, hasUi: boolean) {
-  const lines = String(content || '').split('\n')
+  const lines = String(content || '')
+    .replace(/<function\s*=\s*[a-z_]+>\s*\{[\s\S]*?\}\s*<\/function>/gi, '')
+    .replace(/<function\s*=\s*[a-z_]+>\s*\{[^<]*\}?/gi, '')
+    .replace(/<\/?function[^>]*>/gi, '')
+    .replace(/\b(tkt_|mov_|st_)[a-z0-9]+\b/gi, '')
+    .split('\n')
   const kept = lines.filter((line) => {
     const t = line.trim()
     if (!t) return true
     if ((t.match(/\|/g) || []).length >= 2) return false
     if (/^\|?\s*-{3,}/.test(t)) return false
     if (/^mov_[a-z0-9]+$/i.test(t)) return false
+    if (/^(cancel_ticket|list_my_tickets|search_movies)\b/i.test(t)) return false
     return true
   })
   let text = kept
@@ -344,6 +352,7 @@ function cleanChatText(content: string, hasUi: boolean) {
     .replace(/\*\*/g, '')
     .replace(/`+/g, '')
     .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
     .trim()
 
   if (!text && hasUi) {
@@ -407,8 +416,11 @@ function ChatUi({
               </span>
               <span className="block truncate text-[11px] text-on-surface-variant">
                 {movie.genre || 'Catálogo'}
+                {movie.nextSession?.cinema
+                  ? ` · ${movie.nextSession.cinema}`
+                  : ''}
                 {movie.nextSession
-                  ? ` · ${movie.nextSession.date} ${movie.nextSession.time}`
+                  ? ` · ${movie.nextSession.date}${movie.nextSession.time ? ` ${movie.nextSession.time}` : ''}`
                   : ''}
               </span>
             </span>
@@ -430,11 +442,13 @@ function ChatUi({
             type="button"
             disabled={Boolean(busyKey)}
             onClick={() => onPickShowtime(session.id)}
-            className="flex w-full items-center justify-between gap-2 rounded-lg border border-outline-variant/30 bg-surface-container-lowest/70 px-2.5 py-2 text-left text-xs hover:border-primary/45 disabled:opacity-60"
+            className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-outline-variant/30 bg-surface-container-lowest/70 px-2.5 py-2 text-left text-xs hover:border-primary/45 disabled:opacity-60"
           >
-            <span>
-              {session.date} · {session.time}
-              <span className="mt-0.5 block text-[10px] text-on-surface-variant">
+            <span className="min-w-0">
+              <span className="block truncate">
+                {session.date} · {session.time}
+              </span>
+              <span className="mt-0.5 block truncate text-[10px] text-on-surface-variant">
                 {session.cinema} · {session.room}
               </span>
             </span>
@@ -508,6 +522,11 @@ function ChatUi({
     }
     return (
       <div className="mt-2 space-y-2">
+        <p className="text-[11px] text-on-surface-variant">
+          {block.tickets.length > 1
+            ? 'Cancele um por vez — toque no ingresso desejado.'
+            : 'Toque em Cancelar se quiser desistir deste ingresso.'}
+        </p>
         {block.tickets.map((ticket) => {
           const busy = busyKey === `cancel_${ticket.id}`
           return (
@@ -519,8 +538,12 @@ function ChatUi({
                 {ticket.movieTitle}
               </p>
               <p className="mt-0.5 text-[11px] text-on-surface-variant">
-                {ticket.sessionDate} {ticket.sessionTime} · {ticket.seatLabel} ·{' '}
+                {ticket.sessionDate} {ticket.sessionTime} · Assento{' '}
+                {ticket.seatLabel}
+              </p>
+              <p className="text-[10px] text-on-surface-variant">
                 {ticket.cinema}
+                {ticket.room ? ` · ${ticket.room}` : ''}
               </p>
               {ticket.cancellable !== false && (
                 <button
@@ -529,7 +552,7 @@ function ChatUi({
                   onClick={() => onCancelTicket(ticket.id)}
                   className="mt-2 w-full rounded-lg border border-error/40 py-1.5 text-xs text-error hover:bg-error-container/20 disabled:opacity-50"
                 >
-                  {busy ? 'Cancelando…' : 'Cancelar ingresso'}
+                  {busy ? 'Cancelando…' : 'Cancelar este ingresso'}
                 </button>
               )}
             </div>

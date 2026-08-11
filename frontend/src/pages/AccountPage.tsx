@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Icon } from '../components/Icon'
-import { PasswordChangeForm } from '../components/PasswordChangeForm'
-import { ProfileEditForm } from '../components/ProfileEditForm'
 import { TicketOrderCard } from '../components/TicketOrderCard'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -10,16 +8,15 @@ import {
   splitTicketsByRelevance,
 } from '../lib/tickets'
 
-type AccountTab = 'ingressos' | 'historico' | 'dados'
+type AccountTab = 'ingressos' | 'historico'
 
 const ACCOUNT_TABS: { id: AccountTab; label: string; icon: string }[] = [
   { id: 'ingressos', label: 'Ingressos', icon: 'qr_code_2' },
   { id: 'historico', label: 'Histórico', icon: 'history' },
-  { id: 'dados', label: 'Dados', icon: 'manage_accounts' },
 ]
 
 function parseAccountTab(value: string | null): AccountTab {
-  if (value === 'dados' || value === 'historico') return value
+  if (value === 'historico') return value
   return 'ingressos'
 }
 
@@ -33,8 +30,6 @@ export function AccountPage() {
     user,
     userTickets,
     logout,
-    updateProfile,
-    changePassword,
     cancelTicket,
     bootstrapping,
   } = useAuth()
@@ -74,16 +69,16 @@ export function AccountPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-[960px] flex-grow flex-col gap-8 px-5 py-section-gap md:px-container-margin">
-      <div className="glass-card flex flex-col gap-4 rounded-xl p-card-padding sm:flex-row sm:items-center sm:justify-between">
+    <main className="mx-auto flex w-full max-w-[960px] min-w-0 flex-grow flex-col gap-6 overflow-x-clip px-4 py-section-gap sm:gap-8 sm:px-5 md:px-container-margin">
+      <div className="glass-card flex flex-col gap-4 rounded-xl p-4 sm:flex-row sm:items-center sm:justify-between sm:p-card-padding">
         <div>
           <p className="text-caption tracking-wider text-on-surface-variant uppercase">
             Minha conta
           </p>
-          <h1 className="text-headline-lg-mobile text-on-surface md:text-headline-lg">
+          <h1 className="break-words text-headline-lg-mobile text-on-surface [overflow-wrap:anywhere] md:text-headline-lg">
             {user.name}
           </h1>
-          <p className="text-body-md text-on-surface-variant">{user.email}</p>
+          <p className="break-all text-body-md text-on-surface-variant">{user.email}</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Link
@@ -185,13 +180,6 @@ export function AccountPage() {
             </div>
           )}
         </section>
-      )}
-
-      {tab === 'dados' && (
-        <div className="space-y-6">
-          <ProfileEditForm user={user} onSave={updateProfile} />
-          <PasswordChangeForm onChangePassword={changePassword} />
-        </div>
       )}
     </main>
   )

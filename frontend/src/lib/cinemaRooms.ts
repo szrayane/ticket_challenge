@@ -1,6 +1,5 @@
 export const CINEMA_NAME = 'CineRay Centro'
 
-/** Salas do cinema (ex.: 10 salas). */
 export const CINEMA_ROOMS = [
   { id: 'Sala 1', number: 1, tone: 'rose' },
   { id: 'Sala 2', number: 2, tone: 'orange' },

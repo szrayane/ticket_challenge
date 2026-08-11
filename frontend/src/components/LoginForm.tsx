@@ -321,7 +321,7 @@ export function LoginForm({
         </div>
         {mode === 'login' && (
           <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-caption text-on-surface-variant">
-            A senha já está preenchida e é a mesma para todas as contas ({DEMO_PASSWORD}).
+            A senha já está preenchida e é a mesma para as 3 contas ({DEMO_PASSWORD}).
           </p>
         )}
       </div>

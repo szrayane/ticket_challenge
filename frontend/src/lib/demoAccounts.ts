@@ -9,13 +9,6 @@ export const DEMO_ACCOUNTS = [
     icon: 'person',
   },
   {
-    email: 'cliente2@cineray.com',
-    name: 'Carla Cliente',
-    role: 'cliente' as const,
-    roleLabel: 'Cliente',
-    icon: 'person',
-  },
-  {
     email: 'organizador@cineray.com',
     name: 'Ana Organizadora',
     role: 'organizador' as const,
@@ -30,3 +23,5 @@ export const DEMO_ACCOUNTS = [
     icon: 'qr_code_2',
   },
 ] as const
+
+export const DEMO_CLIENT = DEMO_ACCOUNTS[0]
