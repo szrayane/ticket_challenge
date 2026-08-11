@@ -56,6 +56,7 @@ interface AuthContextValue {
     options?: { holderKey?: string },
   ) => Promise<CustomerTicket[]>
   cancelTicket: (ticketId: string) => Promise<void>
+  refreshTickets: () => Promise<void>
   userTickets: CustomerTicket[]
 }
 
@@ -175,6 +176,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const refreshTickets = useCallback(async () => {
+    if (!getAuthToken()) {
+      setTickets([])
+      return
+    }
+    const myTickets = await fetchMyTickets()
+    setTickets(myTickets)
+  }, [])
+
   const userTickets = useMemo(() => {
     if (!user) return []
     return tickets.filter((ticket) => ticket.userId === user.id)
@@ -194,6 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       changePassword: changePasswordFn,
       addTickets,
       cancelTicket,
+      refreshTickets,
       userTickets,
     }),
     [
@@ -208,6 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       changePasswordFn,
       addTickets,
       cancelTicket,
+      refreshTickets,
       userTickets,
     ],
   )

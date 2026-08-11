@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { ChatWidget } from './ChatWidget'
 import { Footer } from './Footer'
 import { Navbar } from './Navbar'
 
@@ -22,6 +23,7 @@ export function Layout({
         <Outlet />
       </div>
       {!hideFooter && <Footer compact={compactFooter} />}
+      <ChatWidget />
     </div>
   )
 }

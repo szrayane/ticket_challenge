@@ -22,6 +22,8 @@ services:
       context: ./backend
     ports:
       - "3333:3333"
+    env_file:
+      - ./backend/.env
     environment:
       PORT: 3333
       NODE_ENV: development
@@ -33,6 +35,8 @@ services:
       MYSQL_USER: cineray
       MYSQL_PASSWORD: cineray
       MYSQL_DATABASE: cineray
+      APP_PUBLIC_URL: http://localhost:8080
+      # GROQ_API_KEY vem do env_file (backend/.env)
     depends_on:
       mysql:
         condition: service_healthy
