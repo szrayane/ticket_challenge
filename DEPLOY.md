@@ -27,7 +27,9 @@ Teste: `https://SUA-API/health` → `{"status":"ok"}`
 
 1. [vercel.com](https://vercel.com) → Import do GitHub
 2. Framework: Vite
-3. Root Directory: `frontend`
+3. Root Directory: `.` (raiz) **ou** `frontend`
+   - Na raiz, o `vercel.json` já aponta install/build/output para `frontend/`
+   - Se usar Root Directory `frontend`, o build usa o `package.json` do front direto
 4. Env:
    - `VITE_APP_API_URL=https://SUA-API.onrender.com/api` (URL absoluta em produção)
 5. Deploy
