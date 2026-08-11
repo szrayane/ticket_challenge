@@ -41,7 +41,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_APP_API_URL: https://cinerar-api.onrender.com/api
+          VITE_APP_API_URL: https://cineray-api.fly.dev/api
 
   backend:
     name: Backend (unit tests)

@@ -12,42 +12,30 @@ concurrency:
 permissions:
   contents: read
 
-jobs:
-  render-redeploy:
-    name: Redeploy Render (opcional)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Render deploy hook
-        env:
-          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-        run: |
-          if [ -z "$HOOK" ]; then
-            echo "Secret RENDER_DEPLOY_HOOK não configurado — pulando (ok)."
-            exit 0
-          fi
-          curl -fsS -X POST "$HOOK"
-          echo "Render deploy hook disparado"
+env:
+  API_URL: https://cineray-api.fly.dev
+  FRONT_URL: https://ticket-challenge.vercel.app
 
+jobs:
   verify-production:
     name: Verificar produção
     runs-on: ubuntu-latest
-    needs: [render-redeploy]
     steps:
-      - name: Aguardar deploy (Vercel/Render)
-        run: sleep 60
+      - name: Aguardar deploy (Vercel/Fly)
+        run: sleep 45
 
-      - name: Health check API (Render)
+      - name: Health check API (Fly)
         run: |
           set -e
           for i in $(seq 1 12); do
-            code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 90 \
-              https://cinerar-api.onrender.com/health || true)
+            code=$(curl -sS -o /tmp/health.json -w "%{http_code}" --max-time 45 \
+              "$API_URL/health" || true)
             body=$(cat /tmp/health.json 2>/dev/null || true)
             echo "attempt=$i http=$code body=$body"
             if [ "$code" = "200" ] && echo "$body" | grep -q '"status":"ok"'; then
               exit 0
             fi
-            sleep 20
+            sleep 15
           done
           echo "API health check falhou"
           exit 1
@@ -55,15 +43,15 @@ jobs:
       - name: API catalog
         run: |
           set -e
-          for i in $(seq 1 12); do
-            code=$(curl -sS -o /tmp/movies.json -w "%{http_code}" --max-time 90 \
-              https://cinerar-api.onrender.com/api/movies || true)
+          for i in $(seq 1 10); do
+            code=$(curl -sS -o /tmp/movies.json -w "%{http_code}" --max-time 45 \
+              "$API_URL/api/movies" || true)
             body=$(cat /tmp/movies.json 2>/dev/null || true)
             echo "attempt=$i http=$code body=$(echo "$body" | head -c 200)"
             if [ "$code" = "200" ] && echo "$body" | grep -q '"movies"'; then
               exit 0
             fi
-            sleep 20
+            sleep 12
           done
           echo "API catalog check falhou"
           exit 1
@@ -72,13 +60,13 @@ jobs:
         run: |
           set -e
           for i in $(seq 1 8); do
-            code=$(curl -sS -o /tmp/front.html -w "%{http_code}" --max-time 60 \
-              https://ticket-challenge-qpel.vercel.app/ || true)
+            code=$(curl -sS -o /tmp/front.html -w "%{http_code}" --max-time 45 \
+              "$FRONT_URL/" || true)
             echo "attempt=$i front http=$code"
             if [ "$code" = "200" ] && grep -qi 'cineray\|root\|vite' /tmp/front.html; then
               exit 0
             fi
-            sleep 15
+            sleep 12
           done
           echo "Front check falhou"
           exit 1
