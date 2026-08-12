@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
-  POSTER_GALLERY,
   createEventFromTmdb,
-  createMovie,
   createShowtime,
-  deleteMovie,
   deleteShowtime,
   duplicateShowtime,
   fetchAdminMovies,
@@ -13,12 +10,9 @@ import {
   fetchOrganizerReport,
   fetchShowtimeOccupancy,
   searchTmdbCatalog,
-  setMovieActive,
   toBrDate,
   toIsoDate,
-  updateMovie,
   updateShowtime,
-  type MovieInput,
   type OrganizerReport,
   type ShowtimeOccupancy,
 } from '../api/catalog'
@@ -66,42 +60,7 @@ function groupSeatMapByRow(seats: SeatMapSeat[]) {
   }))
 }
 
-type TabId = 'dashboard' | 'publicar' | 'filmes' | 'sessoes'
-
-const emptyMovie: MovieInput = {
-  title: '',
-  synopsis: '',
-  genre: 'Drama',
-  rating: 8,
-  runtime: '120 min',
-  format: '2D',
-  badge: 'Local',
-  poster: '',
-  trailerUrl: '',
-}
-
-function fieldError(form: MovieInput) {
-  if (!form.title.trim()) return 'Informe o título do filme.'
-  if (!form.poster.trim()) return 'Informe a URL do poster ou escolha da galeria.'
-  const poster = normalizePosterUrl(form.poster)
-  if (!/^https?:\/\//i.test(poster)) {
-    return 'A URL do poster precisa começar com http:// ou https://.'
-  }
-  if (form.trailerUrl?.trim() && !/^https?:\/\//i.test(form.trailerUrl.trim())) {
-    return 'A URL do trailer precisa começar com http:// ou https://.'
-  }
-  return null
-}
-
-function normalizePosterUrl(raw: string) {
-  const value = String(raw || '').trim()
-  if (!value) return ''
-  if (/^https?:\/\//i.test(value)) return value
-  if (value.startsWith('/')) {
-    return `https://image.tmdb.org/t/p/w500${value}`
-  }
-  return value
-}
+type TabId = 'dashboard' | 'publicar' | 'sessoes'
 
 function sessionSortKey(session: { date: string; time: string }) {
   const match = String(session.date || '').match(/(\d{2})\/(\d{2})\/(\d{4})/)
@@ -162,15 +121,13 @@ function groupHeatmapByRow(
 function OrganizerDashboard() {
   const { user, logout } = useAuth()
   const [tab, setTab] = useState<TabId>('dashboard')
+  const [menuOpen, setMenuOpen] = useState(false)
   const [movies, setMovies] = useState<Movie[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<Session[]>([])
   const [occupancy, setOccupancy] = useState<Record<string, ShowtimeOccupancy>>({})
   const [report, setReport] = useState<OrganizerReport | null>(null)
   const [reportLive, setReportLive] = useState(false)
-  const [form, setForm] = useState<MovieInput>(emptyMovie)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [posterBroken, setPosterBroken] = useState(false)
   const [sessionDateIso, setSessionDateIso] = useState('')
   const [sessionTime, setSessionTime] = useState('20:00')
   const [room, setRoom] = useState<string>(normalizeCinemaRoom('Sala 1'))
@@ -178,7 +135,6 @@ function OrganizerDashboard() {
   const [price, setPrice] = useState('32')
   const [cinema, setCinema] = useState(CINEMA_NAME)
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
-  const [formHint, setFormHint] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -366,82 +322,21 @@ function OrganizerDashboard() {
     }
   }, [seatMapView?.sessionId])
 
-  async function handleSaveMovie(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    setSuccess(null)
-    const hint = fieldError(form)
-    setFormHint(hint)
-    if (hint) return
-    if (posterBroken) {
-      setFormHint(
-        'Poster não carregou. Escolha outro da galeria ou cole uma URL válida.',
-      )
-      return
-    }
-
-    try {
-      const payload = {
-        ...form,
-        poster: normalizePosterUrl(form.poster),
-        hero: normalizePosterUrl(form.hero || form.poster),
-        backdrop: normalizePosterUrl(form.backdrop || form.poster),
-      }
-      if (editingId) {
-        await updateMovie(editingId, payload)
-        setSuccess('Filme atualizado.')
-      } else {
-        const movie = await createMovie(payload)
-        setSuccess('Filme criado.')
-        setSelectedId(movie.id)
-      }
-      setForm(emptyMovie)
-      setEditingId(null)
-      setFormHint(null)
-      setPosterBroken(false)
-      await reloadMovies()
-    } catch (err) {
-      setError(err instanceof AppApiError ? err.message : 'Não foi possível salvar.')
-    }
-  }
-
-  async function handleToggleActive(movie: Movie) {
-    const next = !(movie.isActive !== false)
-    try {
-      await setMovieActive(movie.id, next)
-      await reloadMovies()
-      setSuccess(next ? 'Filme ativado no catálogo.' : 'Filme desativado do catálogo.')
-    } catch (err) {
-      setError(err instanceof AppApiError ? err.message : 'Falha ao alterar status.')
-    }
-  }
-
-  async function handleDeleteMovie(id: string) {
-    if (
-      !window.confirm(
-        'Excluir este filme? Se houver ingressos ativos, a exclusão será bloqueada. Use Desativar.',
-      )
-    ) {
-      return
-    }
-    try {
-      await deleteMovie(id)
-      if (selectedId === id) setSelectedId(null)
-      if (editingId === id) {
-        setEditingId(null)
-        setForm(emptyMovie)
-      }
-      await reloadMovies()
-      setSuccess('Filme removido.')
-    } catch (err) {
-      setError(err instanceof AppApiError ? err.message : 'Falha ao excluir.')
-    }
+  function resetSessionForm() {
+    setEditingSessionId(null)
+    setSessionDateIso('')
+    setSessionTime('20:00')
+    setRoom(normalizeCinemaRoom('Sala 1'))
+    setCinema(CINEMA_NAME)
+    setCapacity('40')
+    setPrice('32')
   }
 
   async function handleSaveSession(e: FormEvent) {
     e.preventDefault()
     if (!selectedId) return
     setError(null)
+    setSuccess(null)
     if (!sessionDateIso) {
       setError('Escolha a data da sessão.')
       return
@@ -466,12 +361,9 @@ function OrganizerDashboard() {
         setSuccess('Sessão atualizada.')
       } else {
         await createShowtime(selectedId, payload)
-        setSuccess('Sessão adicionada.')
+        setSuccess('Sessão criada.')
       }
-      setEditingSessionId(null)
-      setSessionDateIso('')
-      setSessionTime('20:00')
-      setRoom(normalizeCinemaRoom('Sala 1'))
+      resetSessionForm()
       await reloadSessions(selectedId)
       if (tab === 'dashboard') await reloadReport()
     } catch (err) {
@@ -496,38 +388,12 @@ function OrganizerDashboard() {
     }
     try {
       await deleteShowtime(id)
+      if (editingSessionId === id) resetSessionForm()
       if (selectedId) await reloadSessions(selectedId)
       setSuccess('Sessão removida.')
     } catch (err) {
       setError(err instanceof AppApiError ? err.message : 'Falha ao remover sessão.')
     }
-  }
-
-  function startEdit(movie: Movie) {
-    setTab('filmes')
-    setEditingId(movie.id)
-    setSelectedId(movie.id)
-    setFormHint(null)
-    setPosterBroken(false)
-    setForm({
-      title: movie.title,
-      synopsis: movie.synopsis,
-      genre: movie.genre,
-      rating: movie.rating,
-      runtime: movie.runtime,
-      format: movie.format || '',
-      badge: movie.badge || 'Local',
-      poster: movie.poster,
-      hero: movie.hero,
-      backdrop: movie.backdrop,
-      trailerUrl: movie.trailerUrl || '',
-    })
-    window.requestAnimationFrame(() => {
-      document.getElementById('organizer-movie-form')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
-    })
   }
 
   function startEditSession(session: Session) {
@@ -538,12 +404,19 @@ function OrganizerDashboard() {
     setCinema(session.cinema || CINEMA_NAME)
     setCapacity(String(session.capacity || 40))
     setPrice(String(session.price || 28))
+    setSuccess(null)
+    setError(null)
+    window.requestAnimationFrame(() => {
+      document.getElementById('organizer-session-form')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
   }
 
   const tabs: Array<{ id: TabId; label: string }> = [
     { id: 'dashboard', label: 'Visão geral' },
     { id: 'publicar', label: 'Publicar (TMDb)' },
-    { id: 'filmes', label: 'Filmes' },
     { id: 'sessoes', label: 'Sessões' },
   ]
 
@@ -639,18 +512,51 @@ function OrganizerDashboard() {
           <h1 className="text-headline-lg-mobile text-on-surface md:text-headline-lg">
             Visão geral
           </h1>
-          <p className="break-all text-body-md text-on-surface-variant">
-            {user?.name} · {user?.email}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="rounded-lg border border-white/15 px-5 py-2.5 text-label-md text-on-surface-variant"
-          >
-            Sair
-          </button>
+          <div className="relative mt-1 inline-block">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              className="flex max-w-full items-center gap-1.5 break-all text-left text-body-md text-on-surface-variant transition-colors hover:text-on-surface"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+            >
+              <span className="truncate">
+                {user?.name}
+                {user?.email ? ` · ${user.email}` : ''}
+              </span>
+              <Icon
+                name={menuOpen ? 'expand_less' : 'expand_more'}
+                className="shrink-0 text-[18px]"
+              />
+            </button>
+            {menuOpen && (
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-40 cursor-default"
+                  aria-label="Fechar menu"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div
+                  role="menu"
+                  className="absolute left-0 top-full z-50 mt-2 min-w-[160px] rounded-xl border border-white/10 bg-surface-container py-1 shadow-lg"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      void logout()
+                    }}
+                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-label-md text-on-surface transition-colors hover:bg-white/5"
+                  >
+                    <Icon name="logout" className="text-[18px]" />
+                    Sair
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -823,290 +729,16 @@ function OrganizerDashboard() {
         </div>
       )}
 
-      {tab === 'filmes' && (
-        <div className="grid items-start gap-8 lg:grid-cols-2">
-          <form
-            id="organizer-movie-form"
-            onSubmit={(e) => void handleSaveMovie(e)}
-            className="glass-card h-fit space-y-4 rounded-xl p-card-padding"
-            noValidate
-          >
-            <h2 className="text-headline-md text-on-surface">
-              {editingId ? 'Editar filme' : 'Novo filme'}
-            </h2>
-
-            {formHint && (
-              <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-body-md text-amber-200">
-                {formHint}
-              </p>
-            )}
-
-            {(
-              [
-                ['title', 'Título *'],
-                ['genre', 'Gênero'],
-                ['runtime', 'Duração'],
-                ['format', 'Formato'],
-                ['badge', 'Selo'],
-                ['trailerUrl', 'URL do trailer (YouTube)'],
-              ] as const
-            ).map(([key, label]) => (
-              <div key={key} className="space-y-1">
-                <label className="text-label-md text-on-surface-variant">{label}</label>
-                <input
-                  className="glass-input w-full rounded-lg px-4 py-3 text-body-md"
-                  value={String(form[key] ?? '')}
-                  onChange={(e) => {
-                    setFormHint(null)
-                    setForm((prev) => ({ ...prev, [key]: e.target.value }))
-                  }}
-                  required={key === 'title'}
-                />
-              </div>
-            ))}
-
-            <div className="space-y-2">
-              <label className="text-label-md text-on-surface-variant">
-                Poster * (URL ou galeria)
-              </label>
-              <input
-                className="glass-input w-full rounded-lg px-4 py-3 text-body-md"
-                value={form.poster}
-                onChange={(e) => {
-                  setFormHint(null)
-                  setPosterBroken(false)
-                  const next = e.target.value
-                  setForm((prev) => ({
-                    ...prev,
-                    poster: next,
-                    hero: next,
-                    backdrop: next,
-                  }))
-                }}
-                onBlur={() => {
-                  const normalized = normalizePosterUrl(form.poster)
-                  if (normalized !== form.poster) {
-                    setForm((prev) => ({
-                      ...prev,
-                      poster: normalized,
-                      hero: normalized,
-                      backdrop: normalized,
-                    }))
-                  }
-                }}
-                placeholder="https://image.tmdb.org/t/p/w500/..."
-                required
-              />
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                {POSTER_GALLERY.map((item) => (
-                  <button
-                    key={item.url}
-                    type="button"
-                    title={item.label}
-                    onClick={() => {
-                      setFormHint(null)
-                      setPosterBroken(false)
-                      setForm((prev) => ({
-                        ...prev,
-                        poster: item.url,
-                        hero: item.url,
-                        backdrop: item.url,
-                      }))
-                    }}
-                    className={`overflow-hidden rounded-lg border-2 ${
-                      form.poster === item.url
-                        ? 'border-primary'
-                        : 'border-transparent opacity-80 hover:opacity-100'
-                    }`}
-                  >
-                    <img
-                      src={item.url}
-                      alt={item.label}
-                      className="aspect-[2/3] w-full bg-white/5 object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        const el = e.currentTarget
-                        el.style.visibility = 'hidden'
-                        el.parentElement?.classList.add('bg-white/10')
-                      }}
-                    />
-                  </button>
-                ))}
-              </div>
-              {form.poster && (
-                <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
-                  <p className="px-3 py-2 text-caption text-on-surface-variant">
-                    Pré-visualização
-                  </p>
-                  {posterBroken ? (
-                    <div className="flex min-h-40 flex-col items-center justify-center gap-2 bg-white/5 px-4 py-8 text-center">
-                      <Icon name="broken_image" className="text-[32px] text-on-surface-variant" />
-                      <p className="text-caption text-primary">
-                        Poster não carregou. Escolha outro da galeria ou cole uma URL válida.
-                      </p>
-                    </div>
-                  ) : (
-                    <img
-                      key={form.poster}
-                      src={normalizePosterUrl(form.poster)}
-                      alt="Prévia do poster"
-                      className="max-h-72 w-full object-cover"
-                      onError={() => setPosterBroken(true)}
-                      onLoad={() => setPosterBroken(false)}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-label-md text-on-surface-variant">Sinopse</label>
-              <textarea
-                className="glass-input min-h-28 w-full rounded-lg px-4 py-3 text-body-md"
-                value={form.synopsis}
-                onChange={(e) => setForm((prev) => ({ ...prev, synopsis: e.target.value }))}
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                className="rounded-lg bg-primary-container px-6 py-3 text-label-md text-white"
-              >
-                {editingId ? 'Salvar alterações' : 'Criar filme'}
-              </button>
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(null)
-                    setForm(emptyMovie)
-                    setFormHint(null)
-                    setPosterBroken(false)
-                  }}
-                  className="rounded-lg border border-white/15 px-6 py-3 text-label-md text-on-surface-variant"
-                >
-                  Cancelar edição
-                </button>
-              )}
-            </div>
-          </form>
-
-          <div className="space-y-4">
-            <h2 className="text-headline-md text-on-surface">Catálogo</h2>
-            {loading ? (
-              <p className="text-body-md text-on-surface-variant">Carregando…</p>
-            ) : movies.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-white/15 p-6 text-body-md text-on-surface-variant">
-                Nenhum filme no catálogo ainda. Publique o primeiro ao lado.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {movies.map((movie) => {
-                  const active = movie.isActive !== false
-                  return (
-                    <article
-                      key={movie.id}
-                      className={`glass-card rounded-xl border p-4 ${
-                        editingId === movie.id
-                          ? 'border-primary/60 bg-primary/5'
-                          : selectedId === movie.id
-                            ? 'border-primary/50'
-                            : 'border-white/10'
-                      } ${!active ? 'opacity-70' : ''}`}
-                    >
-                      <div className="flex gap-3">
-                        <img
-                          src={movie.poster}
-                          alt=""
-                          className="h-24 w-16 shrink-0 rounded-lg object-cover"
-                        />
-                        <div className="min-w-0 flex-1 space-y-3">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="truncate text-body-lg text-on-surface">
-                                {movie.title}
-                              </h3>
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-caption ${
-                                  active
-                                    ? 'bg-emerald-400/15 text-emerald-300'
-                                    : 'bg-white/10 text-on-surface-variant'
-                                }`}
-                              >
-                                {active ? 'Ativo' : 'Inativo'}
-                              </span>
-                              {editingId === movie.id && (
-                                <span className="rounded-full bg-primary/20 px-2 py-0.5 text-caption text-primary">
-                                  Editando
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-caption text-on-surface-variant">
-                              {movie.genre} • {movie.runtime}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => startEdit(movie)}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-primary-container px-3 py-2 text-caption text-white transition-colors hover:brightness-110"
-                            >
-                              <Icon name="edit" className="text-[16px]" />
-                              Editar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedId(movie.id)
-                                setTab('sessoes')
-                              }}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-caption text-on-surface transition-colors hover:border-primary/40 hover:text-primary"
-                            >
-                              <Icon name="schedule" className="text-[16px]" />
-                              Sessões
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleToggleActive(movie)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-caption text-on-surface transition-colors hover:border-primary/40 hover:text-primary"
-                            >
-                              <Icon
-                                name={active ? 'visibility_off' : 'visibility'}
-                                className="text-[16px]"
-                              />
-                              {active ? 'Desativar' : 'Ativar'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleDeleteMovie(movie.id)}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-caption text-primary transition-colors hover:bg-primary/20"
-                            >
-                              <Icon name="delete" className="text-[16px]" />
-                              Excluir
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {tab === 'sessoes' && (
         <div className="space-y-6">
-          <div className="space-y-4 rounded-2xl border border-white/8 bg-surface-container/70 p-card-padding">
-            <div>
-              <h2 className="text-headline-md text-on-surface">Gerenciar sessões</h2>
+          <div className="rounded-2xl border border-white/8 bg-surface-container/70 p-card-padding">
+            <div className="mb-4">
+              <h2 className="text-headline-md text-on-surface">Sessões</h2>
               <p className="mt-1 text-body-md text-on-surface-variant">
-                Escolha o filme para criar, editar ou remover horários.
+                Escolha o filme, crie horários e edite ou remova pela lista.
               </p>
             </div>
+
             <label className="block space-y-2">
               <span className="text-caption uppercase tracking-wider text-on-surface-variant">
                 Filme
@@ -1114,7 +746,10 @@ function OrganizerDashboard() {
               <select
                 className="field-select w-full rounded-xl border border-white/10 px-4 py-3.5 text-body-md text-on-surface"
                 value={selectedId || ''}
-                onChange={(e) => setSelectedId(e.target.value || null)}
+                onChange={(e) => {
+                  setSelectedId(e.target.value || null)
+                  resetSessionForm()
+                }}
               >
                 <option value="">Selecione um filme</option>
                 {movies.map((movie) => (
@@ -1125,19 +760,36 @@ function OrganizerDashboard() {
                 ))}
               </select>
             </label>
+          </div>
 
-            {selectedMovie && (
-              <p className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-body-md text-on-surface">
-                Sessões de <span className="font-medium">{selectedMovie.title}</span>
-              </p>
-            )}
+          {!selectedId ? (
+            <p className="rounded-xl border border-dashed border-white/12 px-4 py-8 text-center text-body-md text-on-surface-variant">
+              Selecione um filme acima para gerenciar as sessões.
+            </p>
+          ) : (
+            <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+              <form
+                id="organizer-session-form"
+                onSubmit={(e) => void handleSaveSession(e)}
+                className="space-y-4 rounded-2xl border border-white/8 bg-surface-container/70 p-card-padding"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-headline-md text-on-surface">
+                      {editingSessionId ? 'Editar sessão' : 'Nova sessão'}
+                    </h3>
+                    <p className="mt-1 text-caption text-on-surface-variant">
+                      {selectedMovie?.title}
+                    </p>
+                  </div>
+                  {editingSessionId && (
+                    <span className="rounded-md border border-white/15 bg-white/5 px-2.5 py-1 text-caption text-on-surface-variant">
+                      editando
+                    </span>
+                  )}
+                </div>
 
-            {selectedId ? (
-              <>
-                <form
-                  onSubmit={(e) => void handleSaveSession(e)}
-                  className="grid gap-3 sm:grid-cols-3"
-                >
+                <div className="grid gap-3 sm:grid-cols-2">
                   <label className="space-y-1">
                     <span className="text-label-md text-on-surface-variant">Data *</span>
                     <input
@@ -1158,18 +810,21 @@ function OrganizerDashboard() {
                       required
                     />
                   </label>
-                  <label className="space-y-1 sm:col-span-3">
-                    <RoomPicker value={room} onChange={setRoom} />
-                  </label>
-                  <label className="space-y-1">
-                    <span className="text-label-md text-on-surface-variant">Cinema</span>
-                    <input
-                      type="text"
-                      value={cinema}
-                      onChange={(e) => setCinema(e.target.value)}
-                      className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
-                    />
-                  </label>
+                </div>
+
+                <label className="block space-y-1">
+                  <span className="text-label-md text-on-surface-variant">Cinema</span>
+                  <input
+                    type="text"
+                    value={cinema}
+                    onChange={(e) => setCinema(e.target.value)}
+                    className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
+                  />
+                </label>
+
+                <RoomPicker value={room} onChange={setRoom} />
+
+                <div className="grid grid-cols-2 gap-3">
                   <label className="space-y-1">
                     <span className="text-label-md text-on-surface-variant">Capacidade</span>
                     <input
@@ -1192,109 +847,148 @@ function OrganizerDashboard() {
                       className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
                     />
                   </label>
-                  <div className="flex items-end gap-2 sm:col-span-3">
-                    <button
-                      type="submit"
-                      className="w-full rounded-lg bg-neon px-4 py-2.5 text-label-md text-white"
-                    >
-                      {editingSessionId ? 'Salvar sessão' : 'Adicionar'}
-                    </button>
-                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="submit"
+                    className="flex-1 rounded-lg bg-neon px-4 py-2.5 text-label-md text-white"
+                  >
+                    {editingSessionId ? 'Salvar alterações' : 'Criar sessão'}
+                  </button>
                   {editingSessionId && (
                     <button
                       type="button"
-                      onClick={() => {
-                        setEditingSessionId(null)
-                        setSessionDateIso('')
-                        setSessionTime('20:00')
-                        setRoom(normalizeCinemaRoom('Sala 1'))
-                      }}
-                      className="rounded-lg border border-white/15 px-4 py-2 text-label-md text-on-surface-variant sm:col-span-4"
+                      onClick={() => resetSessionForm()}
+                      className="rounded-lg border border-white/15 px-4 py-2.5 text-label-md text-on-surface-variant"
                     >
-                      Cancelar edição da sessão
+                      Cancelar
                     </button>
                   )}
-                </form>
+                </div>
+              </form>
 
-                <ul className="space-y-3">
-                  {sessions.map((session) => {
-                    const occ = occupancy[session.id]
-                    return (
-                      <li
-                        key={session.id}
-                        className="rounded-xl border border-white/10 px-4 py-3"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-body-md text-on-surface">
-                              {session.dateLabel || session.date} • {session.time} •{' '}
-                              {session.room}
-                            </p>
-                            {occ ? (
-                              <p className="mt-1 text-caption text-on-surface-variant">
-                                Ocupação: {occ.sold}/{occ.totalSeats} vendidos
-                                {occ.held > 0 ? ` · ${occ.held} em hold` : ''} ·{' '}
-                                {occ.available} livres · {money(occ.revenue)}
-                              </p>
-                            ) : (
-                              <p className="mt-1 text-caption text-on-surface-variant">
-                                Carregando ocupação…
-                              </p>
+              <section className="space-y-3 rounded-2xl border border-white/8 bg-surface-container/70 p-card-padding">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {selectedMovie?.poster ? (
+                      <img
+                        src={selectedMovie.poster}
+                        alt=""
+                        className="h-16 w-11 shrink-0 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="h-16 w-11 shrink-0 rounded-lg bg-white/10" />
+                    )}
+                    <div className="min-w-0">
+                      <h3 className="text-headline-md text-on-surface">Lista</h3>
+                      <p className="mt-0.5 truncate text-caption text-on-surface-variant">
+                        {selectedMovie?.title}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-caption text-on-surface-variant">
+                    {sessions.length} {sessions.length === 1 ? 'sessão' : 'sessões'}
+                  </span>
+                </div>
+
+                {sessions.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-white/12 px-4 py-6 text-center text-body-md text-on-surface-variant">
+                    Nenhuma sessão ainda. Crie a primeira ao lado.
+                  </p>
+                ) : (
+                  <ul className="space-y-3">
+                    {sessions.map((session) => {
+                      const occ = occupancy[session.id]
+                      const isEditing = editingSessionId === session.id
+                      return (
+                        <li
+                          key={session.id}
+                          className={`rounded-xl border px-4 py-3 transition-colors ${
+                            isEditing
+                              ? 'border-white/30 bg-white/[0.06]'
+                              : 'border-white/10 bg-white/[0.02]'
+                          }`}
+                        >
+                          <div className="flex flex-col gap-3">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-body-md text-on-surface">
+                                  {session.dateLabel || session.date} · {session.time}
+                                </p>
+                                <p className="mt-0.5 text-caption text-on-surface-variant">
+                                  {session.room}
+                                  {session.cinema ? ` · ${session.cinema}` : ''}
+                                  {session.price != null ? ` · ${money(session.price)}` : ''}
+                                </p>
+                                {occ ? (
+                                  <p className="mt-1 text-caption text-on-surface-variant">
+                                    {occ.sold}/{occ.totalSeats} vendidos
+                                    {occ.held > 0 ? ` · ${occ.held} em hold` : ''} ·{' '}
+                                    {occ.available} livres
+                                  </p>
+                                ) : (
+                                  <p className="mt-1 text-caption text-on-surface-variant">
+                                    Carregando ocupação…
+                                  </p>
+                                )}
+                              </div>
+                              {isEditing && (
+                                <span className="rounded-md bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-on-surface-variant">
+                                  em edição
+                                </span>
+                              )}
+                            </div>
+
+                            {occ && (
+                              <div className="h-1.5 overflow-hidden rounded bg-white/10">
+                                <div
+                                  className="h-full rounded bg-white/40"
+                                  style={{
+                                    width: `${Math.min(
+                                      100,
+                                      (occ.sold / Math.max(1, occ.totalSeats)) * 100,
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
                             )}
+
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startEditSession(session)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-caption text-on-surface hover:bg-white/5"
+                              >
+                                <Icon name="edit" className="text-[15px]" />
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleDuplicateSession(session)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-caption text-on-surface hover:bg-white/5"
+                              >
+                                <Icon name="content_copy" className="text-[15px]" />
+                                Duplicar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteSession(session.id)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-caption text-primary hover:bg-primary/20"
+                              >
+                                <Icon name="delete" className="text-[15px]" />
+                                Apagar
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => startEditSession(session)}
-                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
-                            >
-                              Editar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleDuplicateSession(session)}
-                              className="rounded-lg border border-white/15 px-3 py-1 text-caption"
-                            >
-                              Duplicar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void handleDeleteSession(session.id)}
-                              className="rounded-lg border border-primary/30 px-3 py-1 text-caption text-primary"
-                            >
-                              Remover
-                            </button>
-                          </div>
-                        </div>
-                        {occ && (
-                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className="h-full rounded-full bg-primary"
-                              style={{
-                                width: `${Math.min(
-                                  100,
-                                  (occ.sold / Math.max(1, occ.totalSeats)) * 100,
-                                )}%`,
-                              }}
-                            />
-                          </div>
-                        )}
-                      </li>
-                    )
-                  })}
-                  {sessions.length === 0 && (
-                    <li className="text-caption text-on-surface-variant">
-                      Nenhuma sessão cadastrada.
-                    </li>
-                  )}
-                </ul>
-              </>
-            ) : (
-              <p className="text-body-md text-on-surface-variant">
-                Selecione um filme para criar e editar sessões.
-              </p>
-            )}
-          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </section>
+            </div>
+          )}
         </div>
       )}
 

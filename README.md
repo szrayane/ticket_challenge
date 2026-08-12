@@ -1,182 +1,160 @@
-<a id="readme-top"></a>
+<a id="topo"></a>
 
-<br />
 <div align="center">
   <a href="https://github.com/szrayane/ticket_challenge">
-    <img src="./frontend/public/cineray-logo.png" alt="CineRay" width="320">
+    <img src="./frontend/public/cineray-logo.png" alt="CineRay" width="280">
   </a>
 
-  <h3 align="center">Desafio Elite Dev 2026</h3>
+  <h3>CineRay · Desafio Elite Dev 2026</h3>
 
-> [!NOTE]
-> Front na **Vercel** (São Paulo / `gru1`) e API + MySQL no **Fly.io** (São Paulo / `gru`).
+  <p>
+    Organizador publica · cliente escolhe assento · pagamento simulado · QR · portaria valida
+  </p>
 
-  <p align="center">
-    Organizador publica → cliente escolhe assento → pagamento simulado → QR → portaria valida.
-    <br />
+  <p>
+    <a href="https://ticket-challenge.vercel.app">App</a>
+    ·
+    <a href="https://cineray-api.fly.dev/health">API</a>
+    ·
     <a href="./DEPLOY.md">Deploy</a>
     ·
     <a href="./AI.md">Uso de IA</a>
-    ·
-    <a href="https://github.com/szrayane/ticket_challenge/issues">Issues</a>
   </p>
 </div>
 
-<details>
-  <summary>Sumário</summary>
-  <ol>
-    <li>
-      <a href="#sobre-o-projeto">Sobre o Projeto</a>
-      <ul>
-        <li><a href="#hospedagem">Hospedagem</a></li>
-        <li><a href="#funcionalidades">Funcionalidades</a></li>
-        <li><a href="#feito-com">Tecnologias</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#começando">Começando</a>
-      <ul>
-        <li><a href="#pré-requisitos">Pré-requisitos</a></li>
-        <li><a href="#instalação">Instalação</a></li>
-        <li><a href="#contas-de-teste">Contas de teste</a></li>
-      </ul>
-    </li>
-    <li><a href="#tutorial-do-sistema">Tutorial</a></li>
-    <li><a href="#design--prototipagem">Design</a></li>
-    <li><a href="#decisões-técnicas">Decisões técnicas</a></li>
-    <li><a href="#a-fazer">Limitações</a></li>
-    <li><a href="#licença">Licença</a></li>
-    <li><a href="#contato">Contato</a></li>
-  </ol>
-</details>
+---
 
-## Sobre o Projeto
+## Demonstração
 
-<div id="sobre-o-projeto"></div>
+<div align="center">
 
-<p align="center">
-  <img src="./docs/screenshots/01-home.png" alt="Tela inicial do CineRay" width="820">
-</p>
+<!--
+  Depois de gravar, cole o link do vídeo numa linha sozinha abaixo
+  (GitHub: Issues → arraste o .mp4 → copie a URL user-attachments).
+-->
 
-Implementação do **Desafio Elite Dev 2026**: venda e validação de ingressos de cinema (React + Express + MySQL).
+_Vídeo em breve._
 
-Fluxo:
+<!-- exemplo:
+https://github.com/user-attachments/assets/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+-->
 
-1. O **organizador** busca o filme (TMDb) e cria a sessão (data, local, capacidade, preço)
+</div>
+
+---
+
+## Sumário
+
+- [Sobre](#sobre)
+- [Telas](#telas)
+- [Tecnologias](#tecnologias)
+- [Rodando local](#rodando-local)
+- [Contas de teste](#contas-de-teste)
+- [Fluxo rápido](#fluxo-rápido)
+- [Decisões](#decisões)
+- [Estrutura](#estrutura)
+- [Limitações](#limitações)
+- [Contato](#contato)
+
+---
+
+## Sobre
+
+Sistema de venda e validação de ingressos de cinema (React + Express + MySQL).
+
+1. O **organizador** busca o filme (TMDb) e cria a sessão
 2. O **cliente** escolhe o assento (hold de 10 min), paga (simulado) e recebe um QR cifrado
-3. A **portaria** valida o ingresso por câmera ou código, na sessão correta
+3. A **portaria** valida por câmera ou código, na sessão correta
 
-Optei por **mapa de assentos** (não pista) porque faz mais sentido pra cinema e força concorrência real por lugar. Backend separado do front pra deixar a API, o MySQL e o check-in explícitos.
-
-### Hospedagem
-
-<div id="hospedagem"></div>
+Optei por **mapa de assentos** (não pista): faz mais sentido pra cinema e força concorrência real por lugar.
 
 | Camada | Onde | Região | URL |
 |--------|------|--------|-----|
-| Frontend | [Vercel](https://vercel.com) | São Paulo (`gru1`) | [ticket-challenge.vercel.app](https://ticket-challenge.vercel.app) |
-| API | [Fly.io](https://fly.io) | São Paulo (`gru`) | [cineray-api.fly.dev](https://cineray-api.fly.dev) |
-| Banco | [Fly.io](https://fly.io) MySQL (volume) | São Paulo (`gru`) | rede interna `cineray-mysql.internal` |
+| Front | Vercel | `gru1` | [ticket-challenge.vercel.app](https://ticket-challenge.vercel.app) |
+| API | Fly.io | `gru` | [cineray-api.fly.dev](https://cineray-api.fly.dev) |
+| Banco | Fly MySQL | `gru` | rede interna |
 
-Health check: [https://cineray-api.fly.dev/health](https://cineray-api.fly.dev/health) → `{"status":"ok"}`
+### O que tem
 
-<div id="funcionalidades"></div>
+- Catálogo com TMDb
+- Hold de assento (10 min) + check-in na portaria
+- QR AES-256-GCM (`CR2.…`)
+- Link compartilhado `/i/:shareToken`
+- Papéis: cliente, organizador, portaria
+- Assentos ao vivo, transferência de ingresso, chatbot (Groq), Google Wallet
+- Docker Compose + CI/CD (GitHub Actions)
 
-### Funcionalidades
+Design: [Figma — CineRay](https://www.figma.com/design/3Q8k3j0O6EzRdbkk539TpW/CineRay?node-id=0-1&t=nl4ZuD7wMNB9QiCm-1)
 
-**Fluxo do desafio**
+---
 
-- Catálogo / eventos com integração **TMDb**
-- Mapa de assentos com **hold de 10 minutos**
-- Checkout com pagamento **simulado**
-- Ingresso com **QR AES-256-GCM** (`CR2.…`)
-- Compartilhamento por link `/i/:shareToken`
-- **Portaria**: câmera ou digitação (bloqueia inválido, adulterado, já usado e sessão errada)
-- Papéis: cliente, organizador e portaria (staff via convite)
+## Telas
 
-**Extras**
+#### Home
 
-- Transferência / reivindicação de ingresso
-- Link do ingresso com QR
-- Assentos ao vivo (mapa atualiza enquanto outras pessoas compram)
-- Docker Compose (MySQL + API + front)
-- Testes unitários no backend + CI/CD no GitHub Actions
+<p align="center">
+  <img src="./docs/screenshots/01-home.png" alt="Home CineRay" width="820">
+</p>
 
-<div id="feito-com"></div>
+#### Login
 
-### Tecnologias
+<p align="center">
+  <img src="./docs/screenshots/02-login.png" alt="Login" width="820">
+</p>
 
-**Frontend**
+#### Portaria
 
-- ![React](https://img.shields.io/badge/React_19-20232a?style=for-the-badge&logo=react&logoColor=61DAFB)
-- ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
-- ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-- ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+<p align="center">
+  <img src="./docs/screenshots/04-validar-ingresso.png" alt="Validar ingresso" width="820">
+</p>
 
-**Backend**
+---
 
-- ![NodeJS](https://img.shields.io/badge/Node.js_22+-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
-- ![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
-- ![MySQL](https://img.shields.io/badge/MySQL_8-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
-- ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+## Tecnologias
 
-**Extras**
+<p align="center">
+  <img src="https://img.shields.io/badge/React_19-20232a?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React">
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind">
+  <br>
+  <img src="https://img.shields.io/badge/Node.js_22+-6DA55F?style=for-the-badge&logo=node.js&logoColor=white" alt="Node">
+  <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express">
+  <img src="https://img.shields.io/badge/MySQL_8-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL">
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
+</p>
 
-- TMDb API · QR AES-256-GCM
+Extras: TMDb · Groq · Google Wallet · Vercel · Fly.io
 
-MySQL com `SELECT … FOR UPDATE` no hold/checkout e índice único em `active_slot` pra não vender o mesmo assento duas vezes.
+---
 
-## Começando
+## Rodando local
 
-<div id="começando"></div>
-
-Você pode rodar tudo localmente ou acessar o deploy:
-
-- Front: [https://ticket-challenge.vercel.app](https://ticket-challenge.vercel.app)
-- API: [https://cineray-api.fly.dev](https://cineray-api.fly.dev)
-
-Passo a passo de deploy: [`DEPLOY.md`](./DEPLOY.md).
-
-### Pré-requisitos
-
-<div id="pré-requisitos"></div>
-
-- Node.js **22+**
-- MySQL **8** (ou Docker)
-- Chave TMDb (gratuita) — obrigatória só para publicar títulos novos; o seed roda sem ela
-
-```sh
-node -v
-npm -v
-```
-
-Chave TMDb: [developer.themoviedb.org](https://developer.themoviedb.org/reference/intro/getting-started)
-
-### Instalação
-
-<div id="instalação"></div>
-
-1. Clone o repositório:
+**Pré-requisitos:** Node.js 22+, MySQL 8 (ou Docker), chave [TMDb](https://developer.themoviedb.org/reference/intro/getting-started) (só obrigatória pra publicar títulos novos; o seed roda sem ela).
 
 ```sh
 git clone https://github.com/szrayane/ticket_challenge.git
 cd ticket_challenge
 ```
 
-#### Opção A — Docker (tudo junto)
+### Opção A — Docker
+
+1. Crie `backend/.env` a partir do exemplo e preencha MySQL, QR e TMDb (veja abaixo).
+2. Se for usar o MySQL do Compose, os valores de `MYSQL_*` no `.env` precisam bater com o `docker-compose.yml`.
+3. Suba:
 
 ```bash
-export TMDB_API_KEY=sua_chave
 docker compose up --build
 ```
 
 - Front: http://localhost:8080  
 - API: http://localhost:3333  
-- MySQL: localhost:3306 (user/senha `cineray`)
 
-#### Opção B — Local (front + API + MySQL)
+### Opção B — Front + API + MySQL
 
-**1) MySQL**
+**1) Banco**
+
+Crie um banco MySQL 8 e anote usuário, senha e nome do database. Ou suba só o serviço do Compose e alinhe o `.env` com ele:
 
 ```bash
 docker compose up -d mysql
@@ -188,14 +166,12 @@ docker compose up -d mysql
 cd backend
 npm install
 cp .env.example .env
-# edite TMDB_API_KEY e TICKET_QR_SECRET se quiser
-npm run migrate   # aplica schema (também roda no boot via initDb)
+# preencha as variáveis abaixo
+npm run migrate
 npm run dev
 ```
 
 API: http://localhost:3333
-
-Schema versionado em `backend/migrations/` (Knex). O `initDb` só conecta, aplica migrations pendentes e faz seed demo (desligue com `DISABLE_SEED=1`).
 
 **3) Frontend**
 
@@ -208,53 +184,52 @@ npm run dev
 
 App: http://localhost:5173
 
-Atalhos na raiz (depois de `npm run install:all`):
+Na raiz (depois de `npm run install:all`):
 
 ```bash
 npm run dev:backend
 npm run dev:frontend
 ```
 
-#### Variáveis principais
+### Variáveis
 
-Backend (`backend/.env`):
+`backend/.env` — **preencha com os seus dados** (não versionar secrets):
 
 ```env
 PORT=3333
 NODE_ENV=development
-STAFF_INVITE_CODE=cineray-staff
-TICKET_QR_SECRET=sua_chave_secreta
+STAFF_INVITE_CODE=seu_codigo_staff
+TICKET_QR_SECRET=sua_chave_secreta_do_qr
 TMDB_API_KEY=sua_chave_tmdb
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
-MYSQL_USER=cineray
-MYSQL_PASSWORD=cineray
-MYSQL_DATABASE=cineray
+MYSQL_USER=seu_usuario
+MYSQL_PASSWORD=sua_senha
+MYSQL_DATABASE=seu_banco
+APP_PUBLIC_URL=http://localhost:5173
+# GROQ_API_KEY=  (opcional — chatbot)
 # DISABLE_SEED=1
 ```
 
-Front (`frontend/.env`):
+`TICKET_QR_SECRET` é obrigatório. Sem ele a API não sobe.
+
+`frontend/.env`:
 
 ```env
 VITE_APP_API_URL=http://localhost:3333/api
 ```
 
-Não versionar `.env` com secrets reais. `TICKET_QR_SECRET` é **obrigatório** (sem fallback no código).
-
-#### Testes
+### Testes
 
 ```bash
 cd backend
-npm run test:unit   # unitários (sem DB)
-npm test            # unitários + QR + fluxo de ingressos
-
-# Na raiz ou em frontend/ (API + Vite no ar):
-npm run test:e2e:purchase
+npm run test:unit
+npm test
 ```
 
-### Contas de teste
+---
 
-<div id="contas-de-teste"></div>
+## Contas de teste
 
 | Perfil | E-mail | Senha |
 |--------|--------|-------|
@@ -262,126 +237,66 @@ npm run test:e2e:purchase
 | Organizador | `organizador@cineray.com` | `cineray` |
 | Portaria | `portaria@cineray.com` | `cineray` |
 
-Todas as contas de teste usam a **mesma senha** (`cineray`). No login há um seletor com essas 3 contas.
+No login tem um seletor com essas contas. Staff novo: **Criar conta** → **Sou da equipe** → código do `STAFF_INVITE_CODE`.
 
-Evento seed: **Duna: Parte Dois**.
+Cartão demo: `4111 1111 1111 1111` (ok) · `4000 0000 0000 0002` (recusa).
 
-Staff novo: `/login` → **Criar conta** → **Sou da equipe** → código `cineray-staff`.
+---
 
-Pagamento demo: `4111 1111 1111 1111` (ok) / `4000 0000 0000 0002` (recusa).
-
-## Tutorial do Sistema
-
-<div id="tutorial-do-sistema"></div>
-
-### Vídeo
-
-<!-- Cole o link user-attachments do .mp4 (issue do GitHub) numa linha sozinha abaixo. -->
-
-### Design / Prototipagem
-
-<div id="design--prototipagem"></div>
-
-- [Figma — CineRay](https://www.figma.com/design/3Q8k3j0O6EzRdbkk539TpW/CineRay?node-id=0-1&t=nl4ZuD7wMNB9QiCm-1)
-
-### Telas
-
-Prints em `docs/screenshots/`:
-
-| Arquivo | Tela |
-|---------|------|
-| `01-home.png` | Home / catálogo |
-| `02-login.png` | Login |
-| `04-validar-ingresso.png` | Portaria |
-
-#### Home
-
-<p align="center">
-  <img src="./docs/screenshots/01-home.png" alt="Tela inicial — catálogo CineRay" width="820">
-</p>
-
-#### Login
-
-<p align="center">
-  <img src="./docs/screenshots/02-login.png" alt="Tela de login" width="820">
-</p>
-
-#### Validar ingresso
-
-<p align="center">
-  <img src="./docs/screenshots/04-validar-ingresso.png" alt="Validação de ingresso na portaria" width="820">
-</p>
-
-### Fluxo rápido
+## Fluxo rápido
 
 1. Login como organizador (ou use o seed)
 2. Publique um filme via TMDb (opcional)
-3. Login como cliente → assento → pagamento
+3. Cliente → assento → pagamento
 4. Meus ingressos → QR ou link `/i/...`
-5. Login portaria → valide pela câmera ou código
+5. Portaria → valide pela câmera ou código
 
-## Decisões Técnicas
+---
 
-<div id="decisões-técnicas"></div>
+## Decisões
 
-- **Mapa de assentos** — concorrência real por lugar (não pista)
+- **Mapa de assentos** — concorrência real por lugar
 - **Hold 10 min + `SELECT … FOR UPDATE`** — trava na seleção; MySQL serializa a compra
-- **QR AES-256-GCM** — payload `CR2.…` ilegível sem `TICKET_QR_SECRET`
-- **Assentos ao vivo** — mapa atualiza enquanto outras pessoas compram
-- **Staff com convite** — organizador/portaria só via `STAFF_INVITE_CODE`
-- **IA** — Cursor pra acelerar; decisões e validação foram minhas → [`AI.md`](./AI.md)
+- **QR AES-256-GCM** — payload `CR2.…` ilegível sem o secret
+- **Assentos ao vivo** — o mapa atualiza enquanto outras pessoas compram
+- **Staff com convite** — organizador/portaria só com código
+- **IA** — usei Cursor pra acelerar; as escolhas foram minhas → [`AI.md`](./AI.md)
 
-### Estrutura
+---
+
+## Estrutura
 
 ```text
 ticket_challenge/
-├── backend/           # API Express + MySQL + testes
-│   ├── migrations/    # schema Knex (fonte da verdade das tabelas)
-│   └── src/db/        # conexão, migrate, seed
-├── frontend/          # React (Vite) + e2e + Docker do front
-├── docs/              # screenshots do README
-├── .github/workflows/ # CI/CD
-├── docker-compose.yml     # MySQL + API + front (local)
-├── deploy/fly-mysql/      # fly.toml do MySQL no Fly (gru)
-├── backend/fly.toml       # API no Fly (gru)
-├── vercel.json            # front Vercel (região gru1)
-├── package.json           # atalhos do monorepo
+├── backend/              # Express + MySQL
+│   ├── migrations/
+│   └── src/
+├── frontend/             # React (Vite)
+├── docs/screenshots/     # prints do README
+├── .github/workflows/    # CI/CD
+├── docker-compose.yml
+├── deploy/fly-mysql/
 ├── DEPLOY.md
 ├── AI.md
 └── README.md
 ```
 
+---
+
 ## Limitações
 
-<div id="a-fazer"></div>
+- Pagamento é simulado
+- Sem `TMDB_API_KEY` o seed roda; publicar pela busca TMDb precisa da chave
+- Única API externa obrigatória do catálogo: TMDb
 
-- [x] Fluxo cliente (assentos, hold, checkout, QR)
-- [x] Organizador + TMDb
-- [x] Portaria (câmera / código)
-- [x] MySQL + concorrência (`FOR UPDATE`)
-- [x] Deploy (Vercel + Fly.io, região São Paulo)
-- [ ] Vídeo de demonstração no README
-- [x] Screenshots (home, login, validar)
-- [x] URLs de produção
+Deploy detalhado: [`DEPLOY.md`](./DEPLOY.md)
 
-**Fora de escopo**
-
-- Pagamento fictício
-- Sem `TMDB_API_KEY`, o seed roda; publicar pela busca TMDb precisa da chave
-- Única API externa: TMDb (imagens/CDN do próprio TMDb no catálogo)
-
-## Licença
-
-<div id="licença"></div>
-
-Projeto pro Desafio Elite Dev 2026.
+---
 
 ## Contato
 
-<div id="contato"></div>
-
 **Rayane Souza** — [GitHub](https://github.com/szrayane)
 
-Link do projeto: [https://github.com/szrayane/ticket_challenge](https://github.com/szrayane/ticket_challenge)
+[szrayane/ticket_challenge](https://github.com/szrayane/ticket_challenge)
 
-<p align="right">(<a href="#readme-top">voltar ao topo</a>)</p>
+<p align="right"><a href="#topo">topo</a></p>

@@ -1,8 +1,4 @@
-import {
-  CINEMA_ROOMS,
-  normalizeCinemaRoom,
-  roomToneClasses,
-} from '../lib/cinemaRooms'
+import { CINEMA_ROOMS, normalizeCinemaRoom } from '../lib/cinemaRooms'
 
 type RoomPickerProps = {
   value: string
@@ -22,7 +18,7 @@ export function RoomPicker({
       <div className="flex items-center justify-between gap-2">
         <span className="text-label-md text-on-surface-variant">{label}</span>
         <span className="text-caption text-on-surface-variant/80">
-          {CINEMA_ROOMS.length} salas · {selected}
+          {selected}
         </span>
       </div>
       <ul
@@ -32,7 +28,6 @@ export function RoomPicker({
       >
         {CINEMA_ROOMS.map((room) => {
           const isSelected = selected === room.id
-          const tone = roomToneClasses(room.tone)
           return (
             <li key={room.id}>
               <button
@@ -41,11 +36,12 @@ export function RoomPicker({
                 aria-selected={isSelected}
                 title={room.id}
                 onClick={() => onChange(room.id)}
-                className={`flex w-full flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-center transition-all ${
-                  isSelected ? tone.selected : tone.idle
+                className={`flex w-full items-center justify-center rounded-lg border px-2 py-2.5 text-center transition-colors ${
+                  isSelected
+                    ? 'border-white/35 bg-white/12 text-on-surface'
+                    : 'border-white/10 bg-white/[0.04] text-on-surface-variant hover:border-white/20 hover:bg-white/[0.07] hover:text-on-surface'
                 }`}
               >
-                <span className={`h-2 w-2 rounded-full ${tone.dot}`} aria-hidden />
                 <span className="text-label-md tabular-nums">{room.number}</span>
               </button>
             </li>

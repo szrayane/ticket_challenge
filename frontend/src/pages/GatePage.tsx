@@ -2,9 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { AppApiError } from '../api/appClient'
 import {
   fetchGateCheckIns,
-  fetchGateSessions,
   validateTicketQr,
-  type GateSession,
 } from '../api/catalog'
 import { GateQrScanner } from '../components/GateQrScanner'
 import { Icon } from '../components/Icon'
@@ -18,16 +16,12 @@ type GateResult = {
   ok: boolean
   message: string
   warning?: boolean
-  mismatch?: boolean
   ticket?: CustomerTicket
-  pendingPayload?: string
 }
 
 function GateDashboard() {
   const { user, logout } = useAuth()
   const [payload, setPayload] = useState('')
-  const [expectedSessionId, setExpectedSessionId] = useState('')
-  const [sessions, setSessions] = useState<GateSession[]>([])
   const [history, setHistory] = useState<CustomerTicket[]>([])
   const [result, setResult] = useState<GateResult | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -38,38 +32,21 @@ function GateDashboard() {
   const lastScanRef = useRef({ value: '', at: 0 })
   const flashTimerRef = useRef<number | null>(null)
 
-  async function reloadMeta(opts?: { preferAutoSelect?: boolean }) {
-    const [nextSessions, nextHistory] = await Promise.all([
-      fetchGateSessions(),
-      fetchGateCheckIns(40),
-    ])
-    setSessions(nextSessions)
+  async function reloadMeta() {
+    const nextHistory = await fetchGateCheckIns(40)
     setHistory(nextHistory)
     setMetaError(null)
-
-    const suggested =
-      nextSessions.find((s) => s.suggested) || nextSessions[0] || null
-
-    setExpectedSessionId((current) => {
-      if (current && nextSessions.some((s) => s.sessionId === current)) {
-        return current
-      }
-      if (opts?.preferAutoSelect !== false && suggested) {
-        return suggested.sessionId
-      }
-      return ''
-    })
   }
 
   useEffect(() => {
     setMetaLoading(true)
-    void reloadMeta({ preferAutoSelect: true })
+    void reloadMeta()
       .catch(() => {
-        setMetaError('Não foi possível carregar as sessões da portaria.')
+        setMetaError('Não foi possível carregar os check-ins da portaria.')
       })
       .finally(() => setMetaLoading(false))
     const timer = window.setInterval(() => {
-      void reloadMeta({ preferAutoSelect: false }).catch(() => undefined)
+      void reloadMeta().catch(() => undefined)
     }, 60_000)
     return () => window.clearInterval(timer)
   }, [])
@@ -79,7 +56,7 @@ function GateDashboard() {
     client.subscribe('gate')
     const off = client.on((payload) => {
       if (payload.type === 'checkin') {
-        void reloadMeta({ preferAutoSelect: false }).catch(() => undefined)
+        void reloadMeta().catch(() => undefined)
       }
     })
     return () => {
@@ -101,52 +78,43 @@ function GateDashboard() {
     flashTimerRef.current = window.setTimeout(() => setFlash(null), 2200)
   }
 
-  const runValidate = useCallback(
-    async (raw: string, force = false) => {
-      const qrPayload = raw.trim()
-      if (!qrPayload) return
+  const runValidate = useCallback(async (raw: string) => {
+    const qrPayload = raw.trim()
+    if (!qrPayload) return
 
-      setSubmitting(true)
-      setResult(null)
-      try {
-        const data = await validateTicketQr(qrPayload, {
-          expectedSessionId: expectedSessionId || undefined,
-          force,
-        })
-        const next: GateResult = {
-          ok: data.ok,
-          message: data.message,
-          warning: data.warning,
-          ticket: data.ticket,
-        }
-        setResult(next)
-        triggerFlash(data.warning ? 'warn' : 'ok')
-        setPayload('')
-        await reloadMeta().catch(() => undefined)
-      } catch (err) {
-        if (err instanceof AppApiError) {
-          const mismatch = err.code === 'SESSION_MISMATCH'
-          setResult({
-            ok: false,
-            message: err.message,
-            mismatch,
-            ticket: err.ticket as CustomerTicket | undefined,
-            pendingPayload: mismatch ? qrPayload : undefined,
-          })
-          triggerFlash(mismatch ? 'warn' : 'error')
-        } else {
-          setResult({
-            ok: false,
-            message: 'Não foi possível validar o QR.',
-          })
-          triggerFlash('error')
-        }
-      } finally {
-        setSubmitting(false)
+    setSubmitting(true)
+    setResult(null)
+    try {
+      const data = await validateTicketQr(qrPayload)
+      const next: GateResult = {
+        ok: data.ok,
+        message: data.message,
+        warning: data.warning,
+        ticket: data.ticket,
       }
-    },
-    [expectedSessionId],
-  )
+      setResult(next)
+      triggerFlash(data.warning ? 'warn' : 'ok')
+      setPayload('')
+      await reloadMeta().catch(() => undefined)
+    } catch (err) {
+      if (err instanceof AppApiError) {
+        setResult({
+          ok: false,
+          message: err.message,
+          ticket: err.ticket as CustomerTicket | undefined,
+        })
+        triggerFlash('error')
+      } else {
+        setResult({
+          ok: false,
+          message: 'Não foi possível validar o QR.',
+        })
+        triggerFlash('error')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }, [])
 
   function handleValidate(e: FormEvent) {
     e.preventDefault()
@@ -208,6 +176,9 @@ function GateDashboard() {
             Validar ingresso
           </h1>
           <p className="text-body-md text-on-surface-variant">{user?.email}</p>
+          <p className="mt-1 text-caption text-on-surface-variant">
+            Aceita ingresso de qualquer sessão.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -222,7 +193,7 @@ function GateDashboard() {
 
       {metaLoading && (
         <p className="mb-6 text-body-md text-on-surface-variant">
-          Carregando sessões…
+          Carregando…
         </p>
       )}
       {metaError && (
@@ -232,9 +203,9 @@ function GateDashboard() {
             type="button"
             onClick={() => {
               setMetaLoading(true)
-              void reloadMeta({ preferAutoSelect: true })
+              void reloadMeta()
                 .catch(() => {
-                  setMetaError('Não foi possível carregar as sessões da portaria.')
+                  setMetaError('Não foi possível carregar os check-ins da portaria.')
                 })
                 .finally(() => setMetaLoading(false))
             }}
@@ -244,124 +215,6 @@ function GateDashboard() {
           </button>
         </div>
       )}
-
-      <section className="mb-6 space-y-4 rounded-2xl border border-white/8 bg-surface-container/70 p-card-padding">
-        <div>
-          <p className="text-caption uppercase tracking-wider text-on-surface-variant">
-            Portaria
-          </p>
-          <h2 className="text-headline-md text-on-surface">Sessão desta sala</h2>
-          <p className="mt-1 text-body-md text-on-surface-variant">
-            Toque na sessão da sua sala. O scan alerta se o ingresso for de outra.
-          </p>
-        </div>
-
-        {sessions.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-white/12 px-4 py-3 text-caption text-on-surface-variant">
-            Nenhuma sessão na janela próxima (1h atrás → 3h à frente). Crie uma
-            sessão no organizador ou aguarde o horário.
-          </p>
-        ) : (
-          <ul className="space-y-2" role="listbox" aria-label="Sessões da portaria">
-            <li>
-              <button
-                type="button"
-                role="option"
-                aria-selected={expectedSessionId === ''}
-                onClick={() => setExpectedSessionId('')}
-                className={`flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
-                  expectedSessionId === ''
-                    ? 'border-primary/50 bg-primary/10'
-                    : 'border-white/10 hover:border-primary/30 hover:bg-white/5'
-                }`}
-              >
-                <Icon
-                  name="meeting_room"
-                  className={`mt-0.5 shrink-0 text-[20px] ${
-                    expectedSessionId === '' ? 'text-primary' : 'text-on-surface-variant'
-                  }`}
-                />
-                <div className="min-w-0">
-                  <p className="text-label-md text-on-surface">Qualquer sessão</p>
-                  <p className="text-caption text-on-surface-variant">
-                    Sem alerta de sala
-                  </p>
-                </div>
-              </button>
-            </li>
-            {sessions.map((session) => {
-              const selected = expectedSessionId === session.sessionId
-              const mins = session.minutesFromNow ?? 0
-              const when =
-                mins === 0
-                  ? 'agora'
-                  : mins > 0
-                    ? `em ${mins} min`
-                    : `há ${Math.abs(mins)} min`
-              const progress =
-                session.tickets > 0
-                  ? Math.min(100, Math.round((session.checkedIn / session.tickets) * 100))
-                  : 0
-
-              return (
-                <li key={session.sessionId}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onClick={() => setExpectedSessionId(session.sessionId)}
-                    className={`flex w-full flex-col gap-2 rounded-xl border px-4 py-3 text-left transition-colors ${
-                      selected
-                        ? 'border-primary/50 bg-primary/10'
-                        : 'border-white/10 hover:border-primary/30 hover:bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-label-md text-on-surface">
-                            {session.movieTitle}
-                          </p>
-                          {session.suggested && (
-                            <span className="rounded-md border border-neon/30 bg-neon/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-neon">
-                              sugerida
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-1 text-caption text-on-surface-variant">
-                          {session.sessionDate} · {session.sessionTime} ·{' '}
-                          {session.room}
-                          {session.cinema ? ` · ${session.cinema}` : ''}
-                        </p>
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-lg px-2.5 py-1 text-caption ${
-                          selected
-                            ? 'bg-primary/20 text-primary'
-                            : 'bg-white/5 text-on-surface-variant'
-                        }`}
-                      >
-                        {when}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="h-full rounded-full bg-emerald-400/80"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <span className="shrink-0 text-caption text-on-surface-variant">
-                        {session.checkedIn}/{session.tickets} check-ins
-                      </span>
-                    </div>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
 
       <form
         onSubmit={handleValidate}
@@ -450,16 +303,6 @@ function GateDashboard() {
                 </p>
               )}
             </div>
-          )}
-          {result.mismatch && result.pendingPayload && (
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={() => void runValidate(result.pendingPayload!, true)}
-              className="mt-4 rounded-full border border-amber-300/40 bg-amber-400/15 px-5 py-2.5 text-label-md text-amber-100"
-            >
-              Confirmar check-in mesmo assim
-            </button>
           )}
         </section>
       )}
