@@ -36,7 +36,7 @@
 <div align="center">
   <video
     src="https://github.com/user-attachments/assets/f69a0cb8-6f47-4e2e-8d1e-d687b45322e0"
-    width="240"
+    width="180"
     controls
     playsinline
   ></video>
