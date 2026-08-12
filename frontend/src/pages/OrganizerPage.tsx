@@ -693,7 +693,7 @@ function OrganizerDashboard() {
                 <input
                   type="number"
                   min={10}
-                  max={40}
+                  max={60}
                   value={eventCapacity}
                   onChange={(e) => setEventCapacity(e.target.value)}
                   className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
@@ -814,7 +814,7 @@ function OrganizerDashboard() {
                     <input
                       type="number"
                       min={10}
-                      max={40}
+                      max={60}
                       value={capacity}
                       onChange={(e) => setCapacity(e.target.value)}
                       className="glass-input w-full rounded-lg px-3 py-2 text-body-md"

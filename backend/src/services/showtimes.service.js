@@ -14,7 +14,7 @@ import {
 
 export const DEFAULT_CAPACITY = 40
 export const DEFAULT_PRICE = 28
-export const MAX_CAPACITY = 40
+export const MAX_CAPACITY = 60
 
 function nowIso() {
   return new Date().toISOString()

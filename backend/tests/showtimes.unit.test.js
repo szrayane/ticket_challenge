@@ -12,7 +12,7 @@ assert.equal(normalizeCapacity(undefined), DEFAULT_CAPACITY)
 assert.equal(normalizeCapacity('abc'), DEFAULT_CAPACITY)
 assert.equal(normalizeCapacity(5), 10)
 assert.equal(normalizeCapacity(50), 50)
-assert.equal(normalizeCapacity(250), 200)
+assert.equal(normalizeCapacity(250), 60)
 assert.equal(normalizeCapacity(37.6), 38)
 
 assert.equal(normalizePrice(undefined), DEFAULT_PRICE)
