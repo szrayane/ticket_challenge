@@ -1,8 +1,8 @@
 <a id="topo"></a>
 
 <div align="center">
-  <a href="https://github.com/szrayane/ticket_challenge">
-    <img src="./frontend/public/cineray-logo.png" alt="CineRay" width="280">
+  <a href="https://ticket-challenge.vercel.app" target="_blank" rel="noopener noreferrer">
+    <img src="./frontend/public/cineray-logo.png" alt="CineRay — abrir app" width="280">
   </a>
 
   <h3>CineRay · Desafio Elite Dev 2026</h3>
@@ -12,9 +12,14 @@
   </p>
 
   <p>
-    <a href="https://ticket-challenge.vercel.app">App</a>
-    ·
+    <strong>App no ar</strong> — clique para abrir:
+    <a href="https://ticket-challenge.vercel.app"><strong>ticket-challenge.vercel.app</strong></a>
+  </p>
+
+  <p>
     <a href="https://cineray-api.fly.dev/health">API</a>
+    ·
+    <a href="https://www.figma.com/design/3Q8k3j0O6EzRdbkk539TpW/CineRay?node-id=0-1&t=3o5hq3ir8vXKL1jY-1">Figma</a>
     ·
     <a href="./DEPLOY.md">Deploy</a>
     ·
@@ -84,7 +89,7 @@ Optei por **mapa de assentos** (não pista): faz mais sentido pra cinema e forç
 - Assentos ao vivo, transferência de ingresso, chatbot (Groq), Google Wallet
 - Docker Compose + CI/CD (GitHub Actions)
 
-Design: [Figma — CineRay](https://www.figma.com/design/3Q8k3j0O6EzRdbkk539TpW/CineRay?node-id=0-1&t=nl4ZuD7wMNB9QiCm-1)
+Design: [Figma — CineRay](https://www.figma.com/design/3Q8k3j0O6EzRdbkk539TpW/CineRay?node-id=0-1&t=3o5hq3ir8vXKL1jY-1)
 
 ---
 
