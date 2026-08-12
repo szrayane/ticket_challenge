@@ -17,3 +17,12 @@ A partir do enunciado, defini as principais decisões do projeto, como:
 
 Durante o desenvolvimento, também usei IA para investigar e corrigir problemas, principalmente na API, seed, credenciais, chave do TMDb e migração de SQLite para MySQL. As sugestões foram revisadas e testadas por mim antes de serem incorporadas ao projeto. As decisões finais, integração e validação dos fluxos ficaram sob minha responsabilidade.
 
+## IA no produto
+
+Além do uso durante o desenvolvimento, também utilizei IA como uma funcionalidade do próprio CineRay.
+
+O sistema possui um assistente para clientes, integrado ao backend, para ajudar com dúvidas relacionadas aos filmes, sessões e compra de ingressos.
+
+A IA é acessada pelo backend e não possui acesso direto ao banco de dados. A aplicação continua responsável pelas regras e validações do sistema.
+
+A ideia foi aplicar IA em uma situação real do produto, como apoio ao usuário durante a jornada de compra.
