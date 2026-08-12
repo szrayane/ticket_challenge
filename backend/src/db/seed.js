@@ -108,13 +108,6 @@ async function ensureDemoUsers() {
     password: 'cineray',
   })
   await seedUser({
-    id: 'usr_cliente_demo_2',
-    email: 'cliente2@cineray.com',
-    name: 'Carla Cliente',
-    role: 'cliente',
-    password: 'cineray',
-  })
-  await seedUser({
     id: 'usr_portaria_demo',
     email: 'portaria@cineray.com',
     name: 'Diego Portaria',
