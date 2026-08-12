@@ -34,13 +34,9 @@
 ## Diferenciais
 
 <div align="center">
-  <a href="https://github.com/szrayane/ticket_challenge/raw/main/docs/demo/diferenciais.mp4">
-    <img src="./docs/demo/diferenciais-poster.jpg" alt="4 diferenciais do CineRay — clique para assistir" width="320">
-  </a>
 
-  <p>
-    <a href="https://github.com/szrayane/ticket_challenge/raw/main/docs/demo/diferenciais.mp4"><strong>▶ Assistir (~1 min)</strong></a>
-  </p>
+https://github.com/user-attachments/assets/1865ba00-c943-42e4-bdcf-c63c722625b4
+
 </div>
 
 ---
