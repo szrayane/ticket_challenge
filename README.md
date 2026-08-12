@@ -33,18 +33,15 @@
 
 ## Diferenciais
 
-<p align="center">
-  <video
-    src="https://github.com/user-attachments/assets/f69a0cb8-6f47-4e2e-8d1e-d687b45322e0"
-    width="360"
-    controls
-    playsinline
-  ></video>
-</p>
+<div align="center">
+  <a href="./docs/demo/diferenciais.mp4">
+    <img src="./docs/demo/diferenciais-poster.jpg" alt="4 diferenciais do CineRay — clique para assistir" width="720">
+  </a>
 
-<p align="center">
-  <em>4 diferenciais do CineRay em ~1 min</em>
-</p>
+  <p>
+    <a href="./docs/demo/diferenciais.mp4"><strong>▶ Assistir demo (~1 min)</strong></a>
+  </p>
+</div>
 
 ---
 
