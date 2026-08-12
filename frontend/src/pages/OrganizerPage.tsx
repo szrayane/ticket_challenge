@@ -137,7 +137,6 @@ function OrganizerDashboard() {
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
   const [tmdbQuery, setTmdbQuery] = useState('')
   const [tmdbResults, setTmdbResults] = useState<
     Array<{
@@ -253,11 +252,9 @@ function OrganizerDashboard() {
   }
 
   useEffect(() => {
-    void reloadMovies()
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : 'Falha ao carregar filmes.'),
-      )
-      .finally(() => setLoading(false))
+    void reloadMovies().catch((err) =>
+      setError(err instanceof Error ? err.message : 'Falha ao carregar filmes.'),
+    )
   }, [])
 
   useEffect(() => {
