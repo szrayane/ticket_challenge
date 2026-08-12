@@ -31,25 +31,6 @@
 
 ---
 
-## Demonstração
-
-<div align="center">
-
-<!--
-  Depois de gravar, cole o link do vídeo numa linha sozinha abaixo
-  (GitHub: Issues → arraste o .mp4 → copie a URL user-attachments).
--->
-
-_Vídeo em breve._
-
-<!-- exemplo:
-https://github.com/user-attachments/assets/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
--->
-
-</div>
-
----
-
 ## Sumário
 
 - [Sobre](#sobre)
@@ -64,6 +45,15 @@ https://github.com/user-attachments/assets/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 - [Limitações](#limitações)
 - [Contato](#contato)
 
+---
+
+## Diferenciais
+
+<div align="center">
+  
+https://github.com/user-attachments/assets/f69a0cb8-6f47-4e2e-8d1e-d687b45322e0
+
+</div>
 ---
 
 ## Sobre
