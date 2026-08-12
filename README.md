@@ -31,8 +31,26 @@
 
 ---
 
+## Diferenciais
+
+<p align="center">
+  <video
+    src="https://github.com/user-attachments/assets/f69a0cb8-6f47-4e2e-8d1e-d687b45322e0"
+    width="360"
+    controls
+    playsinline
+  ></video>
+</p>
+
+<p align="center">
+  <em>4 diferenciais do CineRay em ~1 min</em>
+</p>
+
+---
+
 ## Sumário
 
+- [Diferenciais](#diferenciais)
 - [Sobre](#sobre)
 - [Telas](#telas)
 - [Tecnologias](#tecnologias)
@@ -45,15 +63,6 @@
 - [Limitações](#limitações)
 - [Contato](#contato)
 
----
-
-## Diferenciais
-
-<div align="center">
-  
-https://github.com/user-attachments/assets/f69a0cb8-6f47-4e2e-8d1e-d687b45322e0
-
-</div>
 ---
 
 ## Sobre
