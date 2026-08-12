@@ -3,6 +3,7 @@ import {
   executeTool,
   ruleBasedReply,
   isHelpIntent,
+  isCancelIntent,
   helpReplyText,
 } from './tools.js'
 import {
@@ -21,7 +22,8 @@ Regras:
 - Fale em português do Brasil, curto e amigável (2–4 frases).
 - Fluxo: search_movies → list_showtimes → suggest_seats → prepare_pix_purchase.
 - Depois do Pix, o usuário confirma no botão "Já paguei — confirmar".
-- Para cancelar: chame list_my_tickets. A interface mostra cards com botão "Cancelar ingresso".
+- Para cancelar: chame list_my_tickets (só retorna ingressos ativos/canceláveis). NUNCA use histórico da conversa para listar ingressos.
+- NUNCA mostre ou sugira cancelar ingresso já cancelado, usado ou de sessão passada.
 - Cancelamento é um ingresso por vez. Se pedirem "cancelar todos", diga isso e mostre a lista — o usuário toca Cancelar em cada card.
 - Só chame cancel_ticket depois que o usuário confirmar qual ingresso (filme + assento) ou tocar no botão.
 - Tool calls: use SOMENTE o formato nativo da API (tool_calls). NUNCA escreva tags como <function=...>, </function>, JSON de ferramenta ou nomes de tool no texto ao usuário.
@@ -413,6 +415,10 @@ function summarizeFromToolResults(uiResults) {
   const tickets = uiResults.find((r) => r?.ui?.type === 'tickets')
   if (tickets?.tickets?.length) {
     const n = tickets.tickets.length
+    const total = Number(tickets.ui?.totalActive ?? tickets.count ?? n) || n
+    if (total > n) {
+      return `Você tem ${total} ingressos ativos. Mostrando os ${n} próximos — cancele um por vez.`
+    }
     return n === 1
       ? 'Encontrei 1 ingresso ativo. Toque em Cancelar se quiser desistir dele.'
       : `Encontrei ${n} ingressos ativos. O cancelamento é um por vez — toque em Cancelar no card desejado.`
@@ -527,12 +533,15 @@ function formatAssistantOutput(text, uiBlocks = []) {
     } else if (blocks.some((b) => b.type === 'tickets')) {
       const ticketsBlock = blocks.find((b) => b.type === 'tickets')
       const n = ticketsBlock?.tickets?.length || 0
+      const total = Number(ticketsBlock?.totalActive) || n
       clean =
-        n > 1
-          ? `Você tem ${n} ingressos ativos. O cancelamento é um por vez — toque em Cancelar no card que quiser.`
-          : n === 1
-            ? 'Encontrei seu ingresso. Toque em Cancelar se quiser desistir dele.'
-            : 'Você não tem ingressos ativos para cancelar.'
+        total > n
+          ? `Você tem ${total} ingressos ativos. Mostrando os ${n} próximos — cancele um por vez.`
+          : n > 1
+            ? `Você tem ${n} ingressos ativos. O cancelamento é um por vez — toque em Cancelar no card que quiser.`
+            : n === 1
+              ? 'Encontrei seu ingresso. Toque em Cancelar se quiser desistir dele.'
+              : 'Você não tem ingressos ativos para cancelar.'
     } else if (blocks.some((b) => b.type === 'movie_picks')) {
       clean = 'Encontrei estas opções. Toque em um filme para ver os horários.'
     } else if (blocks.some((b) => b.type === 'showtimes')) {
@@ -752,6 +761,21 @@ export async function handleChatMessage({
       uiBlocks: [],
       holderKey: session.holderKey,
       provider: 'help',
+    }
+  }
+
+  if (isCancelIntent(message)) {
+    const fallback = await ruleBasedReply(message, ctx)
+    const formatted = formatAssistantOutput(
+      fallback.text,
+      fallback.uiBlocks || [],
+    )
+    return {
+      sessionId: session.id,
+      reply: formatted.text,
+      uiBlocks: formatted.uiBlocks,
+      holderKey: session.holderKey,
+      provider: 'rules',
     }
   }
 

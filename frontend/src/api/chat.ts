@@ -55,6 +55,7 @@ export type ChatUiBlock =
     }
   | {
       type: 'tickets'
+      totalActive?: number
       tickets: Array<{
         id: string
         movieTitle: string

@@ -87,6 +87,23 @@ export async function listTicketsForUser(userId) {
   return rows.map(mapTicket)
 }
 
+export async function listCancellableTicketsForUser(userId) {
+  const rows = await query(
+    `SELECT * FROM tickets
+     WHERE user_id = ?
+       AND LOWER(COALESCE(status, 'active')) = 'active'
+       AND cancelled_at IS NULL
+       AND checked_in_at IS NULL
+     ORDER BY purchased_at DESC`,
+    [userId],
+  )
+  return rows
+    .map(mapTicket)
+    .filter((ticket) =>
+      isTicketSessionUpcoming(ticket.sessionDate, ticket.sessionTime),
+    )
+}
+
 export async function createTickets(user, tickets, { holderKey } = {}) {
   const role = String(user?.role || 'cliente').toLowerCase()
   if (role !== 'cliente') {
@@ -452,8 +469,8 @@ export async function claimTicketTransfer(user, token) {
 }
 
 export async function listGateSessions({
-  beforeMinutes = 60,
-  afterMinutes = 180,
+  beforeMinutes = 120,
+  afterMinutes = 120,
 } = {}) {
   const fromTickets = await query(
     `SELECT

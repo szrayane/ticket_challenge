@@ -5,7 +5,7 @@ import {
 } from '../showtimes.service.js'
 import { holdSeat } from '../seats.service.js'
 import {
-  listTicketsForUser,
+  listCancellableTicketsForUser,
   cancelTicketForUser,
   createTickets,
 } from '../tickets.service.js'
@@ -14,9 +14,60 @@ import { createPendingPayment, consumePendingPayment } from './sessions.js'
 import { publishSessionSeats, publishOrganizerStats } from '../../realtime/hub.js'
 
 const SERVICE_FEE = 6.5
+const MAX_CANCEL_TICKETS_UI = 5
 
 function seatLabel(seat) {
   return `${seat.row}${seat.number}`
+}
+
+function foldText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+function genreAliases(raw) {
+  const g = foldText(raw).trim()
+  if (!g) return []
+  const map = {
+    acao: ['acao'],
+    comedia: ['comedia'],
+    drama: ['drama'],
+    terror: ['terror', 'horror'],
+    horror: ['terror', 'horror'],
+    aventura: ['aventura'],
+    ficcao: ['ficcao'],
+    'ficcao cientifica': ['ficcao'],
+    romance: ['romance'],
+    animacao: ['animacao'],
+    suspense: ['suspense', 'thriller'],
+    thriller: ['thriller', 'suspense', 'terror'],
+    fantasia: ['fantasia'],
+    familia: ['familia'],
+    misterio: ['misterio', 'suspense'],
+  }
+  return map[g] || [g]
+}
+
+function matchesGenre(movieGenre, wanted) {
+  if (!wanted) return true
+  const hay = foldText(movieGenre)
+  return genreAliases(wanted).some((alias) => hay.includes(alias))
+}
+
+function ticketSortKey(ticket) {
+  const at = String(ticket.sessionDate || '').match(/(\d{2})\/(\d{2})\/(\d{4})/)
+  const [h = '0', m = '0'] = String(ticket.sessionTime || '00:00').split(':')
+  if (!at) return Number.POSITIVE_INFINITY
+  const [, dd, mm, yyyy] = at
+  return new Date(
+    Number(yyyy),
+    Number(mm) - 1,
+    Number(dd),
+    Number(h) || 0,
+    Number(m) || 0,
+  ).getTime()
 }
 
 export const TOOL_DECLARATIONS = [
@@ -125,13 +176,13 @@ export const TOOL_DECLARATIONS = [
   {
     name: 'list_my_tickets',
     description:
-      'Lista ingressos ativos do usuário logado (para consulta ou cancelamento).',
+      'Lista ingressos ativos e ainda canceláveis do usuário (status active, sessão futura, sem check-in).',
     parameters: {
       type: 'OBJECT',
       properties: {
         onlyActive: {
           type: 'STRING',
-          description: 'Use "true" para só ativos (padrão).',
+          description: 'Use "true" para só ativos/canceláveis (padrão).',
         },
       },
     },
@@ -259,15 +310,18 @@ function normalizeToolArgs(name, raw = {}) {
   delete args._
 
   if (name === 'search_movies') {
+    const query = asString(args.query)
+    const genre = asString(args.genre)
     return {
-      query: asString(args.query),
-      genre: asString(args.genre),
+      query,
+      genre,
       cinema: resolveCinemaFilter(
         asString(args.cinema || args.place || args.local || args.location),
       ),
       date: asString(args.date || args.sessionDate),
       maxPrice: asNumber(args.maxPrice ?? args.max_price ?? args.price, NaN),
       limit: asInt(args.limit, 5),
+      sortByRating: Boolean(genre) || !query,
     }
   }
   if (name === 'list_showtimes') {
@@ -312,29 +366,26 @@ async function searchMovies({
   date = '',
   maxPrice = NaN,
   limit = 5,
+  sortByRating = false,
 } = {}) {
   const movies = await listMovies({ includeInactive: false })
-  const q = String(query || '').trim().toLowerCase()
-  const g = String(genre || '').trim().toLowerCase()
+  const q = foldText(query).trim()
+  const g = String(genre || '').trim()
   const max = Math.min(Math.max(Number(limit) || 5, 1), 10)
   const hasSessionFilter =
     Boolean(cinema) || Boolean(date) || Number.isFinite(maxPrice)
 
   let filtered = movies.filter((movie) => {
-    const genreText = String(movie.genre || '').toLowerCase()
-    const title = String(movie.title || '').toLowerCase()
-    const matchGenre = !g || genreText.includes(g)
+    const genreText = String(movie.genre || '')
+    const title = foldText(movie.title)
+    const matchGenre = matchesGenre(genreText, g)
     const matchQuery =
       !q ||
       title.includes(q) ||
-      genreText.includes(q) ||
-      String(movie.synopsis || '')
-        .toLowerCase()
-        .includes(q) ||
+      foldText(genreText).includes(q) ||
+      foldText(movie.synopsis).includes(q) ||
       movieSessions(movie).some((session) =>
-        String(session.cinema || '')
-          .toLowerCase()
-          .includes(q),
+        foldText(session.cinema).includes(q),
       )
     if (!matchGenre || !matchQuery) return false
 
@@ -348,8 +399,10 @@ async function searchMovies({
     return true
   })
 
-  if (filtered.length === 0 && (q || g) && !hasSessionFilter) {
-    filtered = movies.slice(0, max)
+  if (sortByRating || (!q && !g && !hasSessionFilter)) {
+    filtered = [...filtered].sort(
+      (a, b) => (Number(b.rating) || 0) - (Number(a.rating) || 0),
+    )
   }
 
   const picks = filtered.slice(0, max).map((movie) => {
@@ -380,7 +433,9 @@ async function searchMovies({
   return {
     ok: true,
     count: picks.length,
+    totalMatches: filtered.length,
     filters: {
+      genre: g || null,
       cinema: cinema || null,
       date: date || null,
       maxPrice: Number.isFinite(maxPrice) ? maxPrice : null,
@@ -611,13 +666,17 @@ async function listMyTicketsTool(ctx) {
   const authError = requireCliente(ctx.user)
   if (authError) return authError
 
-  const tickets = await listTicketsForUser(ctx.user.id)
-  const active = tickets.filter((t) => (t.status || 'active') === 'active')
+  const active = (await listCancellableTicketsForUser(ctx.user.id)).sort(
+    (a, b) => ticketSortKey(a) - ticketSortKey(b),
+  )
+
+  const shown = active.slice(0, MAX_CANCEL_TICKETS_UI)
 
   return {
     ok: true,
     count: active.length,
-    tickets: active.map((t) => ({
+    shown: shown.length,
+    tickets: shown.map((t) => ({
       id: t.id,
       movieTitle: t.movieTitle,
       sessionDate: t.sessionDate,
@@ -628,7 +687,8 @@ async function listMyTicketsTool(ctx) {
     })),
     ui: {
       type: 'tickets',
-      tickets: active.map((t) => ({
+      totalActive: active.length,
+      tickets: shown.map((t) => ({
         id: t.id,
         movieTitle: t.movieTitle,
         moviePoster: t.moviePoster,
@@ -784,6 +844,27 @@ export function isHelpIntent(message) {
   return false
 }
 
+export function isCancelIntent(message) {
+  const t = String(message || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (!t) return false
+  if (
+    /^(cancelamento|cancelar|cancelar ingresso|cancelar ingressos|desistir|reembolso)\??$/.test(
+      t,
+    )
+  ) {
+    return true
+  }
+  if (/^(quero |preciso )?(cancelar|desistir)\b/.test(t) && t.length <= 64) {
+    return true
+  }
+  if (/\bcancel/.test(t) && t.length <= 48) return true
+  return false
+}
+
 export async function ruleBasedReply(message, ctx) {
   const text = String(message || '').toLowerCase()
   const uiBlocks = []
@@ -792,7 +873,7 @@ export async function ruleBasedReply(message, ctx) {
     return { text: helpReplyText(), uiBlocks }
   }
 
-  if (/cancel|desistir|reembolso/.test(text)) {
+  if (isCancelIntent(message) || /cancel|desistir|reembolso/.test(text)) {
     const idMatch = text.match(/\b(tkt_[a-f0-9]+)\b/i)
     if (idMatch) {
       const result = await cancelTicketTool({ ticketId: idMatch[1] }, ctx)
@@ -816,8 +897,13 @@ export async function ruleBasedReply(message, ctx) {
         uiBlocks,
       }
     }
+    const total = Number(result.count) || result.tickets.length
+    const shown = result.tickets.length
     return {
-      text: 'Estes são seus ingressos ativos. O cancelamento é um por vez — toque em Cancelar no card que quiser.',
+      text:
+        total > shown
+          ? `Você tem ${total} ingressos ativos. Mostrando os ${shown} próximos — cancele um por vez.`
+          : 'Estes são seus ingressos ativos. O cancelamento é um por vez — toque em Cancelar no card que quiser.',
       uiBlocks,
     }
   }
@@ -838,6 +924,11 @@ export async function ruleBasedReply(message, ctx) {
       uiBlocks,
     }
   }
+
+  const recommendIntent =
+    /recomenda|sugest[aã]o|indic[ae]|o que (assist|ver)|filme pra (ver|assist)/.test(
+      text,
+    )
 
   const genreMatch = text.match(
     /(?:g[eê]nero|tipo)\s+(?:de\s+)?([a-záàâãéêíóôõúç\s]+)/i,
@@ -879,7 +970,7 @@ export async function ruleBasedReply(message, ctx) {
   )
   const search = await searchMovies({
     query:
-      genre || cinema
+      recommendIntent || genre || cinema
         ? ''
         : text
             .replace(/^(oi|olá|ola|hey|bom dia|boa tarde|boa noite)\b/gi, '')
@@ -889,10 +980,17 @@ export async function ruleBasedReply(message, ctx) {
     date,
     maxPrice,
     limit: 5,
+    sortByRating: recommendIntent || Boolean(genre),
   })
   if (search.ui) uiBlocks.push(search.ui)
 
   if (!search.movies?.length) {
+    if (genre) {
+      return {
+        text: `Não achei filmes de ${genre} no catálogo agora. Tente outro gênero (terror, comédia, ação, drama…).`,
+        uiBlocks,
+      }
+    }
     return {
       text: cinema
         ? `Não achei filmes em ${cinema} com esses critérios. Tente outro local (Centro, Norte ou Shopping) ou outro gênero.`
@@ -903,10 +1001,13 @@ export async function ruleBasedReply(message, ctx) {
 
   const titles = search.movies.map((m) => m.title).join(', ')
   const placeHint = cinema ? ` em ${cinema}` : ''
+  const genreHint = genre ? ` de ${genre}` : ''
   return {
     text: buyIntent
-      ? `Encontrei estas opções${placeHint}: ${titles}. Diga o filme e quantos assentos (ex.: "2 lugares em ${search.movies[0].title}").`
-      : `Posso recomendar${placeHint}: ${titles}. Me diga gênero, local (Centro/Norte/Shopping) ou o filme.`,
+      ? `Encontrei estas opções${genreHint}${placeHint}: ${titles}. Diga o filme e quantos assentos (ex.: "2 lugares em ${search.movies[0].title}").`
+      : recommendIntent || genre
+        ? `Minhas recomendações${genreHint}${placeHint}: ${titles}. Quer filtrar por gênero, local (Centro/Norte/Shopping) ou escolher um filme?`
+        : `Posso recomendar${placeHint}: ${titles}. Me diga gênero, local (Centro/Norte/Shopping) ou o filme.`,
     uiBlocks,
   }
 }

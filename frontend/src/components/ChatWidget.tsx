@@ -25,11 +25,8 @@ const SESSION_KEY = 'cineray.chat.sessionId'
 
 const QUICK_PROMPTS = [
   'Ajuda',
-  'Me recomenda um filme',
-  'Quero comédia',
-  'Terror no CineRay Norte',
-  'Quero comprar ingresso',
-  'Cancelar meu ingresso',
+  'Cancelamento',
+  'Recomendação de filmes',
 ]
 
 function readStorage(key: string) {
@@ -78,7 +75,7 @@ export function ChatWidget() {
       id: 'welcome',
       role: 'assistant',
       content:
-        'Olá! Sou o assistente CineRay. Posso recomendar filmes, montar sua compra com Pix (fictício) e ajudar a cancelar ingressos. Qual gênero ou filme você quer?',
+        'Olá! Sou o assistente CineRay. Escolha uma opção abaixo ou me diga o que precisa: ajuda, cancelamento ou recomendação de filmes.',
     },
   ])
   const [actionBusy, setActionBusy] = useState<string | null>(null)
@@ -101,15 +98,24 @@ export function ChatWidget() {
   }
 
   function pushAssistant(payload: ChatMessagePayload) {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: createLocalId(),
-        role: 'assistant',
-        content: payload.content,
-        ui: payload.ui,
-      },
-    ])
+    setMessages((prev) => {
+      const hasFreshTickets = payload.ui?.some((block) => block.type === 'tickets')
+      const cleaned = hasFreshTickets
+        ? prev.map((msg) => ({
+            ...msg,
+            ui: msg.ui?.filter((block) => block.type !== 'tickets'),
+          }))
+        : prev
+      return [
+        ...cleaned,
+        {
+          id: createLocalId(),
+          role: 'assistant',
+          content: payload.content,
+          ui: payload.ui,
+        },
+      ]
+    })
   }
 
   async function submitMessage(text: string) {
@@ -117,10 +123,20 @@ export function ChatWidget() {
     if (!trimmed || busy) return
 
     setInput('')
-    setMessages((prev) => [
-      ...prev,
-      { id: createLocalId(), role: 'user', content: trimmed },
-    ])
+    setMessages((prev) => {
+      const isCancel =
+        /cancel|desistir|reembolso/i.test(trimmed) && trimmed.length <= 64
+      const base = isCancel
+        ? prev.map((msg) => ({
+            ...msg,
+            ui: msg.ui?.filter((block) => block.type !== 'tickets'),
+          }))
+        : prev
+      return [
+        ...base,
+        { id: createLocalId(), role: 'user', content: trimmed },
+      ]
+    })
     setBusy(true)
 
     try {
@@ -158,6 +174,31 @@ export function ChatWidget() {
         holderKey,
       })
       rememberSession(data.sessionId, data.holderKey)
+      if (action.action === 'cancel_ticket' && action.ticketId) {
+        const cancelledId = action.ticketId
+        setMessages((prev) =>
+          prev.map((msg) => ({
+            ...msg,
+            ui: msg.ui
+              ?.map((block) => {
+                if (block.type !== 'tickets') return block
+                const tickets = block.tickets.filter((t) => t.id !== cancelledId)
+                return {
+                  ...block,
+                  tickets,
+                  totalActive: Math.max(
+                    0,
+                    (block.totalActive ?? block.tickets.length) - 1,
+                  ),
+                }
+              })
+              .filter(
+                (block) =>
+                  block.type !== 'tickets' || block.tickets.length > 0,
+              ),
+          })),
+        )
+      }
       pushAssistant(data.message)
       if (action.action === 'confirm_pix' || action.action === 'cancel_ticket') {
         await refreshTickets().catch(() => undefined)
@@ -520,12 +561,15 @@ function ChatUi({
         </p>
       )
     }
+    const totalActive = Number(block.totalActive) || block.tickets.length
     return (
       <div className="mt-2 space-y-2">
         <p className="text-[11px] text-on-surface-variant">
-          {block.tickets.length > 1
-            ? 'Cancele um por vez — toque no ingresso desejado.'
-            : 'Toque em Cancelar se quiser desistir deste ingresso.'}
+          {totalActive > block.tickets.length
+            ? `${totalActive} ativos · mostrando ${block.tickets.length} próximos — cancele um por vez.`
+            : block.tickets.length > 1
+              ? 'Cancele um por vez — toque no ingresso desejado.'
+              : 'Toque em Cancelar se quiser desistir deste ingresso.'}
         </p>
         {block.tickets.map((ticket) => {
           const busy = busyKey === `cancel_${ticket.id}`
