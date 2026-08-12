@@ -101,8 +101,8 @@ export async function listGateActiveSessions(req, res, next) {
   try {
     res.json({
       sessions: await listGateSessions({
-        beforeMinutes: Number(req.query.beforeMinutes) || 60,
-        afterMinutes: Number(req.query.afterMinutes) || 180,
+        beforeMinutes: Number(req.query.beforeMinutes) || 120,
+        afterMinutes: Number(req.query.afterMinutes) || 120,
       }),
     })
   } catch (error) {
