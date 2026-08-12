@@ -43,7 +43,7 @@ function sessionSlotsForMovie(movieIndex) {
       cinema,
       room: `Sala ${((movieIndex + i) % 6) + 1}`,
       price: 28 + ((movieIndex + i) % 4) * 4,
-      capacity: 40 + ((movieIndex + i) % 3) * 10,
+      capacity: 40,
     })
   }
   return slots

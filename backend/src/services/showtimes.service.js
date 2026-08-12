@@ -12,8 +12,9 @@ import {
   listUnavailableSeatIds,
 } from './seats.service.js'
 
-export const DEFAULT_CAPACITY = 50
+export const DEFAULT_CAPACITY = 40
 export const DEFAULT_PRICE = 28
+export const MAX_CAPACITY = 40
 
 function nowIso() {
   return new Date().toISOString()
@@ -59,13 +60,78 @@ function compareShowtimesByDateTime(a, b) {
 export function normalizeCapacity(value, fallback = DEFAULT_CAPACITY) {
   const n = Number(value)
   if (!Number.isFinite(n)) return fallback
-  return Math.min(200, Math.max(10, Math.round(n)))
+  return Math.min(MAX_CAPACITY, Math.max(10, Math.round(n)))
 }
 
 export function normalizePrice(value, fallback = DEFAULT_PRICE) {
   const n = Number(value)
   if (!Number.isFinite(n) || n <= 0) return fallback
   return Math.round(n * 100) / 100
+}
+
+function parseRuntimeMinutes(runtime) {
+  const match = String(runtime || '').match(/(\d{2,3})/)
+  if (!match) return 120
+  return Math.min(300, Math.max(30, Number(match[1])))
+}
+
+function normalizeRoomKey(room) {
+  return String(room || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+async function assertRoomAvailable({
+  cinema,
+  room,
+  sessionDate,
+  sessionTime,
+  movieRuntime,
+  excludeShowtimeId,
+}) {
+  const start = parseDateTime(sessionDate, sessionTime)
+  if (!start) {
+    const err = new Error('Data/hora inválidas.')
+    err.status = 400
+    throw err
+  }
+
+  const durationMin = parseRuntimeMinutes(movieRuntime)
+  const endMs = start.getTime() + durationMin * 60_000
+  const roomKey = normalizeRoomKey(room)
+
+  const rows = await query(
+    `SELECT s.id, s.session_date, s.session_time, s.cinema, s.room,
+            m.title AS movie_title, m.runtime AS movie_runtime
+     FROM showtimes s
+     INNER JOIN movies m ON m.id = s.movie_id
+     WHERE s.session_date = ?
+       AND LOWER(TRIM(s.cinema)) = LOWER(TRIM(?))`,
+    [sessionDate, cinema],
+  )
+
+  for (const row of rows) {
+    if (excludeShowtimeId && String(row.id) === String(excludeShowtimeId)) {
+      continue
+    }
+    if (normalizeRoomKey(row.room) !== roomKey) continue
+
+    const otherStart = parseDateTime(row.session_date, row.session_time)
+    if (!otherStart) continue
+    const otherEndMs =
+      otherStart.getTime() + parseRuntimeMinutes(row.movie_runtime) * 60_000
+
+    if (start.getTime() < otherEndMs && otherStart.getTime() < endMs) {
+      const err = new Error(
+        `${room} em ${cinema} já está ocupada às ${row.session_time} com "${row.movie_title}". Escolha outro horário ou outra sala.`,
+      )
+      err.status = 409
+      err.code = 'ROOM_BUSY'
+      throw err
+    }
+  }
 }
 
 export function normalizeSessionFields(input = {}, fallback = {}) {
@@ -239,6 +305,14 @@ export async function createShowtime(userId, movieId, input = {}) {
 
   const fields = normalizeSessionFields(input)
 
+  await assertRoomAvailable({
+    cinema: fields.cinema,
+    room: fields.room,
+    sessionDate: fields.sessionDate,
+    sessionTime: fields.sessionTime,
+    movieRuntime: movie.runtime,
+  })
+
   const row = {
     id: createId('st'),
     movie_id: movie.id,
@@ -288,6 +362,16 @@ export async function updateShowtime(id, input = {}) {
   }
 
   const fields = normalizeSessionFields(input, current)
+  const movie = await getMovie(current.movie_id)
+  await assertRoomAvailable({
+    cinema: fields.cinema,
+    room: fields.room,
+    sessionDate: fields.sessionDate,
+    sessionTime: fields.sessionTime,
+    movieRuntime: movie?.runtime,
+    excludeShowtimeId: current.id,
+  })
+
   await execute(
     `UPDATE showtimes
      SET session_date = ?, session_time = ?, date_label = ?, cinema = ?, room = ?,

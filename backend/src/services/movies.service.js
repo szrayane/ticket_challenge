@@ -133,7 +133,7 @@ export async function listMovies({ includeInactive = false } = {}) {
     for (const next of showtimesByMovie.get(row.id) || []) {
       const at = parseShowtimeAt(next.session_date, next.session_time)
       if (!at || at.getTime() <= now) continue
-      const capacity = Number(next.capacity) || 50
+      const capacity = Number(next.capacity) || 40
       const sold = soldBySession.get(String(next.id)) || 0
       if (sold >= capacity) continue
       const price = Number(next.price) || 28
@@ -158,7 +158,7 @@ export async function listMovies({ includeInactive = false } = {}) {
         cinema: best.next.cinema,
         room: best.next.room,
         price: Number(best.next.price) || 28,
-        capacity: Number(best.next.capacity) || 50,
+        capacity: Number(best.next.capacity) || 40,
       }
     }
     return movie
