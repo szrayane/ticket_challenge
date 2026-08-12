@@ -13,7 +13,9 @@
 
   <p>
     <strong>App no ar</strong> — clique para abrir:
-    <a href="https://ticket-challenge.vercel.app"><strong>ticket-challenge.vercel.app</strong></a>
+    <a href="https://ticket-challenge.vercel.app">
+      <strong>ticket-challenge.vercel.app</strong>
+    </a>
   </p>
 
   <p>
@@ -57,6 +59,7 @@ https://github.com/user-attachments/assets/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 - [Contas de teste](#contas-de-teste)
 - [Fluxo rápido](#fluxo-rápido)
 - [Decisões](#decisões)
+- [Uso de IA](#uso-de-ia)
 - [Estrutura](#estrutura)
 - [Limitações](#limitações)
 - [Contato](#contato)
@@ -122,7 +125,9 @@ Design: [Figma — CineRay](https://www.figma.com/design/3Q8k3j0O6EzRdbkk539TpW/
   <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind">
+
   <br>
+
   <img src="https://img.shields.io/badge/Node.js_22+-6DA55F?style=for-the-badge&logo=node.js&logoColor=white" alt="Node">
   <img src="https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express">
   <img src="https://img.shields.io/badge/MySQL_8-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL">
@@ -152,8 +157,8 @@ cd ticket_challenge
 docker compose up --build
 ```
 
-- Front: http://localhost:8080  
-- API: http://localhost:3333  
+- Front: [http://localhost:8080](http://localhost:8080)
+- API: [http://localhost:3333](http://localhost:3333)
 
 ### Opção B — Front + API + MySQL
 
@@ -176,7 +181,7 @@ npm run migrate
 npm run dev
 ```
 
-API: http://localhost:3333
+API: [http://localhost:3333](http://localhost:3333)
 
 **3) Frontend**
 
@@ -187,7 +192,7 @@ cp .env.example .env
 npm run dev
 ```
 
-App: http://localhost:5173
+App: [http://localhost:5173](http://localhost:5173)
 
 Na raiz (depois de `npm run install:all`):
 
@@ -243,7 +248,9 @@ npm test
 | Organizador | `organizador@cineray.com` | `cineray` |
 | Portaria | `portaria@cineray.com` | `cineray` |
 
-No login tem um seletor com essas contas. Staff novo: **Criar conta** → **Sou da equipe** → código do `STAFF_INVITE_CODE`.
+No login tem um seletor com essas contas.
+
+Staff novo: **Criar conta** → **Sou da equipe** → código do `STAFF_INVITE_CODE`.
 
 Cartão demo: `4111 1111 1111 1111` (ok) · `4000 0000 0000 0002` (recusa).
 
@@ -266,7 +273,47 @@ Cartão demo: `4111 1111 1111 1111` (ok) · `4000 0000 0000 0002` (recusa).
 - **QR AES-256-GCM** — payload `CR2.…` ilegível sem o secret
 - **Assentos ao vivo** — o mapa atualiza enquanto outras pessoas compram
 - **Staff com convite** — organizador/portaria só com código
-- **IA** — usei Cursor pra acelerar; as escolhas foram minhas → [`AI.md`](./AI.md)
+- **IA** — usei Cursor para acelerar o desenvolvimento; as escolhas e validações foram minhas → [`AI.md`](./AI.md)
+
+---
+
+## Uso de IA
+
+### IA utilizada no desenvolvimento
+
+Usei o Cursor como apoio durante o desenvolvimento, principalmente para ganhar tempo na implementação, investigar erros, testar algumas soluções e revisar código.
+
+Ele me ajudou em partes como:
+
+- Express e MySQL
+- holds de assentos
+- integração com TMDb
+- QR Code com AES-256-GCM
+- fluxo da portaria
+- Docker
+
+As principais decisões do projeto vieram do enunciado e da forma como eu escolhi resolver cada problema, como:
+
+- mapa de assentos
+- login com papéis e convite para Staff
+- hold de 10 minutos com `SELECT ... FOR UPDATE`
+- QR Code com AES-256-GCM e `TICKET_QR_SECRET` obrigatório
+- TMDb como única API externa
+- compartilhamento por `/i/:shareToken`
+- validação da sessão e check-in único na portaria
+- Docker Compose com MySQL, API e frontend
+
+Também usei IA durante o desenvolvimento para investigar e corrigir problemas que apareceram, principalmente na API, seed, credenciais, chave do TMDb e na migração de SQLite para MySQL.
+
+Eu revisei e testei as sugestões antes de usar no projeto, adaptando o que fosse necessário para o funcionamento do CineRay.
+
+### IA no produto
+
+O CineRay também possui um assistente para clientes, integrado a um modelo de linguagem e a ferramentas do próprio backend.
+
+Ele pode ajudar com filmes, sessões, assentos, ingressos e algumas ações do usuário.
+
+A IA não acessa diretamente o banco de dados. Quando precisa realizar alguma ação, ela utiliza ferramentas controladas pelo backend, que aplicam as regras e validações do sistema antes da operação.
 
 ---
 
