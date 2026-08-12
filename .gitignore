@@ -33,7 +33,6 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea/
-.venv-poster/
 *.suo
 *.ntvs*
 *.njsproj
