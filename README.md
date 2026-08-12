@@ -35,8 +35,8 @@
 
 <div align="center">
   <video
-    src="https://github.com/user-attachments/assets/f69a0cb8-6f47-4e2e-8d1e-d687b45322e0"
-    width="180"
+    src="https://raw.githubusercontent.com/szrayane/ticket_challenge/main/docs/demo/diferenciais.mp4"
+    width="320"
     controls
     playsinline
   ></video>
