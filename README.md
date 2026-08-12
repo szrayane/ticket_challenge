@@ -238,7 +238,8 @@ npm test
 
 | Perfil | E-mail | Senha |
 |--------|--------|-------|
-| Cliente | `cliente1@cineray.com` | `cineray` |
+| Cliente 1 | `cliente1@cineray.com` | `cineray` |
+| Cliente 2 | `cliente2@cineray.com` | `cineray` |
 | Organizador | `organizador@cineray.com` | `cineray` |
 | Portaria | `portaria@cineray.com` | `cineray` |
 

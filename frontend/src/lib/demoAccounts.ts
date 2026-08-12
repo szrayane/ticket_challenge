@@ -5,7 +5,14 @@ export const DEMO_ACCOUNTS = [
     email: 'cliente1@cineray.com',
     name: 'Bruno Cliente',
     role: 'cliente' as const,
-    roleLabel: 'Cliente',
+    roleLabel: 'Cliente 1',
+    icon: 'person',
+  },
+  {
+    email: 'cliente2@cineray.com',
+    name: 'Carla Cliente',
+    role: 'cliente' as const,
+    roleLabel: 'Cliente 2',
     icon: 'person',
   },
   {
