@@ -19,9 +19,11 @@ import {
 import { AppApiError } from '../api/appClient'
 import { Icon } from '../components/Icon'
 import { RequireRole } from '../components/RequireRole'
+import { CinemaPicker } from '../components/CinemaPicker'
 import { RoomPicker } from '../components/RoomPicker'
 import { useAuth } from '../context/AuthContext'
-import { CINEMA_NAME, normalizeCinemaRoom } from '../lib/cinemaRooms'
+import { normalizeCinemaRoom } from '../lib/cinemaRooms'
+import { CINEMA_NAME, normalizeCinemaName } from '../lib/cinemaVenues'
 import { connectRealtime } from '../lib/realtime'
 import type { Movie, Session } from '../types'
 
@@ -133,7 +135,7 @@ function OrganizerDashboard() {
   const [room, setRoom] = useState<string>(normalizeCinemaRoom('Sala 1'))
   const [capacity, setCapacity] = useState('40')
   const [price, setPrice] = useState('32')
-  const [cinema, setCinema] = useState(CINEMA_NAME)
+  const [cinema, setCinema] = useState(normalizeCinemaName(CINEMA_NAME))
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -156,7 +158,7 @@ function OrganizerDashboard() {
   const [eventRoom, setEventRoom] = useState<string>(normalizeCinemaRoom('Sala 1'))
   const [eventCapacity, setEventCapacity] = useState('40')
   const [eventPrice, setEventPrice] = useState('32')
-  const [eventCinema, setEventCinema] = useState(CINEMA_NAME)
+  const [eventCinema, setEventCinema] = useState(normalizeCinemaName(CINEMA_NAME))
   const [seatMapView, setSeatMapView] = useState<SeatMapView | null>(null)
   const [seatMapLoading, setSeatMapLoading] = useState(false)
   const [seatMapError, setSeatMapError] = useState<string | null>(null)
@@ -324,7 +326,7 @@ function OrganizerDashboard() {
     setSessionDateIso('')
     setSessionTime('20:00')
     setRoom(normalizeCinemaRoom('Sala 1'))
-    setCinema(CINEMA_NAME)
+    setCinema(normalizeCinemaName(CINEMA_NAME))
     setCapacity('40')
     setPrice('32')
   }
@@ -347,7 +349,7 @@ function OrganizerDashboard() {
       sessionDate: toBrDate(sessionDateIso),
       sessionTime,
       room: normalizeCinemaRoom(room),
-      cinema: cinema.trim() || CINEMA_NAME,
+      cinema: normalizeCinemaName(cinema),
       capacity: Number(capacity) || 40,
       price: Number(price) || 28,
     }
@@ -398,7 +400,7 @@ function OrganizerDashboard() {
     setSessionDateIso(toIsoDate(session.date))
     setSessionTime(session.time)
     setRoom(normalizeCinemaRoom(session.room))
-    setCinema(session.cinema || CINEMA_NAME)
+    setCinema(normalizeCinemaName(session.cinema))
     setCapacity(String(session.capacity || 40))
     setPrice(String(session.price || 28))
     setSuccess(null)
@@ -484,7 +486,7 @@ function OrganizerDashboard() {
         tmdbId: selectedTmdbId,
         sessionDate: toBrDate(eventDateIso),
         sessionTime: eventTime,
-        cinema: eventCinema.trim() || CINEMA_NAME,
+        cinema: normalizeCinemaName(eventCinema),
         room: normalizeCinemaRoom(eventRoom),
         capacity: Number(eventCapacity) || 40,
         price: Number(eventPrice) || 32,
@@ -683,14 +685,7 @@ function OrganizerDashboard() {
                 className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
               />
             </label>
-            <label className="block space-y-1">
-              <span className="text-label-md text-on-surface-variant">Local / cinema</span>
-              <input
-                value={eventCinema}
-                onChange={(e) => setEventCinema(e.target.value)}
-                className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
-              />
-            </label>
+            <CinemaPicker value={eventCinema} onChange={setEventCinema} />
             <RoomPicker value={eventRoom} onChange={setEventRoom} />
             <div className="grid grid-cols-2 gap-3">
               <label className="block space-y-1">
@@ -809,15 +804,7 @@ function OrganizerDashboard() {
                   </label>
                 </div>
 
-                <label className="block space-y-1">
-                  <span className="text-label-md text-on-surface-variant">Cinema</span>
-                  <input
-                    type="text"
-                    value={cinema}
-                    onChange={(e) => setCinema(e.target.value)}
-                    className="glass-input w-full rounded-lg px-3 py-2 text-body-md"
-                  />
-                </label>
+                <CinemaPicker value={cinema} onChange={setCinema} />
 
                 <RoomPicker value={room} onChange={setRoom} />
 

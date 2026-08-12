@@ -30,19 +30,32 @@ export const CINEMA_VENUES: CinemaVenue[] = [
   },
 ]
 
+export const CINEMA_NAMES = CINEMA_VENUES.map((venue) => venue.name)
+
+export const CINEMA_NAME = CINEMA_NAMES[0]
+
 const DEFAULT_VENUE = CINEMA_VENUES[0]
 
-export function resolveCinemaVenue(name?: string | null): CinemaVenue {
-  const raw = String(name || '')
-    .trim()
-    .toLowerCase()
-  if (!raw) return DEFAULT_VENUE
-  const exact = CINEMA_VENUES.find((v) => v.name.toLowerCase() === raw)
-  if (exact) return exact
-  const partial = CINEMA_VENUES.find(
-    (v) => raw.includes(v.name.toLowerCase()) || v.name.toLowerCase().includes(raw),
+export function normalizeCinemaName(value?: string | null) {
+  const raw = String(value || '').trim()
+  if (!raw) return CINEMA_NAME
+  const exact = CINEMA_VENUES.find(
+    (venue) => venue.name.toLowerCase() === raw.toLowerCase(),
   )
-  return partial || DEFAULT_VENUE
+  if (exact) return exact.name
+  const partial = CINEMA_VENUES.find(
+    (venue) =>
+      raw.toLowerCase().includes(venue.name.toLowerCase()) ||
+      venue.name.toLowerCase().includes(raw.toLowerCase()),
+  )
+  return partial?.name || CINEMA_NAME
+}
+
+export function resolveCinemaVenue(name?: string | null): CinemaVenue {
+  return (
+    CINEMA_VENUES.find((venue) => venue.name === normalizeCinemaName(name)) ||
+    DEFAULT_VENUE
+  )
 }
 
 export function cinemaMapEmbedUrl(venue: CinemaVenue) {

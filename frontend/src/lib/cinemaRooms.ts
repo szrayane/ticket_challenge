@@ -1,4 +1,4 @@
-export const CINEMA_NAME = 'CineRay Centro'
+export { CINEMA_NAME } from './cinemaVenues'
 
 export const CINEMA_ROOMS = [
   { id: 'Sala 1', number: 1 },
