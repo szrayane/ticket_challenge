@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto'
 import { execute, query, queryOne } from '../db/index.js'
+import { getTmdbTrailerUrl } from './tmdb.service.js'
 
 function nowIso() {
   return new Date().toISOString()
@@ -60,6 +61,10 @@ export function invalidateMoviesListCache() {
 }
 
 export async function listMovies({ includeInactive = false } = {}) {
+  if (!includeInactive) {
+    await consolidateDuplicateTmdbMovies().catch(() => undefined)
+  }
+
   const cacheKey = includeInactive ? 'inactive' : 'active'
   const cached = listCache[cacheKey]
   if (cached && Date.now() - cached.at < LIST_CACHE_TTL_MS) {
@@ -159,8 +164,29 @@ export async function listMovies({ includeInactive = false } = {}) {
     return movie
   })
 
+  await ensureMissingTrailers(data, 6)
+
   listCache[cacheKey] = { at: Date.now(), data }
   return data
+}
+
+async function ensureMissingTrailers(movies, limit = 6) {
+  let filled = 0
+  for (const movie of movies) {
+    if (filled >= limit) break
+    if (movie.trailerUrl || !movie.tmdbId) continue
+    filled += 1
+    try {
+      const trailerUrl = await getTmdbTrailerUrl(movie.tmdbId)
+      if (!trailerUrl) continue
+      await execute(
+        `UPDATE movies SET trailer_url = ?, updated_at = ? WHERE id = ?`,
+        [trailerUrl, nowIso(), movie.id],
+      )
+      movie.trailerUrl = trailerUrl
+    } catch {
+    }
+  }
 }
 
 export async function getMovie(id, { includeInactive = true } = {}) {
@@ -169,6 +195,88 @@ export async function getMovie(id, { includeInactive = true } = {}) {
   const movie = mapMovie(row)
   if (!includeInactive && !movie.isActive) return null
   return movie
+}
+
+export async function findMovieByTmdbId(tmdbId) {
+  const id = Number(tmdbId)
+  if (!Number.isFinite(id) || id <= 0) return null
+  const row = await queryOne(
+    `SELECT * FROM movies
+     WHERE tmdb_id = ? AND is_active = 1
+     ORDER BY created_at ASC
+     LIMIT 1`,
+    [id],
+  )
+  return row ? mapMovie(row) : null
+}
+
+let consolidateInFlight = null
+let lastConsolidateAt = 0
+
+export async function consolidateDuplicateTmdbMovies() {
+  const now = Date.now()
+  if (now - lastConsolidateAt < 60_000) return { merged: 0 }
+  if (consolidateInFlight) return consolidateInFlight
+
+  consolidateInFlight = (async () => {
+    const groups = await query(
+      `SELECT tmdb_id AS tmdbId, COUNT(*) AS total
+       FROM movies
+       WHERE tmdb_id IS NOT NULL AND is_active = 1
+       GROUP BY tmdb_id
+       HAVING total > 1`,
+    )
+    let merged = 0
+    for (const group of groups) {
+      const tmdbId = Number(group.tmdbId)
+      const rows = await query(
+        `SELECT id, trailer_url, created_at
+         FROM movies
+         WHERE tmdb_id = ? AND is_active = 1
+         ORDER BY created_at ASC`,
+        [tmdbId],
+      )
+      if (rows.length < 2) continue
+
+      let keeper = rows[0]
+      for (const row of rows) {
+        if (row.trailer_url && !keeper.trailer_url) keeper = row
+      }
+      const dupes = rows.filter((row) => row.id !== keeper.id).map((row) => row.id)
+      if (!dupes.length) continue
+
+      const placeholders = dupes.map(() => '?').join(', ')
+      await execute(
+        `UPDATE showtimes SET movie_id = ? WHERE movie_id IN (${placeholders})`,
+        [keeper.id, ...dupes],
+      )
+      await execute(
+        `UPDATE movies SET is_active = 0, updated_at = ? WHERE id IN (${placeholders})`,
+        [nowIso(), ...dupes],
+      )
+
+      if (!keeper.trailer_url) {
+        const withTrailer = rows.find((row) => row.trailer_url)
+        if (withTrailer?.trailer_url) {
+          await execute(
+            `UPDATE movies SET trailer_url = ?, updated_at = ? WHERE id = ?`,
+            [withTrailer.trailer_url, nowIso(), keeper.id],
+          )
+        }
+      }
+      merged += dupes.length
+    }
+
+    if (merged > 0) invalidateMoviesListCache()
+    lastConsolidateAt = Date.now()
+    return { merged }
+  })()
+
+  try {
+    return await consolidateInFlight
+  } finally {
+    consolidateInFlight = null
+  }
 }
 
 export async function countActiveTicketsForMovie(movieId) {

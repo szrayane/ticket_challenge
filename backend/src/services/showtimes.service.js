@@ -1,6 +1,11 @@
 import { randomBytes } from 'node:crypto'
 import { execute, query, queryOne } from '../db/index.js'
-import { getMovie, invalidateMoviesListCache } from './movies.service.js'
+import {
+  getMovie,
+  updateMovie,
+  invalidateMoviesListCache,
+} from './movies.service.js'
+import { getTmdbTrailerUrl } from './tmdb.service.js'
 import {
   listHeldSeatIds,
   listSoldSeatIds,
@@ -220,6 +225,16 @@ export async function createShowtime(userId, movieId, input = {}) {
     const err = new Error('Filme não encontrado.')
     err.status = 404
     throw err
+  }
+
+  if (!movie.trailerUrl && movie.tmdbId) {
+    try {
+      const trailerUrl = await getTmdbTrailerUrl(movie.tmdbId)
+      if (trailerUrl) {
+        await updateMovie(movie.id, { trailerUrl })
+      }
+    } catch {
+    }
   }
 
   const fields = normalizeSessionFields(input)

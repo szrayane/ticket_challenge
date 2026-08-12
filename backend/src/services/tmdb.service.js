@@ -105,11 +105,65 @@ export async function getTmdbMovie(tmdbId) {
     ? data.genres.map((g) => g.name).join(', ')
     : 'Cinema'
   const runtime = data.runtime ? `${data.runtime} min` : ''
+  const trailerUrl = await getTmdbTrailerUrl(tmdbId)
   return {
     ...mapMovie(data),
     genre: genres || 'Cinema',
     runtime,
+    trailerUrl,
   }
+}
+
+function pickYoutubeTrailer(results) {
+  const yt = (Array.isArray(results) ? results : []).filter(
+    (video) =>
+      String(video?.site || '') === 'YouTube' && String(video?.key || '').trim(),
+  )
+  if (!yt.length) return ''
+
+  const byType = (type, officialOnly) =>
+    yt.find(
+      (video) =>
+        String(video.type || '') === type &&
+        (!officialOnly || Boolean(video.official)),
+    )
+
+  const hit =
+    byType('Trailer', true) ||
+    byType('Trailer', false) ||
+    byType('Teaser', true) ||
+    byType('Teaser', false) ||
+    yt[0]
+
+  return hit?.key ? `https://www.youtube.com/watch?v=${hit.key}` : ''
+}
+
+export async function getTmdbTrailerUrl(tmdbId) {
+  const id = Number(tmdbId)
+  if (!Number.isFinite(id) || id <= 0) return ''
+
+  const key = apiKey()
+  if (!key) return ''
+
+  const fetchVideos = async (language) => {
+    const url = new URL(`${TMDB_BASE}/movie/${encodeURIComponent(id)}/videos`)
+    url.searchParams.set('api_key', key)
+    if (language) url.searchParams.set('language', language)
+    try {
+      const response = await fetch(url)
+      if (!response.ok) return []
+      const data = await response.json()
+      return Array.isArray(data.results) ? data.results : []
+    } catch {
+      return []
+    }
+  }
+
+  for (const language of ['pt-BR', 'en-US', '']) {
+    const trailer = pickYoutubeTrailer(await fetchVideos(language))
+    if (trailer) return trailer
+  }
+  return ''
 }
 
 function mapCastMember(person) {
