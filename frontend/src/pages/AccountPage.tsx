@@ -126,8 +126,8 @@ export function AccountPage() {
             <h2 className="text-headline-md text-on-surface">Próximos ingressos</h2>
           </div>
           <p className="text-body-md text-on-surface-variant">
-            Pedidos agrupados por compra. Baixe ou compartilhe o QR e cancele
-            antes do início da sessão.
+            Ingressos agrupados por compra. Copie o código, baixe o PDF ou
+            adicione à Google Wallet.
           </p>
 
           {upcomingOrders.length === 0 ? (

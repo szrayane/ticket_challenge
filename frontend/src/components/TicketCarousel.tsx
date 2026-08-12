@@ -6,12 +6,14 @@ import { TicketQrCard } from './TicketQrCard'
 interface TicketCarouselProps {
   tickets: CustomerTicket[]
   variant?: 'default' | 'success'
+  showDetails?: boolean
   onCancel?: (ticketId: string) => Promise<void>
 }
 
 export function TicketCarousel({
   tickets,
   variant = 'default',
+  showDetails = true,
   onCancel,
 }: TicketCarouselProps) {
   const [index, setIndex] = useState(0)
@@ -34,6 +36,7 @@ export function TicketCarousel({
         ticket={tickets[0]}
         compact
         variant={variant}
+        showDetails={showDetails}
         onCancel={onCancel}
       />
     )
@@ -73,6 +76,7 @@ export function TicketCarousel({
           ticket={ticket}
           compact
           variant="success"
+          showDetails={showDetails}
           onCancel={onCancel}
         />
 
@@ -136,6 +140,7 @@ export function TicketCarousel({
             key={ticket.id}
             ticket={ticket}
             compact
+            showDetails={showDetails}
             onCancel={onCancel}
           />
         </div>

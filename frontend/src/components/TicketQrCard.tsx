@@ -1,7 +1,5 @@
 import { useRef, useState } from 'react'
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react'
-import { AppApiError } from '../api/appClient'
-import { createTicketTransfer } from '../api/catalog'
 import type { CustomerTicket } from '../types'
 import { formatMoney } from '../lib/money'
 import {
@@ -9,14 +7,15 @@ import {
   isTicketActive,
   isTicketSessionUpcoming,
 } from '../lib/tickets'
+import { downloadTicketPdf } from '../lib/ticketPdf'
 import { Icon } from './Icon'
-import { TicketWalletActions } from './TicketWalletActions'
+import { GoogleWalletBadgeButton } from './GoogleWalletBadgeButton'
 
 interface TicketQrCardProps {
   ticket: CustomerTicket
   compact?: boolean
-
   variant?: 'default' | 'success'
+  showDetails?: boolean
   onCancel?: (ticketId: string) => Promise<void>
 }
 
@@ -24,22 +23,34 @@ export function TicketQrCard({
   ticket,
   compact = false,
   variant = 'default',
+  showDetails = true,
   onCancel,
 }: TicketQrCardProps) {
-  const [confirming, setConfirming] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
-  const [transferring, setTransferring] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [shareHint, setShareHint] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const qrWrapRef = useRef<HTMLDivElement | null>(null)
 
   const active = isTicketActive(ticket)
   const upcoming = isTicketSessionUpcoming(ticket)
-  const cancellable = Boolean(onCancel) && canCancelTicket(ticket)
   const showQr = active && upcoming
   const isSuccess = variant === 'success'
+  const details = showDetails || isSuccess
+  const cancellable = Boolean(onCancel) && canCancelTicket(ticket)
 
   const qrSize = isSuccess ? (compact ? 148 : 176) : compact ? 84 : 112
+
+  function getQrCanvas() {
+    return qrWrapRef.current?.querySelector('canvas') || null
+  }
+
+  function flashHint(message: string) {
+    setError(null)
+    setShareHint(message)
+    window.setTimeout(() => setShareHint(null), 3000)
+  }
 
   async function handleConfirmCancel() {
     if (!onCancel) return
@@ -59,34 +70,12 @@ export function TicketQrCard({
     }
   }
 
-  function getQrDataUrl() {
-    const canvas = qrWrapRef.current?.querySelector('canvas')
-    if (!canvas) return null
-    return canvas.toDataURL('image/png')
-  }
-
-  function handleDownload() {
-    const dataUrl = getQrDataUrl()
-    if (!dataUrl) {
-      setError('QR Code indisponível para download.')
-      return
-    }
-    const link = document.createElement('a')
-    link.href = dataUrl
-    link.download = `cineray-${ticket.seatLabel}-${ticket.id.slice(-6)}.png`
-    link.click()
-    setShareHint('QR baixado.')
-    window.setTimeout(() => setShareHint(null), 2000)
-  }
-
   async function handleCopyCode() {
     try {
       await navigator.clipboard.writeText(ticket.qrPayload)
-      setError(null)
-      setShareHint('Código copiado. Cole na portaria para validar.')
-      window.setTimeout(() => setShareHint(null), 3000)
+      flashHint('Código copiado.')
     } catch {
-      setError('Não foi possível copiar. Selecione o código abaixo manualmente.')
+      setError('Não foi possível copiar. Selecione o código manualmente.')
     }
   }
 
@@ -94,43 +83,44 @@ export function TicketQrCard({
     const path =
       ticket.sharePath || (ticket.shareToken ? `/i/${ticket.shareToken}` : '')
     if (!path) {
-      setError('Link de compartilhamento indisponível para este ingresso.')
+      setError('Link de compartilhamento indisponível.')
       return
     }
-    const url = `${window.location.origin}${path}`
     try {
-      await navigator.clipboard.writeText(url)
-      setError(null)
-      setShareHint('Link do ingresso copiado.')
-      window.setTimeout(() => setShareHint(null), 3000)
+      await navigator.clipboard.writeText(`${window.location.origin}${path}`)
+      flashHint('Link do ingresso copiado.')
     } catch {
       setError('Não foi possível copiar o link.')
     }
   }
 
-  async function handleTransfer() {
+  async function handleDownloadPdf() {
+    const canvas = getQrCanvas()
+    if (!canvas) {
+      setError('QR indisponível para gerar o PDF.')
+      return
+    }
+    setDownloading(true)
     try {
-      setTransferring(true)
-      setError(null)
-      const result = await createTicketTransfer(ticket.id)
-      const url = `${window.location.origin}${result.transferPath}`
-      try {
-        await navigator.clipboard.writeText(url)
-        setShareHint(
-          'Link de transferência copiado. Quem abrir reivindica o ingresso e invalida seu QR.',
-        )
-      } catch {
-        setShareHint(`Link: ${url}`)
-      }
-      window.setTimeout(() => setShareHint(null), 8000)
-    } catch (err) {
-      setError(
-        err instanceof AppApiError
-          ? err.message
-          : 'Não foi possível gerar o link de transferência.',
-      )
+      await downloadTicketPdf({
+        qrCanvas: canvas,
+        fileName: `cineray-${ticket.seatLabel}-${ticket.id.slice(-6)}.pdf`,
+        ticket: {
+          movieTitle: ticket.movieTitle,
+          sessionDate: ticket.sessionDate,
+          sessionTime: ticket.sessionTime,
+          cinema: ticket.cinema,
+          room: ticket.room,
+          seatLabel: ticket.seatLabel,
+          totalPaid: formatMoney(ticket.totalPaid),
+          ticketId: ticket.id,
+        },
+      })
+      flashHint('PDF baixado.')
+    } catch {
+      setError('Não foi possível baixar o PDF.')
     } finally {
-      setTransferring(false)
+      setDownloading(false)
     }
   }
 
@@ -148,41 +138,21 @@ export function TicketQrCard({
         })
         return
       } catch {
-
       }
     }
 
     if (url) {
-      await handleCopyLink()
-      return
-    }
-
-    const dataUrl = getQrDataUrl()
-    if (!dataUrl) {
-      setError('QR Code indisponível para compartilhar.')
-      return
-    }
-
-    try {
-      const response = await fetch(dataUrl)
-      const blob = await response.blob()
-      const file = new File([blob], `cineray-${ticket.seatLabel}.png`, {
-        type: 'image/png',
-      })
-
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: `Ingresso ${ticket.movieTitle}`,
-          text: ticket.qrPayload,
-          files: [file],
-        })
+      try {
+        await navigator.clipboard.writeText(url)
+        flashHint('Link do ingresso copiado.')
+        return
+      } catch {
+        setError('Não foi possível compartilhar.')
         return
       }
-
-      await handleCopyCode()
-    } catch {
-      await handleCopyCode()
     }
+
+    await handleCopyCode()
   }
 
   const qrBlock = showQr ? (
@@ -267,13 +237,7 @@ export function TicketQrCard({
         </p>
       )}
       {shareHint && (
-        <p
-          className={
-            isSuccess
-              ? 'break-words rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-caption text-emerald-300 [overflow-wrap:anywhere]'
-              : 'break-words text-caption text-emerald-300 [overflow-wrap:anywhere]'
-          }
-        >
+        <p className="break-words text-caption text-emerald-300 [overflow-wrap:anywhere]">
           {shareHint}
         </p>
       )}
@@ -281,11 +245,7 @@ export function TicketQrCard({
   )
 
   const walletHandlers = {
-    onHint: (message: string) => {
-      setError(null)
-      setShareHint(message)
-      window.setTimeout(() => setShareHint(null), 4000)
-    },
+    onHint: (message: string) => flashHint(message),
     onError: (message: string) => {
       if (!message) {
         setError(null)
@@ -296,29 +256,74 @@ export function TicketQrCard({
     },
   }
 
-  const cancelUi = (
-    <>
-      {cancellable && !confirming && (
+  const actionsRow = showQr ? (
+    <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
+      <button
+        type="button"
+        onClick={() => {
+          void handleCopyCode()
+        }}
+        className="inline-flex items-center gap-1 rounded-lg bg-primary-container/90 px-2.5 py-1.5 text-caption text-white transition-all hover:brightness-110"
+      >
+        <Icon name="content_copy" className="text-[15px]" />
+        Copiar código
+      </button>
+      <button
+        type="button"
+        disabled={downloading}
+        onClick={() => {
+          void handleDownloadPdf()
+        }}
+        className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary disabled:opacity-50"
+      >
+        <Icon name="picture_as_pdf" className="text-[15px]" />
+        {downloading ? 'Gerando…' : 'Baixar PDF'}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void handleShare()
+        }}
+        className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+      >
+        <Icon name="share" className="text-[15px]" />
+        Compartilhar
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void handleCopyLink()
+        }}
+        className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
+      >
+        <Icon name="link" className="text-[15px]" />
+        Copiar link
+      </button>
+      <div className="min-w-0 shrink">
+        <GoogleWalletBadgeButton
+          ticketId={ticket.id}
+          className="!rounded-lg"
+          {...walletHandlers}
+        />
+      </div>
+    </div>
+  ) : null
+
+  const cancelUi = cancellable ? (
+    <div className="space-y-2">
+      {!confirming ? (
         <button
           type="button"
           onClick={() => {
             setError(null)
             setConfirming(true)
           }}
-          className={`rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary ${
-            isSuccess ? 'mt-0 w-full rounded-xl border-white/12 py-2.5' : 'mt-1'
-          }`}
+          className="w-full rounded-lg border border-white/15 px-4 py-2 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
         >
           Cancelar ingresso
         </button>
-      )}
-
-      {cancellable && confirming && (
-        <div
-          className={`space-y-2 border border-white/10 bg-white/5 p-3 ${
-            isSuccess ? 'rounded-xl' : 'mt-1 rounded-lg'
-          }`}
-        >
+      ) : (
+        <div className="space-y-2 rounded-lg border border-white/10 bg-white/5 p-3">
           <p className="text-caption text-on-surface-variant">
             Cancelar o assento <strong>{ticket.seatLabel}</strong>? O QR deixa de
             valer e o lugar volta a ficar disponível.
@@ -345,8 +350,8 @@ export function TicketQrCard({
           </div>
         </div>
       )}
-    </>
-  )
+    </div>
+  ) : null
 
   if (isSuccess) {
     return (
@@ -377,6 +382,9 @@ export function TicketQrCard({
               <p className="break-words text-sm text-on-surface-variant">
                 {ticket.sessionDate} · {ticket.sessionTime}
               </p>
+              <p className="break-words text-caption text-on-surface-variant">
+                {ticket.cinema} · {ticket.room}
+              </p>
             </div>
             <div className="flex shrink-0 flex-col items-end justify-center rounded-xl bg-primary-container px-2.5 py-2 text-center shadow-inner sm:px-3">
               <span className="text-[10px] font-medium tracking-wide text-on-primary-container/80 uppercase">
@@ -397,126 +405,18 @@ export function TicketQrCard({
 
         <div className="flex flex-col items-center gap-3 bg-surface-container-low px-4 py-5 sm:px-5">
           {qrBlock}
-          <p className="max-w-[20rem] text-center text-caption text-on-surface-variant">
-            Mostre este QR na entrada · Assento{' '}
-            <span className="font-semibold text-on-surface">{ticket.seatLabel}</span>
+          <p className="text-center text-caption text-on-surface-variant">
+            Mostre este QR na entrada
           </p>
         </div>
 
         <div className="space-y-3 border-t border-white/10 px-4 py-4 sm:px-5">
-          <dl className="grid gap-2.5 text-sm">
-            <div className="flex items-start justify-between gap-3">
-              <dt className="shrink-0 text-on-surface-variant">Local</dt>
-              <dd className="min-w-0 text-right font-medium text-on-surface [overflow-wrap:anywhere]">
-                {ticket.cinema}
-              </dd>
-            </div>
-            <div className="flex items-start justify-between gap-3">
-              <dt className="shrink-0 text-on-surface-variant">Sala</dt>
-              <dd className="min-w-0 text-right font-medium text-on-surface [overflow-wrap:anywhere]">
-                {ticket.room}
-              </dd>
-            </div>
-            {ticket.orderId && (
-              <div className="flex items-start justify-between gap-3">
-                <dt className="shrink-0 text-on-surface-variant">Pedido</dt>
-                <dd className="min-w-0 break-all text-right font-medium text-on-surface">
-                  {ticket.orderId}
-                </dd>
-              </div>
-            )}
-            <div className="flex items-start justify-between gap-3">
-              <dt className="shrink-0 text-on-surface-variant">Pago</dt>
-              <dd className="min-w-0 text-right font-medium text-on-surface">
-                {formatMoney(ticket.totalPaid)}
-                <span className="mt-0.5 block text-caption font-normal text-on-surface-variant">
-                  {new Date(ticket.purchasedAt).toLocaleString('pt-BR')}
-                </span>
-              </dd>
-            </div>
-          </dl>
-
-          <p className="flex items-start gap-1.5 rounded-lg bg-white/5 px-3 py-2 text-caption text-on-surface-variant">
-            <Icon
-              name="verified_user"
-              className="mt-0.5 shrink-0 text-[15px] text-primary"
-            />
-            <span className="min-w-0 break-all">
-              Vinculado a {ticket.userEmail}
-            </span>
+          <p className="text-caption text-on-surface-variant">
+            {formatMoney(ticket.totalPaid)} ·{' '}
+            {new Date(ticket.purchasedAt).toLocaleString('pt-BR')}
           </p>
-
-          {!active && ticket.cancelledAt && (
-            <p className="break-words text-caption text-on-surface-variant">
-              Cancelado em {new Date(ticket.cancelledAt).toLocaleString('pt-BR')}
-            </p>
-          )}
-
           {feedback}
-
-          {showQr && (
-            <div className="space-y-3 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  void handleCopyCode()
-                }}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-container px-4 py-3 text-sm font-semibold text-white transition-all hover:brightness-110"
-              >
-                <Icon name="content_copy" className="text-[18px]" />
-                Copiar código
-              </button>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={handleDownload}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2.5 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  <Icon name="download" className="text-[16px]" />
-                  Baixar QR
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleShare()
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2.5 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  <Icon name="share" className="text-[16px]" />
-                  Compartilhar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleCopyLink()
-                  }}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/12 bg-white/[0.03] px-3 py-2.5 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  <Icon name="link" className="text-[16px]" />
-                  Copiar link
-                </button>
-                {!ticket.checkedInAt ? (
-                  <button
-                    type="button"
-                    disabled={transferring}
-                    onClick={() => {
-                      void handleTransfer()
-                    }}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-2.5 text-caption text-amber-100 transition-colors hover:border-amber-300/45 disabled:opacity-50"
-                  >
-                    <Icon name="swap_horiz" className="text-[16px]" />
-                    {transferring ? 'Gerando…' : 'Transferir'}
-                  </button>
-                ) : (
-                  <span className="rounded-xl border border-transparent px-3 py-2.5" />
-                )}
-              </div>
-
-              <TicketWalletActions ticket={ticket} {...walletHandlers} />
-            </div>
-          )}
-
+          {actionsRow}
           {cancelUi}
         </div>
       </article>
@@ -562,145 +462,46 @@ export function TicketQrCard({
         </div>
 
         <div
-          className={`min-w-0 max-w-full flex-1 overflow-hidden text-left ${
-            compact ? 'space-y-2 p-3 sm:p-3.5' : 'space-y-2.5 p-3.5 sm:p-5'
+          className={`flex min-w-0 max-w-full flex-1 flex-col justify-center overflow-hidden ${
+            compact ? 'gap-2 p-3 sm:p-3.5' : 'gap-2.5 p-3.5 sm:p-5'
           }`}
         >
-          <div className="flex items-start gap-3">
-            {!compact && (
-              <img
-                src={ticket.moviePoster}
-                alt=""
-                className="hidden h-16 w-11 rounded-md object-cover sm:block"
-              />
-            )}
-            <div className="min-w-0 flex-1">
+          {details ? (
+            <>
               <div className="flex flex-wrap items-center gap-2">
                 <h3
                   className={`max-w-full break-words text-primary-fixed [overflow-wrap:anywhere] ${
-                    compact ? 'text-base font-semibold leading-snug sm:text-lg' : 'text-headline-md'
+                    compact
+                      ? 'text-base font-semibold leading-snug sm:text-lg'
+                      : 'text-headline-md'
                   }`}
                 >
                   {ticket.movieTitle}
                 </h3>
                 {statusBadges}
               </div>
-              <p
-                className={`break-words text-on-surface-variant ${
-                  compact ? 'text-sm' : 'text-body-md'
-                }`}
-              >
+              <p className="break-words text-sm text-on-surface-variant">
                 {ticket.sessionDate} • {ticket.sessionTime}
               </p>
+              <p className="truncate text-caption text-on-surface-variant">
+                {ticket.cinema} • {ticket.room} • Assento {ticket.seatLabel}
+              </p>
+              <p className="text-caption text-on-surface-variant">
+                {formatMoney(ticket.totalPaid)} •{' '}
+                {new Date(ticket.purchasedAt).toLocaleString('pt-BR')}
+              </p>
+            </>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-label-md text-on-surface">
+                Assento {ticket.seatLabel}
+              </p>
+              {statusBadges}
             </div>
-          </div>
-
-          <div
-            className={`grid grid-cols-2 gap-x-3 gap-y-1 ${
-              compact ? 'text-sm' : 'text-body-md'
-            }`}
-          >
-            <p className="min-w-0 text-on-surface-variant">
-              Assento{' '}
-              <span className="font-semibold text-on-surface">
-                {ticket.seatLabel}
-              </span>
-            </p>
-            <p className="min-w-0 truncate text-on-surface-variant">
-              Sala{' '}
-              <span className="font-semibold text-on-surface">{ticket.room}</span>
-            </p>
-            <p className="col-span-2 truncate text-on-surface-variant">
-              {ticket.cinema}
-            </p>
-          </div>
-
-          {ticket.orderId && (
-            <p className="truncate text-caption text-on-surface-variant">
-              Pedido {ticket.orderId}
-            </p>
-          )}
-
-          <p className="flex min-w-0 items-start gap-1 text-caption text-on-surface-variant">
-            <Icon
-              name="verified_user"
-              className="mt-0.5 shrink-0 text-[16px] text-primary"
-            />
-            <span className="min-w-0 break-all">
-              Vinculado a {ticket.userEmail}
-            </span>
-          </p>
-          <p className="break-words text-caption text-on-surface-variant">
-            {formatMoney(ticket.totalPaid)} •{' '}
-            {new Date(ticket.purchasedAt).toLocaleString('pt-BR')}
-          </p>
-          {!active && ticket.cancelledAt && (
-            <p className="break-words text-caption text-on-surface-variant">
-              Cancelado em {new Date(ticket.cancelledAt).toLocaleString('pt-BR')}
-            </p>
           )}
 
           {feedback}
-
-          {showQr && (
-            <div className="space-y-2 pt-1">
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleCopyCode()
-                  }}
-                  className="inline-flex items-center gap-1 rounded-lg bg-primary-container/90 px-2.5 py-1.5 text-caption text-white transition-all hover:brightness-110"
-                >
-                  <Icon name="content_copy" className="text-[15px]" />
-                  Copiar código
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownload}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  <Icon name="download" className="text-[15px]" />
-                  Baixar QR
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleShare()
-                  }}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  <Icon name="share" className="text-[15px]" />
-                  Compartilhar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleCopyLink()
-                  }}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-caption text-on-surface-variant transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  <Icon name="link" className="text-[15px]" />
-                  Copiar link
-                </button>
-                {!ticket.checkedInAt && (
-                  <button
-                    type="button"
-                    disabled={transferring}
-                    onClick={() => {
-                      void handleTransfer()
-                    }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-amber-300/30 bg-amber-400/10 px-2.5 py-1.5 text-caption text-amber-100 transition-colors hover:border-amber-300/50 disabled:opacity-50"
-                  >
-                    <Icon name="swap_horiz" className="text-[15px]" />
-                    {transferring ? 'Gerando…' : 'Transferir'}
-                  </button>
-                )}
-              </div>
-              <TicketWalletActions ticket={ticket} {...walletHandlers} />
-            </div>
-          )}
-
+          {actionsRow}
           {cancelUi}
         </div>
       </div>

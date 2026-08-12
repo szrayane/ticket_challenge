@@ -22,9 +22,6 @@ export function TicketOrderCard({ order, onCancel }: TicketOrderCardProps) {
             className="h-24 w-16 shrink-0 rounded-md object-cover"
           />
           <div className="min-w-0 space-y-1">
-            <p className="truncate text-caption tracking-wider text-on-surface-variant uppercase">
-              Pedido {order.orderId}
-            </p>
             <h3 className="break-words text-headline-md text-on-surface [overflow-wrap:anywhere]">
               {order.movieTitle}
             </h3>
@@ -53,7 +50,11 @@ export function TicketOrderCard({ order, onCancel }: TicketOrderCardProps) {
         </div>
       </header>
 
-      <TicketCarousel tickets={order.tickets} onCancel={onCancel} />
+      <TicketCarousel
+        tickets={order.tickets}
+        showDetails={false}
+        onCancel={onCancel}
+      />
     </section>
   )
 }
