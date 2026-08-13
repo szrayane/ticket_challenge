@@ -4,6 +4,8 @@ Utilizei o Cursor como ferramenta de apoio durante o desenvolvimento, principalm
 
 Ele me ajudou em partes como Express/MySQL, holds de assentos, integração com TMDb, QR Code com AES-256-GCM, portaria e Docker.
 
+Alguns commits também contaram com o auxílio do Cursor em implementações e ajustes, que foram revisados e validados por mim.
+
 A partir do enunciado, defini as principais decisões do projeto, como:
 
 - mapa de assentos;
